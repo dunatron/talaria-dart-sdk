@@ -42,7 +42,8 @@ class EventQueue {
     _draining = true;
     try {
       while (_buffer.isNotEmpty) {
-        final take = _buffer.length < maxBatchSize ? _buffer.length : maxBatchSize;
+        final take =
+            _buffer.length < maxBatchSize ? _buffer.length : maxBatchSize;
         final slice = _buffer.sublist(0, take);
         _buffer.removeRange(0, take);
         final events = [for (final item in slice) item.event];

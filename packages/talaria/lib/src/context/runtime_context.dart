@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'platform_info_stub.dart'
-    if (dart.library.io) 'platform_info_io.dart' as platform_info;
+import 'platform_info_stub.dart' if (dart.library.io) 'platform_info_io.dart'
+    as platform_info;
 
 /// Best-effort runtime context for auto-enrichment.
 class RuntimeContext {

@@ -11,8 +11,7 @@ class ExceptionPayloadBuilder {
     ExceptionMechanism? mechanism,
     String framePlatform = StackFrameBuilder.platform,
   }) {
-    final mechanismWire =
-        (mechanism ?? const ExceptionMechanism()).toWire();
+    final mechanismWire = (mechanism ?? const ExceptionMechanism()).toWire();
     final frames = StackFrameBuilder.framesFromStackTrace(
       stackTrace,
       framePlatform: framePlatform,

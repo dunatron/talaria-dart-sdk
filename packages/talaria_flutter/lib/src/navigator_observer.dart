@@ -32,9 +32,8 @@ class TalariaNavigatorObserver extends NavigatorObserver {
 
   void _update(Route<dynamic> route) {
     final name = route.settings.name;
-    final label = (name != null && name.isNotEmpty)
-        ? name
-        : route.runtimeType.toString();
+    final label =
+        (name != null && name.isNotEmpty) ? name : route.runtimeType.toString();
     _currentRoute = label;
     final client = _client ?? Talaria.getClient();
     client?.setTags({

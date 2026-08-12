@@ -354,8 +354,7 @@ class TalariaClient {
           ? 'dart'
           : 'dart',
     );
-    final runtimeTags =
-        TalariaOptions.normalizeTags(
+    final runtimeTags = TalariaOptions.normalizeTags(
       Map<String, Object?>.from(runtime['tags'] as Map? ?? const {}),
     );
     final runtimeExtra =

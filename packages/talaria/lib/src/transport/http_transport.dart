@@ -34,7 +34,8 @@ class HttpTransport implements Transport {
       },
     };
 
-    final uri = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}/events/ingestBatch');
+    final uri = Uri.parse(
+        '${baseUrl.replaceAll(RegExp(r'/+$'), '')}/events/ingestBatch');
 
     late final http.Response response;
     try {

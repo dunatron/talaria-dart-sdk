@@ -33,8 +33,8 @@ void main() {
 
   test('inApp heuristics', () {
     expect(StackFrameBuilder.isInApp('dart:core'), isFalse);
-    expect(StackFrameBuilder.isInApp('package:flutter/src/widgets.dart'),
-        isFalse);
+    expect(
+        StackFrameBuilder.isInApp('package:flutter/src/widgets.dart'), isFalse);
     expect(StackFrameBuilder.isInApp('package:my_app/main.dart'), isTrue);
     expect(StackFrameBuilder.isInApp('file:///tmp/main.dart'), isTrue);
   });

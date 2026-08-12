@@ -20,7 +20,8 @@ class Talaria {
       // ignore: avoid_print
       assert(() {
         // ignore: avoid_print
-        print('[Talaria] init() called more than once; ignoring subsequent init.');
+        print(
+            '[Talaria] init() called more than once; ignoring subsequent init.');
         return true;
       }());
       return _client!;
@@ -123,7 +124,8 @@ class Talaria {
   static TalariaClient _requireClient() {
     final client = _client;
     if (client == null) {
-      throw StateError('Talaria.init() must be called before capturing events.');
+      throw StateError(
+          'Talaria.init() must be called before capturing events.');
     }
     return client;
   }

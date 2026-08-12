@@ -34,7 +34,8 @@ R? runZonedTalaria<R>(
     body,
     (error, stack) {
       // ignore: discarded_futures
-      client.captureException(
+      client
+          .captureException(
         error,
         stackTrace: stack,
         context: const CaptureContext(
@@ -43,7 +44,8 @@ R? runZonedTalaria<R>(
             handled: false,
           ),
         ),
-      ).catchError((Object e, StackTrace st) {
+      )
+          .catchError((Object e, StackTrace st) {
         developer.log(
           '[Talaria] zone capture failed: $e',
           name: 'talaria',
