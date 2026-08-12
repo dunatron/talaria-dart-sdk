@@ -1,0 +1,44 @@
+---
+description: Transport and queue rules for Talaria Dart SDK
+globs:
+  - "packages/talaria/lib/src/transport/**"
+---
+
+# Transport & queue
+
+## Wire contract
+
+- `POST {baseUrl}/events/ingestBatch`
+- Header: `X-API-Key` only
+- Body:
+
+```json
+{
+  "input": {
+    "__className__": "IngestEventBatchInput",
+    "events": [
+      { "__className__": "IngestEventInput", "message": "...", "environment": "production" }
+    ]
+  }
+}
+```
+
+- Even a single leftover event is a batch of one
+- `extra` → `extraJson` (JSON **string**); `tags` are string→string
+- Flat `userId` / `url` — not nested `user` / `request`
+- First-class `exception` frames with `functionName`
+- `platform: "dart"` or `"flutter"`
+
+## EventQueue drain triggers
+
+| Trigger | Config | When |
+| ---- | --- | ---- |
+| Size | `maxBatchSize` (default 50) | Buffer reaches N |
+| Age | `flushIntervalMs` (default 2000) | Timer + enqueue age check |
+| Explicit | `flush()` / `close()` | Always drain |
+
+## Reliability
+
+- Short HTTP timeout (~3s)
+- No unbounded retries; on 429 log warning and drop
+- Transport failures must not crash the host app

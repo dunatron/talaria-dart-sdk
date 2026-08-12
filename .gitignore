@@ -1,0 +1,23 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec_overrides.yaml
+*.iml
+.idea/
+.vscode/
+
+# Melos
+.melos_tool/
+
+# Coverage
+coverage/
+
+# OS
+.DS_Store
+*.swp
+
+# Env / secrets
+.env
+.env.*
+!*.example

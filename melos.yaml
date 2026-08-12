@@ -1,0 +1,7 @@
+name: talaria_sdk
+packages:
+  - packages/**
+
+command:
+  bootstrap:
+    usePubspecOverrides: true

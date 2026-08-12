@@ -1,0 +1,40 @@
+---
+description: Dart SDK public API and capture semantics
+globs:
+  - "packages/talaria/lib/**"
+  - "packages/talaria_flutter/lib/**"
+---
+
+# Public API
+
+## Facade (JS/PHP parity)
+
+```dart
+await Talaria.init(TalariaOptions(...));
+Talaria.logger(name: …, tags: …, minLevel: …);
+Talaria.withTags({…});
+Talaria.debug/info/warning/warn/error/fatal(message, {context});
+Talaria.log(level, message, {context});
+Talaria.captureException(error, {stackTrace, context});
+Talaria.captureMessage(message, {level, context});
+Talaria.getMinLevel(); Talaria.setMinLevel(level); Talaria.isLevelEnabled(level);
+Talaria.isEnforceDefaultLevel(); Talaria.setEnforceDefaultLevel(bool);
+Talaria.flush();
+Talaria.close();
+```
+
+Also export `TalariaClient` for DI and `TalariaLogger` for scoped capture.
+Flutter: `TalariaFlutter.init`, `TalariaFlutter.runZonedApp`, `TalariaNavigatorObserver`.
+
+## Init options
+
+- Required: `dsn` or `baseUrl`, `apiKey`, `environment`
+- Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`
+
+## Capture rules
+
+- Exceptions default `level: error`; messages default `info`
+- Derive `eventType` from level
+- Context bag: `tags`, `extra`, `userId`, `title`, optional `mechanism`
+- Gates: effective level → `sampleRate` → `beforeSend`; filtered captures are quiet no-ops
+- Capture enqueues only — network I/O happens on queue drain

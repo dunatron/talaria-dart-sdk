@@ -1,0 +1,26 @@
+---
+description: Talaria Dart/Flutter SDK project rules
+globs:
+  - "**/*"
+---
+
+# Talaria Dart / Flutter SDK
+
+Language-agnostic ingest adapters for Talaria.
+
+```
+App → TalariaClient (capture*) → EventQueue → POST /events/ingestBatch → Talaria server
+```
+
+- Fingerprinting is **server-side only** — never compute fingerprints here
+- Auth: project API key via `X-API-Key` (`tal_live_…`)
+- Always send via **batch** ingest; never one HTTP call per log in the normal path
+- Packages: `talaria` (pure Dart) + `talaria_flutter` (Flutter hooks)
+
+## Explicit don'ts
+
+- Do not compute fingerprints
+- Do not call `events/ingest` for normal or flush paths — always `ingestBatch`
+- Do not retry unbounded on 429
+- Do not depend on `new_talaria_client` / Serverpod codegen
+- Do not add session replay or native crash dumps in v1
