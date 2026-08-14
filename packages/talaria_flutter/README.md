@@ -34,6 +34,7 @@ Future<void> main() async {
     ),
     release: const String.fromEnvironment('APP_RELEASE'),
     minLevel: SeverityLevel.warning,
+    enableTracing: true,
   ));
 
   ErrorWidget.builder = talariaErrorWidgetBuilder();
@@ -66,8 +67,16 @@ Future<void> main() async {
 | `FlutterError.onError` | Framework errors → `captureException` |
 | `PlatformDispatcher.onError` | Platform/async errors |
 | Zone (via `runApp` helper) | Uncaught zone errors |
-| `TalariaNavigatorObserver` | `route` / `screen` tags |
+| `TalariaNavigatorObserver` | `route` / `screen` tags and a navigation transaction on push/pop |
 | Lifecycle observer | `app.state` tag |
 | `talariaErrorWidgetBuilder` | Build failures |
 
 Events are tagged with `platform: flutter`.
+
+## Tracing
+
+Pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. The navigator observer starts a transaction per route. Wrap application HTTP with `Talaria.wrapHttpClient` — do not wrap Talaria's ingest client.
+
+There is no `talaria_dio` package; intercept Dio via a wrapped `http.Client` or `addProcessor`.
+
+See the [`talaria`](../talaria) README for span ingest, sampling, breadcrumbs, and W3C `traceparent`.

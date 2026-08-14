@@ -29,6 +29,27 @@ void main() {
     expect(wire['exception'], isA<Map<String, Object?>>());
   });
 
+  test('Event.toWire includes traceId spanId breadcrumbs', () {
+    final event = Event(
+      message: 'boom',
+      environment: Environment.production,
+      level: SeverityLevel.error,
+      traceId: '0af7651916cd43dd8448eb211c80319c',
+      spanId: 'b7ad6b7169203331',
+      breadcrumbs: [
+        {
+          '__className__': 'BreadcrumbDto',
+          'timestamp': '2026-01-01T00:00:00.000Z',
+          'type': 'http',
+        },
+      ],
+    );
+    final wire = event.toWire();
+    expect(wire['traceId'], '0af7651916cd43dd8448eb211c80319c');
+    expect(wire['spanId'], 'b7ad6b7169203331');
+    expect(wire['breadcrumbs'], hasLength(1));
+  });
+
   test('empty message rejected', () {
     expect(
       () => Event(

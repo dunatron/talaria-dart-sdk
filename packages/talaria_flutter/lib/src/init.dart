@@ -26,27 +26,13 @@ class TalariaFlutter {
     bool installHooks = true,
     bool observeLifecycle = true,
   }) async {
-    final flutterOptions = TalariaOptions(
-      dsn: options.baseUrl,
-      apiKey: options.apiKey,
-      environment: options.environment,
-      release: options.release,
-      commitSha: options.commitSha,
-      sampleRate: options.sampleRate,
-      maxBatchSize: options.maxBatchSize,
-      flushIntervalMs: options.flushIntervalMs,
-      defaultIntegrations: false,
-      userId: options.userId,
+    final flutterOptions = options.copyWith(
+      platform: 'flutter',
       tags: {
         ...options.tags,
         'flutter': 'true',
       },
-      httpTimeoutSeconds: options.httpTimeoutSeconds,
-      minLevel: options.minLevel,
-      enforceDefaultLevel: options.enforceDefaultLevel,
-      loggers: options.loggers,
-      beforeSend: options.beforeSend,
-      platform: 'flutter',
+      defaultIntegrations: false,
     );
 
     final client = await Talaria.init(flutterOptions, transport: transport);
@@ -160,6 +146,7 @@ class TalariaFlutter {
   static Future<void> close() async {
     _lifecycle?.dispose();
     _lifecycle = null;
+    RuntimeContext.clearCurrent();
     if (_hooksInstalled) {
       FlutterError.onError = _previousFlutterOnError;
       PlatformDispatcher.instance.onError = _previousPlatformOnError;

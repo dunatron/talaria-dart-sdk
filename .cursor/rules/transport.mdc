@@ -8,6 +8,8 @@ globs:
 
 ## Wire contract
 
+Events:
+
 - `POST {baseUrl}/events/ingestBatch`
 - Header: `X-API-Key` only
 - Body:
@@ -22,6 +24,12 @@ globs:
   }
 }
 ```
+
+Spans (when tracing is enabled):
+
+- `POST {baseUrl}/spans/ingestBatch`
+- Body: `{ "input": { "__className__": "IngestSpanBatchInput", "spans": [ { "__className__": "IngestSpanInput", … } ] } }`
+- `HttpTransport.httpClient` is ingest-only — never wrap it with `TalariaHttpClient`. Optional `spanHttpClient` for span POSTs.
 
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string

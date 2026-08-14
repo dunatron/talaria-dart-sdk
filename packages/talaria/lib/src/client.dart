@@ -9,8 +9,13 @@ import 'event.dart';
 import 'logger.dart';
 import 'protocol/exception_payload_builder.dart';
 import 'severity.dart';
+import 'tracing/breadcrumbs.dart';
+import 'tracing/span.dart';
+import 'tracing/tracer.dart';
+import 'tracing/trace_context.dart';
 import 'transport/event_queue.dart';
 import 'transport/http_transport.dart';
+import 'transport/span_queue.dart';
 import 'transport/transport.dart';
 import 'integration/zone_integration.dart';
 
@@ -60,6 +65,22 @@ class TalariaClient {
           },
         );
 
+    _spanQueue = SpanQueue(
+      transport: resolvedTransport,
+      maxBatchSize: options.maxBatchSize,
+      flushIntervalMs: options.flushIntervalMs,
+      onError: (e) {
+        onTransportError?.call(e);
+        developer.log('[Talaria] ${e.message}', name: 'talaria');
+      },
+    );
+
+    tracer = Tracer(
+      options: options,
+      enqueue: _spanQueue.enqueue,
+      enrichment: _spanEnrichment,
+    );
+
     if (options.flushIntervalMs > 0) {
       _flushTimer = Timer.periodic(
         Duration(milliseconds: options.flushIntervalMs),
@@ -77,6 +98,9 @@ class TalariaClient {
 
   final TalariaOptions _options;
   late final EventQueue _queue;
+  late final SpanQueue _spanQueue;
+  late final Tracer tracer;
+  final BreadcrumbBuffer _breadcrumbs = BreadcrumbBuffer();
   HttpTransport? _ownedHttp;
   final String _sessionId;
   bool _closed = false;
@@ -233,6 +257,66 @@ class TalariaClient {
     _processors.add(processor);
   }
 
+  void addBreadcrumb(Breadcrumb breadcrumb) {
+    _breadcrumbs.add(breadcrumb);
+  }
+
+  Span startTransaction(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    Traceparent? parent,
+  }) {
+    return tracer.startTransaction(
+      name,
+      kind: kind,
+      attributes: attributes,
+      parent: parent,
+    );
+  }
+
+  Span startSpan(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    Span? parent,
+  }) {
+    return tracer.startSpan(
+      name,
+      kind: kind,
+      attributes: attributes,
+      parent: parent,
+    );
+  }
+
+  /// W3C `traceparent` for the active span, or null when tracing is off / idle.
+  String? getTraceparent() {
+    final span = tracer.currentSpan;
+    if (span == null || !span.isRecording) {
+      return null;
+    }
+    if (span.traceId == '0' * 32 || span.spanId == '0' * 16) {
+      return null;
+    }
+    return Traceparent(
+      traceId: span.traceId,
+      spanId: span.spanId,
+      sampled: span.sampled,
+    ).toHeader();
+  }
+
+  String? get currentRequestId {
+    final fromRuntime = RuntimeContext.requestId;
+    if (fromRuntime != null && fromRuntime.isNotEmpty) {
+      return fromRuntime;
+    }
+    final span = tracer.currentSpan;
+    if (span != null && span.isRecording) {
+      return span.spanId;
+    }
+    return null;
+  }
+
   void setExtra(Map<String, Object?> extra) {
     _globalExtra = {..._globalExtra, ...extra};
   }
@@ -241,11 +325,15 @@ class TalariaClient {
     _globalUserId = (userId != null && userId.isNotEmpty) ? userId : null;
   }
 
-  Future<void> flush() => _queue.flush();
+  Future<void> flush() async {
+    await _queue.flush();
+    await _spanQueue.flush();
+  }
 
   Future<void> close() async {
     _flushTimer?.cancel();
     _flushTimer = null;
+    tracer.finishAll();
     await flush();
     _closed = true;
     _zoneIntegration?.unregister();
@@ -368,10 +456,14 @@ class TalariaClient {
       ...runtimeExtra,
       ...?context.extra,
     };
+    var url = runtime['url'] as String?;
+    var requestId = runtime['requestId'] as String?;
 
     var bag = <String, Object?>{
       'tags': tags,
       'extra': extra,
+      'url': url,
+      'requestId': requestId,
     };
     for (final processor in _processors) {
       try {
@@ -386,6 +478,14 @@ class TalariaClient {
         final resultExtra = result['extra'];
         if (resultExtra is Map) {
           extra = Map<String, Object?>.from(resultExtra);
+        }
+        final resultUrl = result['url'];
+        if (resultUrl is String) {
+          url = resultUrl.isEmpty ? null : resultUrl;
+        }
+        final resultRequestId = result['requestId'];
+        if (resultRequestId is String) {
+          requestId = resultRequestId.isEmpty ? null : resultRequestId;
         }
       } catch (e, st) {
         developer.log(
@@ -455,6 +555,26 @@ class TalariaClient {
       }
     }
 
+    final isError = outException != null ||
+        outLevel == SeverityLevel.error ||
+        outLevel == SeverityLevel.fatal;
+
+    String? traceId;
+    String? spanId;
+    List<Map<String, Object?>>? breadcrumbs;
+    if (isError) {
+      tracer.markErrorInScope(message: outMessage);
+      final span = tracer.currentSpan;
+      if (span != null && span.isRecording) {
+        traceId = span.traceId;
+        spanId = span.spanId;
+      }
+      final trail = _breadcrumbs.snapshot();
+      if (trail.isNotEmpty) {
+        breadcrumbs = [for (final b in trail) b.toWire()];
+      }
+    }
+
     final event = Event(
       message: outMessage,
       environment: Environment.fromMixed(_options.environment),
@@ -466,15 +586,38 @@ class TalariaClient {
       commitSha: _options.commitSha,
       userId: outUserId,
       sessionId: _sessionId,
-      requestId: runtime['requestId'] as String?,
-      url: runtime['url'] as String?,
+      requestId: requestId,
+      url: url,
       tags: outTags.isEmpty ? null : outTags,
       extraJson: RuntimeContext.encodeExtraJson(outExtra),
       timestamp: RuntimeContext.isoTimestamp(),
       exception: outException,
       platform: platform ?? platformOverride ?? _options.platform,
+      traceId: traceId,
+      spanId: spanId,
+      breadcrumbs: breadcrumbs,
     );
 
     _queue.enqueue(event);
+  }
+
+  SpanEnrichment _spanEnrichment() {
+    final service = _globalTags['service'] ??
+        (_options.platform == 'flutter' || platformOverride == 'flutter'
+            ? 'flutter'
+            : 'dart');
+    return SpanEnrichment(
+      environment: _options.environment,
+      release: _options.release,
+      userId: _globalUserId,
+      sessionId: _sessionId,
+      requestId: currentRequestId,
+      resource: {
+        'service.name': service,
+        if (_options.release != null && _options.release!.isNotEmpty)
+          'service.version': _options.release!,
+        'deployment.environment': _options.environment.wireValue,
+      },
+    );
   }
 }

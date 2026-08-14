@@ -1,6 +1,5 @@
 import 'package:talaria/src/transport/event_queue.dart';
 import 'package:talaria/src/transport/fake_transport.dart';
-import 'package:talaria/src/transport/http_transport.dart';
 import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;

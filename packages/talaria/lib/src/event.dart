@@ -21,6 +21,9 @@ class Event {
     this.timestamp,
     this.exception,
     this.platform,
+    this.traceId,
+    this.spanId,
+    this.breadcrumbs,
   }) {
     if (message.trim().isEmpty) {
       throw ArgumentError('Event message must not be empty.');
@@ -44,6 +47,9 @@ class Event {
   final String? timestamp;
   final Map<String, Object?>? exception;
   final String? platform;
+  final String? traceId;
+  final String? spanId;
+  final List<Map<String, Object?>>? breadcrumbs;
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
@@ -80,6 +86,9 @@ class Event {
     put('tags', tags);
     put('extraJson', extraJson);
     put('timestamp', timestamp);
+    put('traceId', traceId);
+    put('spanId', spanId);
+    put('breadcrumbs', breadcrumbs);
 
     return wire;
   }

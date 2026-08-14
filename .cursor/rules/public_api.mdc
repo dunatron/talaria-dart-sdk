@@ -19,6 +19,10 @@ Talaria.captureException(error, {stackTrace, context});
 Talaria.captureMessage(message, {level, context});
 Talaria.getMinLevel(); Talaria.setMinLevel(level); Talaria.isLevelEnabled(level);
 Talaria.isEnforceDefaultLevel(); Talaria.setEnforceDefaultLevel(bool);
+Talaria.addProcessor(processor);
+Talaria.addBreadcrumb(breadcrumb);
+Talaria.startTransaction / startSpan;
+Talaria.wrapHttpClient(http.Client);
 Talaria.flush();
 Talaria.close();
 ```
@@ -29,7 +33,7 @@ Flutter: `TalariaFlutter.init`, `TalariaFlutter.runZonedApp`, `TalariaNavigatorO
 ## Init options
 
 - Required: `dsn` or `baseUrl`, `apiKey`, `environment`
-- Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`
+- Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`, `enableTracing` (default `false`), `tracesSampleRate` (default 0.10 once tracing is on; setting `> 0` enables tracing)
 
 ## Capture rules
 
@@ -38,3 +42,5 @@ Flutter: `TalariaFlutter.init`, `TalariaFlutter.runZonedApp`, `TalariaNavigatorO
 - Context bag: `tags`, `extra`, `userId`, `title`, optional `mechanism`
 - Gates: effective level → `sampleRate` → `beforeSend`; filtered captures are quiet no-ops
 - Capture enqueues only — network I/O happens on queue drain
+- Error events attach breadcrumbs (cap 50) and `traceId` / `spanId` when a span is in scope
+- Tracing is off until `enableTracing` or `tracesSampleRate > 0`; 100% error transactions, default 10% success

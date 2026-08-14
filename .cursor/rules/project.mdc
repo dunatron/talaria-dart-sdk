@@ -9,7 +9,9 @@ globs:
 Language-agnostic ingest adapters for Talaria.
 
 ```
-App → TalariaClient (capture*) → EventQueue → POST /events/ingestBatch → Talaria server
+App → TalariaClient (capture* / tracer) → EventQueue + SpanQueue
+        → POST /events/ingestBatch
+        → POST /spans/ingestBatch
 ```
 
 - Fingerprinting is **server-side only** — never compute fingerprints here
@@ -24,3 +26,4 @@ App → TalariaClient (capture*) → EventQueue → POST /events/ingestBatch →
 - Do not retry unbounded on 429
 - Do not depend on `new_talaria_client` / Serverpod codegen
 - Do not add session replay or native crash dumps in v1
+- Do not wrap the ingest `http.Client` with `TalariaHttpClient` — wrap application HTTP only

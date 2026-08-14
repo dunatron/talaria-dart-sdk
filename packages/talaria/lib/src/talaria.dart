@@ -1,8 +1,15 @@
+import 'package:http/http.dart' as http;
+
 import 'capture_context.dart';
 import 'client.dart';
 import 'config.dart';
+import 'context/runtime_context.dart';
+import 'http/talaria_http_client.dart';
 import 'logger.dart';
 import 'severity.dart';
+import 'tracing/breadcrumbs.dart';
+import 'tracing/span.dart';
+import 'tracing/trace_context.dart';
 import 'transport/transport.dart';
 
 /// Static facade mirroring the browser / PHP SDK singleton API.
@@ -114,7 +121,50 @@ class Talaria {
   static Future<void> close() async {
     await _client?.close();
     _client = null;
+    RuntimeContext.clearCurrent();
   }
+
+  static void addProcessor(EventProcessor processor) =>
+      _requireClient().addProcessor(processor);
+
+  static void addBreadcrumb(Breadcrumb breadcrumb) =>
+      _requireClient().addBreadcrumb(breadcrumb);
+
+  static Span startTransaction(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    Traceparent? parent,
+  }) {
+    return _requireClient().startTransaction(
+      name,
+      kind: kind,
+      attributes: attributes,
+      parent: parent,
+    );
+  }
+
+  static Span startSpan(
+    String name, {
+    SpanKind kind = SpanKind.internal,
+    Map<String, Object?>? attributes,
+    Span? parent,
+  }) {
+    return _requireClient().startSpan(
+      name,
+      kind: kind,
+      attributes: attributes,
+      parent: parent,
+    );
+  }
+
+  /// Wrap application HTTP. Never pass the result as the ingest `httpClient`.
+  static http.Client wrapHttpClient(http.Client inner) {
+    return TalariaHttpClient(inner, client: _requireClient());
+  }
+
+  /// W3C `traceparent` for the active span, or null when tracing is off / idle.
+  static String? getTraceparent() => _requireClient().getTraceparent();
 
   /// Reset singleton between tests.
   static Future<void> reset() async {

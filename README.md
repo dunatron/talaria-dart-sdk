@@ -4,10 +4,10 @@ Official client ingest SDKs for [Talaria](https://www.newtalaria.com).
 
 | Package | Description |
 | ------- | ----------- |
-| [`talaria`](packages/talaria) | Pure Dart — facade, client, logger, batch HTTP transport |
+| [`talaria`](packages/talaria) | Pure Dart — facade, client, logger, batch HTTP transport, tracer, breadcrumbs |
 | [`talaria_flutter`](packages/talaria_flutter) | Flutter — error hooks, zone bootstrap, navigator observer, lifecycle |
 
-Fingerprinting stays on the server. Events are queued and sent via `POST /events/ingestBatch`.
+Fingerprinting stays on the server. Events go via `POST /events/ingestBatch`. When tracing is enabled, spans go via `POST /spans/ingestBatch`.
 
 ## Develop
 

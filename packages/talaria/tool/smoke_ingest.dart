@@ -15,7 +15,8 @@ import 'package:talaria/talaria.dart';
 
 Future<void> main(List<String> args) async {
   final live = args.contains('--live');
-  final dsn = Platform.environment['TALARIA_DSN'] ?? 'https://api.newtalaria.com';
+  final dsn =
+      Platform.environment['TALARIA_DSN'] ?? 'https://api.newtalaria.com';
   final apiKey = Platform.environment['TALARIA_API_KEY'];
 
   if (live) {

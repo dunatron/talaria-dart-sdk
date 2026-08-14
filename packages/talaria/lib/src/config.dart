@@ -30,6 +30,8 @@ class TalariaOptions {
     Map<String, LoggerPreset>? loggers,
     this.beforeSend,
     this.platform = 'dart',
+    this.enableTracing = false,
+    double? tracesSampleRate,
   })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
         environment = Environment.fromMixed(environment),
         sampleRate = sampleRate.clamp(0.0, 1.0),
@@ -38,7 +40,8 @@ class TalariaOptions {
         tags = normalizeTags(tags ?? const {}),
         httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
         minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
-        loggers = Map.unmodifiable(loggers ?? const {}) {
+        loggers = Map.unmodifiable(loggers ?? const {}),
+        tracesSampleRate = tracesSampleRate?.clamp(0.0, 1.0) {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw ArgumentError('Talaria init requires apiKey.');
@@ -68,6 +71,20 @@ class TalariaOptions {
   /// Wire `platform` field (`dart` or `flutter`).
   final String platform;
 
+  /// When true, tracing is on at [effectiveTracesSampleRate] (default 10%).
+  final bool enableTracing;
+
+  /// Head-sample rate for **successful** transactions. `null` means 0.10 once
+  /// tracing is enabled. Setting a value `> 0` also turns tracing on.
+  final double? tracesSampleRate;
+
+  /// Tracing is off until [enableTracing] is true or [tracesSampleRate] `> 0`.
+  bool get isTracingEnabled =>
+      enableTracing || (tracesSampleRate != null && tracesSampleRate! > 0);
+
+  /// Success-path sample rate once tracing is on. Errors are always 100%.
+  double get effectiveTracesSampleRate => tracesSampleRate ?? 0.10;
+
   bool shouldSample([Random? random]) {
     if (sampleRate >= 1.0) {
       return true;
@@ -77,6 +94,53 @@ class TalariaOptions {
     }
     final rng = random ?? Random();
     return rng.nextDouble() <= sampleRate;
+  }
+
+  /// Copy with selected overrides. Used by `talaria_flutter` to set platform.
+  TalariaOptions copyWith({
+    String? dsn,
+    String? baseUrl,
+    String? apiKey,
+    Object? environment,
+    String? release,
+    String? commitSha,
+    double? sampleRate,
+    int? maxBatchSize,
+    int? flushIntervalMs,
+    bool? defaultIntegrations,
+    String? userId,
+    Map<String, String>? tags,
+    double? httpTimeoutSeconds,
+    Object? minLevel,
+    bool? enforceDefaultLevel,
+    Map<String, LoggerPreset>? loggers,
+    BeforeSendCallback? beforeSend,
+    String? platform,
+    bool? enableTracing,
+    double? tracesSampleRate,
+  }) {
+    return TalariaOptions(
+      dsn: dsn,
+      baseUrl: baseUrl ?? this.baseUrl,
+      apiKey: apiKey ?? this.apiKey,
+      environment: environment ?? this.environment,
+      release: release ?? this.release,
+      commitSha: commitSha ?? this.commitSha,
+      sampleRate: sampleRate ?? this.sampleRate,
+      maxBatchSize: maxBatchSize ?? this.maxBatchSize,
+      flushIntervalMs: flushIntervalMs ?? this.flushIntervalMs,
+      defaultIntegrations: defaultIntegrations ?? this.defaultIntegrations,
+      userId: userId ?? this.userId,
+      tags: tags ?? this.tags,
+      httpTimeoutSeconds: httpTimeoutSeconds ?? this.httpTimeoutSeconds,
+      minLevel: minLevel ?? this.minLevel,
+      enforceDefaultLevel: enforceDefaultLevel ?? this.enforceDefaultLevel,
+      loggers: loggers ?? this.loggers,
+      beforeSend: beforeSend ?? this.beforeSend,
+      platform: platform ?? this.platform,
+      enableTracing: enableTracing ?? this.enableTracing,
+      tracesSampleRate: tracesSampleRate ?? this.tracesSampleRate,
+    );
   }
 
   static String _resolveBaseUrl({String? dsn, String? baseUrl}) {

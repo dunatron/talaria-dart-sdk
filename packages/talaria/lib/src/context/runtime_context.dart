@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -7,6 +8,54 @@ import 'platform_info_stub.dart' if (dart.library.io) 'platform_info_io.dart'
 /// Best-effort runtime context for auto-enrichment.
 class RuntimeContext {
   RuntimeContext._();
+
+  static const Object urlZoneKey = #talariaRuntimeUrl;
+  static const Object requestIdZoneKey = #talariaRuntimeRequestId;
+
+  static String? _url;
+  static String? _requestId;
+
+  /// Isolate-wide current URL (Flutter route, Dart request URL, …).
+  static String? get url {
+    final fromZone = Zone.current[urlZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _url;
+  }
+
+  /// Isolate-wide current request id (inbound `X-Request-Id`, span id, …).
+  static String? get requestId {
+    final fromZone = Zone.current[requestIdZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _requestId;
+  }
+
+  static void setUrl(String? url) {
+    final trimmed = url?.trim();
+    _url = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setRequestId(String? requestId) {
+    final trimmed = requestId?.trim();
+    _requestId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setCurrent({String? url, String? requestId}) {
+    if (url != null) {
+      setUrl(url);
+    }
+    if (requestId != null) {
+      setRequestId(requestId);
+    }
+  }
+
+  static void clearCurrent() {
+    _url = null;
+    _requestId = null;
+  }
 
   static Map<String, Object?> collect({String runtime = 'dart'}) {
     final tags = <String, String>{
@@ -23,8 +72,8 @@ class RuntimeContext {
     };
 
     return {
-      'url': null,
-      'requestId': null,
+      'url': url,
+      'requestId': requestId,
       'tags': tags,
       'extra': extra,
     };

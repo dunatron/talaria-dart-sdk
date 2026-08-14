@@ -83,6 +83,70 @@ Gates run in order. Filtered calls are quiet no-ops.
 
 Scoped loggers may override below the root unless `enforceDefaultLevel` is true. Full rules: [logging-levels.md](../../docs/logging-levels.md).
 
+## Tracing (APM)
+
+Tracing is **off** until you set `enableTracing: true` or `tracesSampleRate > 0`. Successful transactions default to a 10% sample; error transactions are always sent.
+
+```dart
+await Talaria.init(TalariaOptions(
+  dsn: 'https://api.newtalaria.com',
+  apiKey: 'tal_live_…',
+  environment: 'production',
+  enableTracing: true, // 10% of successful transactions
+  // tracesSampleRate: 0.25, // also enables tracing
+));
+
+final txn = Talaria.startTransaction('checkout');
+try {
+  final child = Talaria.startSpan('charge', kind: SpanKind.client);
+  // …
+  child.finish();
+} catch (e, st) {
+  txn.markError(message: e.toString());
+  await Talaria.captureException(e, stackTrace: st);
+  rethrow;
+} finally {
+  txn.finish();
+}
+```
+
+Spans POST to `/spans/ingestBatch` (`IngestSpanBatchInput`). Events stay on `/events/ingestBatch`.
+
+### Outbound HTTP
+
+Wrap **application** `package:http` clients. Never wrap the ingest client used by `HttpTransport` (or pass a separate `spanHttpClient` for span POSTs).
+
+```dart
+final httpClient = Talaria.wrapHttpClient(http.Client());
+final response = await httpClient.get(Uri.parse('https://api.partner.dev/v1/pay'));
+```
+
+This starts a client span, injects W3C `traceparent`, and records an HTTP breadcrumb. Talaria ingest URLs are skipped if wrapped by mistake. `Talaria.getTraceparent()` returns the active header when a span is recording.
+
+There is no `talaria_dio` package. For Dio, wrap the adapter's `http.Client` with `TalariaHttpClient`, or add an interceptor that calls `Talaria.startSpan` / injects `traceparent`. Use `addProcessor` for per-request `url` / `requestId` / tags on a shared client:
+
+```dart
+Talaria.addProcessor((bag) {
+  return {
+    ...bag,
+    'url': currentRequestUrl,
+    'requestId': currentRequestId,
+  };
+});
+```
+
+### Breadcrumbs
+
+A ring buffer of 50 breadcrumbs is attached on error events, with `traceId` / `spanId` when a span is in scope.
+
+```dart
+Talaria.addBreadcrumb(Breadcrumb(
+  type: 'user',
+  category: 'ui',
+  message: 'Tapped Pay',
+));
+```
+
 ## Shutdown
 
 ```dart
@@ -92,6 +156,7 @@ await Talaria.close();
 
 ## Notes
 
-- Always uses `POST /events/ingestBatch` with `X-API-Key`
+- Events: `POST /events/ingestBatch` with `X-API-Key`
+- Spans: `POST /spans/ingestBatch` when tracing is enabled
 - Never computes fingerprints
 - Main-isolate only in v1 — use Flutter package for framework hooks
