@@ -2,7 +2,7 @@
 
 Flutter bindings for [Talaria](https://www.newtalaria.com) — framework error hooks, zone bootstrap, navigator route tags, and lifecycle state.
 
-Built on [`talaria`](../talaria).
+Built on [`talaria`](https://pub.dev/packages/talaria).
 
 Docs: [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter)
 
@@ -79,4 +79,4 @@ Pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. The 
 
 There is no `talaria_dio` package; intercept Dio via a wrapped `http.Client` or `addProcessor`.
 
-See the [`talaria`](../talaria) README for span ingest, sampling, breadcrumbs, and W3C `traceparent`.
+See the [`talaria`](https://pub.dev/packages/talaria) README for span ingest, sampling, breadcrumbs, and W3C `traceparent`.

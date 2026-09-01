@@ -13,14 +13,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Path for monorepo development; switch to `talaria: ^0.1.0` when publishing.
-  talaria:
-    path: ../talaria
+  talaria: ^0.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
-# Not published until both packages are on pub.dev together.
-publish_to: none

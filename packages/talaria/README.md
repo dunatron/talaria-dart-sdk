@@ -4,7 +4,7 @@ Official Dart SDK for [Talaria](https://www.newtalaria.com) — capture exceptio
 
 Events are **queued in memory** and sent with batch ingest when the buffer hits a size limit, exceeds a max age, or you call `flush` / `close`. Fingerprinting stays on the server.
 
-Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](../talaria_flutter) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
+Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
 
 ## Install
 
