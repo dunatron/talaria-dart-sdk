@@ -24,6 +24,7 @@ class Event {
     this.traceId,
     this.spanId,
     this.breadcrumbs,
+    this.userAgent,
   }) {
     if (message.trim().isEmpty) {
       throw ArgumentError('Event message must not be empty.');
@@ -50,6 +51,7 @@ class Event {
   final String? traceId;
   final String? spanId;
   final List<Map<String, Object?>>? breadcrumbs;
+  final String? userAgent;
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
@@ -89,6 +91,7 @@ class Event {
     put('traceId', traceId);
     put('spanId', spanId);
     put('breadcrumbs', breadcrumbs);
+    put('userAgent', userAgent);
 
     return wire;
   }

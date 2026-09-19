@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'capture_context.dart';
 import 'config.dart';
+import 'event_filters.dart';
 import 'context/runtime_context.dart';
 import 'environment.dart';
 import 'event.dart';
@@ -354,6 +355,14 @@ class TalariaClient {
     if (respectMinLevel && !SeverityLevel.error.atLeast(_minLevel)) {
       return;
     }
+    if (shouldDropEvent(
+      message: ExceptionPayloadBuilder.messageOf(error),
+      stackTrace: (stackTrace ?? StackTrace.current).toString(),
+      ignoreErrors: _options.ignoreErrors,
+      ignoreUrls: _options.ignoreUrls,
+    )) {
+      return;
+    }
     if (!_options.shouldSample()) {
       return;
     }
@@ -402,6 +411,13 @@ class TalariaClient {
 
     final severity = SeverityLevel.tryFromMixed(level) ?? SeverityLevel.info;
     if (respectMinLevel && !severity.atLeast(_minLevel)) {
+      return;
+    }
+    if (shouldDropEvent(
+      message: message,
+      ignoreErrors: _options.ignoreErrors,
+      ignoreUrls: _options.ignoreUrls,
+    )) {
       return;
     }
     if (!_options.shouldSample()) {

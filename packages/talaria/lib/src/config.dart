@@ -29,6 +29,8 @@ class TalariaOptions {
     this.enforceDefaultLevel = false,
     Map<String, LoggerPreset>? loggers,
     this.beforeSend,
+    List<Pattern>? ignoreErrors,
+    List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.enableTracing = false,
     double? tracesSampleRate,
@@ -41,6 +43,8 @@ class TalariaOptions {
         httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
         minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
         loggers = Map.unmodifiable(loggers ?? const {}),
+        ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
+        ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
         tracesSampleRate = tracesSampleRate?.clamp(0.0, 1.0) {
     final key = apiKey.trim();
     if (key.isEmpty) {
@@ -67,6 +71,8 @@ class TalariaOptions {
   final bool enforceDefaultLevel;
   final Map<String, LoggerPreset> loggers;
   final BeforeSendCallback? beforeSend;
+  final List<Pattern> ignoreErrors;
+  final List<Pattern> ignoreUrls;
 
   /// Wire `platform` field (`dart` or `flutter`).
   final String platform;
@@ -115,6 +121,8 @@ class TalariaOptions {
     bool? enforceDefaultLevel,
     Map<String, LoggerPreset>? loggers,
     BeforeSendCallback? beforeSend,
+    List<Pattern>? ignoreErrors,
+    List<Pattern>? ignoreUrls,
     String? platform,
     bool? enableTracing,
     double? tracesSampleRate,
@@ -137,6 +145,8 @@ class TalariaOptions {
       enforceDefaultLevel: enforceDefaultLevel ?? this.enforceDefaultLevel,
       loggers: loggers ?? this.loggers,
       beforeSend: beforeSend ?? this.beforeSend,
+      ignoreErrors: ignoreErrors ?? this.ignoreErrors,
+      ignoreUrls: ignoreUrls ?? this.ignoreUrls,
       platform: platform ?? this.platform,
       enableTracing: enableTracing ?? this.enableTracing,
       tracesSampleRate: tracesSampleRate ?? this.tracesSampleRate,

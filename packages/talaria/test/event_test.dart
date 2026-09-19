@@ -11,6 +11,7 @@ void main() {
       platform: 'dart',
       tags: {'a': '1'},
       extraJson: '{"x":1}',
+      userAgent: 'Mozilla/5.0',
       exception: {
         '__className__': 'ExceptionDataDto',
         'values': <Object?>[],
@@ -26,6 +27,7 @@ void main() {
     expect(wire['platform'], 'dart');
     expect(wire['tags'], {'a': '1'});
     expect(wire['extraJson'], '{"x":1}');
+    expect(wire['userAgent'], 'Mozilla/5.0');
     expect(wire['exception'], isA<Map<String, Object?>>());
   });
 
