@@ -583,7 +583,7 @@ packages:
       path: "../talaria"
       relative: true
     source: path
-    version: "0.2.2"
+    version: "0.2.3"
   term_glyph:
     dependency: transitive
     description:

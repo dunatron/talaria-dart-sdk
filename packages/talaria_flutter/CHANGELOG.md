@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Documentation: public README rewrite; no API changes.
+
 ## 0.1.2
 
 - Navigation transactions finish on the next idle frame (10s cap) so a shell route cannot parent every RPC.

@@ -1,6 +1,8 @@
 # Serverpod guide
 
-Set up Talaria on **Serverpod 4** with `talaria` + `talaria_serverpod`. The core package is framework-agnostic; this adapter is the Silverstripe equivalent for Serverpod (Relic middleware, `databaseInterceptor`, FutureCalls).
+Set up Talaria on **Serverpod 4** with `talaria` + `talaria_serverpod`. The core package is framework-agnostic; this adapter wires Relic middleware, `databaseInterceptor`, and FutureCalls.
+
+Public docs: [Serverpod SDK](https://www.newtalaria.com/docs/sdk/serverpod).
 
 Tracing is **off** until `enableTracing: true` or `tracesSampleRate > 0`. When enabled without an explicit rate, successful transactions sample at **10%**; **error** transactions are always sent.
 
@@ -8,8 +10,8 @@ Tracing is **off** until `enableTracing: true` or `tracesSampleRate > 0`. When e
 
 ```yaml
 dependencies:
-  talaria: ^0.2.2
-  talaria_serverpod: ^0.1.2
+  talaria: ^0.2.3
+  talaria_serverpod: ^0.1.3
   serverpod: ^4.0.0
 ```
 
@@ -44,7 +46,7 @@ void run(List<String> args) async {
     environment: 'production',
     release: '1.2.3',
     minLevel: SeverityLevel.warning,
-    enableTracing: true, // default false
+    enableTracing: true,
     tags: {'service': 'my_api'},
   ));
 
@@ -74,7 +76,7 @@ Skipped: `events/ingestBatch`, `spans/ingestBatch`, Insights, `/livez` `/readyz`
 final httpClient = Talaria.wrapHttpClient(http.Client());
 ```
 
-Redis and other caches are **not** auto-wired (same as Silverstripe). Start a CLIENT span around the calls you care about.
+Redis and other caches are **not** auto-wired. Start a CLIENT span around the calls you care about.
 
 ## Manual spans
 
@@ -94,7 +96,7 @@ try {
 
 ## Dashboard
 
-Spans use the same wire as PHP / Flutter. The customer **Performance** UI (waterfall, dependencies, slow queries, RED) shows them — there is no separate Serverpod metrics product.
+Spans use the same wire as the other official SDKs. The customer **Performance** UI (waterfall, dependencies, slow queries, RED) shows them — there is no separate Serverpod metrics product.
 
 ## Non-goals
 

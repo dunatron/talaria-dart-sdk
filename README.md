@@ -1,14 +1,24 @@
-# Talaria Dart / Flutter SDKs
+# Talaria Dart SDKs
 
-Official client ingest SDKs for [Talaria](https://www.newtalaria.com).
+Official [Talaria](https://www.newtalaria.com) ingest SDKs for Dart, Flutter, and Serverpod 4.
 
-| Package | Description |
-| ------- | ----------- |
-| [`talaria`](packages/talaria) | Pure Dart — facade, client, logger, batch HTTP transport, tracer, breadcrumbs |
-| [`talaria_flutter`](packages/talaria_flutter) | Flutter — error hooks, zone bootstrap, navigator observer, lifecycle |
-| [`talaria_serverpod`](packages/talaria_serverpod) | Serverpod 4 — endpoint, Postgres, and FutureCall tracing |
+Talaria turns production exceptions into triageable issues and sampled transactions into waterfalls and RED metrics. Fingerprinting stays on the server. Events go to `POST /events/ingestBatch`. When tracing is enabled, spans go to `POST /spans/ingestBatch`.
 
-Fingerprinting stays on the server. Events go via `POST /events/ingestBatch`. When tracing is enabled, spans go via `POST /spans/ingestBatch`.
+| Package | Role | Docs |
+| --- | --- | --- |
+| [`talaria`](https://pub.dev/packages/talaria) | Core Dart SDK — capture, logging, breadcrumbs, optional tracing | [Dart guide](https://www.newtalaria.com/docs/sdk/dart) |
+| [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) | Flutter hooks — errors, navigation, lifecycle | [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter) |
+| [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) | Serverpod 4 — endpoints, Postgres, FutureCalls | [Serverpod guide](https://www.newtalaria.com/docs/sdk/serverpod) |
+
+Pick one package for your surface. Flutter and Serverpod re-export the core API, so you do not add `talaria` twice unless you share a Dart library across targets.
+
+## Which package?
+
+- **CLI, VM, or shared Dart library** — `talaria`
+- **Flutter app** — `talaria_flutter` (includes the core SDK)
+- **Serverpod 4 server** — `talaria` + `talaria_serverpod`
+
+Tracing is **off** until you set `enableTracing: true` or `tracesSampleRate > 0`. Existing error-only apps keep sending events only.
 
 ## Develop
 
@@ -18,10 +28,6 @@ cd packages/talaria_flutter && flutter pub get && flutter test
 cd packages/talaria_serverpod && dart pub get && dart test
 ```
 
-## Docs
+## License
 
-- [Dart guide](https://www.newtalaria.com/docs/sdk/dart)
-- [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter)
-- [Serverpod guide](docs/serverpod.md)
-- [Logging levels](docs/logging-levels.md)
-- Spec: `planning/dart_sdk_spec.md` in the Talaria meta-repo
+MIT. See [LICENSE](LICENSE).

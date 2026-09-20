@@ -1,33 +1,37 @@
 # talaria
 
-Official Dart SDK for [Talaria](https://www.newtalaria.com) — capture exceptions and application logs into triageable issues.
+[![pub package](https://img.shields.io/pub/v/talaria.svg)](https://pub.dev/packages/talaria)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dunatron/talaria-dart-sdk/blob/main/LICENSE)
 
-Events are **queued in memory** and sent with batch ingest when the buffer hits a size limit, exceeds a max age, or you call `flush` / `close`. Fingerprinting stays on the server. A permanent ingest error (`retry: false`, such as an invalid API key) stops further event and span sends for this process; quota and 5xx do not.
+Official Dart SDK for [Talaria](https://www.newtalaria.com) — capture exceptions and application logs into triageable issues, with optional APM spans.
 
-Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) · Serverpod: [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
+Events queue in memory and flush on batch size, max age, or `flush` / `close`. Fingerprinting stays on the server. A permanent ingest error (`retry: false`, such as an invalid API key) stops further event and span sends for this process; quota and 5xx do not.
+
+**Docs:** [Dart SDK](https://www.newtalaria.com/docs/sdk/dart) · [Flutter](https://pub.dev/packages/talaria_flutter) · [Serverpod](https://pub.dev/packages/talaria_serverpod) · [Dashboard](https://one.newtalaria.com)
 
 ## Install
 
 ```yaml
 dependencies:
-  talaria: ^0.2.2
+  talaria: ^0.2.3
 ```
+
+Building a Flutter app? Use [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) instead — it re-exports this package and installs framework hooks. Building a Serverpod 4 server? Add [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) for endpoint, database, and FutureCall tracing.
 
 ## Initialize
 
-Create a client key under **Project settings → Client keys** (`tal_live_…`).
+Create a client key under **Project settings → Client keys** (`tal_live_…`). Default keys include `eventsWrite` and `spansWrite`.
 
 ```dart
 import 'package:talaria/talaria.dart';
 
 await Talaria.init(TalariaOptions(
   dsn: 'https://api.newtalaria.com',
-  apiKey: 'tal_live_…',
+  apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
   environment: 'production', // staging | development also accepted
   release: '1.4.2',
   commitSha: const String.fromEnvironment('TALARIA_COMMIT_SHA'),
   minLevel: SeverityLevel.warning,
-  sampleRate: 1.0,
   tags: {
     'service': 'api',
     'platform': 'dart',
@@ -44,7 +48,31 @@ runZonedTalaria(client, () {
 });
 ```
 
-## Logging
+Never hardcode keys. Prefer `--dart-define`, environment variables, or your secret store.
+
+## Capture exceptions
+
+```dart
+try {
+  await charge();
+} catch (error, stackTrace) {
+  await Talaria.captureException(
+    error,
+    stackTrace: stackTrace,
+    context: CaptureContext(
+      tags: {'feature': 'checkout', 'component': 'payments'},
+      extra: {'cart_id': 'cart_01H…'},
+    ),
+  );
+  rethrow;
+}
+```
+
+`captureException` always sends severity `error`. `captureMessage` defaults to `info`.
+
+## Scoped logging
+
+Prefer a scoped logger in application code. Level methods wrap `captureMessage`; use `captureException` for errors.
 
 ```dart
 final logger = Talaria.logger(tags: {
@@ -64,6 +92,14 @@ try {
   ));
   rethrow;
 }
+
+// Child scopes inherit tags. Assigned minLevel may raise or lower the floor
+// unless enforceDefaultLevel is true.
+final payments = logger.child(
+  tags: {'component': 'payments'},
+  minLevel: SeverityLevel.error,
+);
+await payments.error('Charge failed');
 ```
 
 | Method | Severity sent |
@@ -73,19 +109,72 @@ try {
 | `log(level, message)` | mapped severity |
 | `captureException` | `error` |
 
-## Filtering
+### Tags vs extra
+
+- **`tags`** — low-cardinality filters (`feature`, `operation`, `component`). These become dashboard facets.
+- **`extra`** — high-cardinality diagnostics (`cart_id`, payloads). Do not put unique ids in tags.
+
+### Level hierarchy
+
+Client `minLevel` is the default/root. A scoped logger may assign a different floor (more or less verbose). Set `enforceDefaultLevel: true` to restore a hard floor (`max(root, scope)`).
 
 Gates run in order. Filtered calls are quiet no-ops.
 
 1. **`minLevel`** — default/root severity
-2. **`sampleRate`** — fraction of eligible events to enqueue
+2. **`sampleRate`** — fraction of eligible **events** to enqueue (not traces)
 3. **`beforeSend`** — return `null` to drop, or a mutated event
 
-Scoped loggers may override below the root unless `enforceDefaultLevel` is true. Full rules: [logging-levels.md](../../docs/logging-levels.md).
+```dart
+await Talaria.init(TalariaOptions(
+  dsn: 'https://api.newtalaria.com',
+  apiKey: 'tal_live_…',
+  environment: 'production',
+  minLevel: SeverityLevel.warning,
+  ignoreErrors: [RegExp(r'SocketException')],
+  ignoreUrls: ['/health'],
+  beforeSend: (event, hint) {
+    if (event.message.toLowerCase().contains('password')) return null;
+    return event;
+  },
+  loggers: {
+    'checkout': LoggerPreset(
+      minLevel: SeverityLevel.info,
+      tags: {'area': 'checkout'},
+    ),
+  },
+));
+```
+
+## User and request context
+
+```dart
+Talaria.getClient()?.setUser('user_01H…');
+Talaria.addProcessor((bag) {
+  return {
+    ...bag,
+    'url': currentRequestUrl,
+    'requestId': currentRequestId,
+  };
+});
+```
+
+`setTags` / `setExtra` / `setUser` live on `TalariaClient` for mutable global context after init.
+
+## Breadcrumbs
+
+A ring buffer of 50 breadcrumbs is attached on error events, with `traceId` / `spanId` when a span is in scope.
+
+```dart
+Talaria.addBreadcrumb(Breadcrumb(
+  type: 'user',
+  category: 'ui',
+  message: 'Tapped Pay',
+));
+```
 
 ## Tracing (APM)
 
-Tracing is **off** until you set `enableTracing: true` or `tracesSampleRate > 0`. Successful transactions default to a 10% sample; error transactions are always sent.
+Tracing is **off** until you set `enableTracing: true` or `tracesSampleRate > 0`. Successful transactions default to a 10% sample; **error** transactions are always sent. Child spans are not billed — only sampled root transactions.
 
 ```dart
 await Talaria.init(TalariaOptions(
@@ -99,8 +188,12 @@ await Talaria.init(TalariaOptions(
 final txn = Talaria.startTransaction('checkout');
 try {
   final child = Talaria.startSpan('charge', kind: SpanKind.client);
-  // …
-  child.finish();
+  try {
+    await charge();
+    child.setStatus(SpanStatus.ok);
+  } finally {
+    child.finish();
+  }
 } catch (e, st) {
   txn.markError(message: e.toString());
   await Talaria.captureException(e, stackTrace: st);
@@ -110,11 +203,21 @@ try {
 }
 ```
 
-Spans POST to `/spans/ingestBatch` (`IngestSpanBatchInput`). Events stay on `/events/ingestBatch`.
+| API | Role |
+| --- | --- |
+| `startTransaction` | New trace root. Optional W3C `Traceparent` parent for distributed continuation. |
+| `startSpan` | Child of the current span (or a new root if none). |
+| `SpanKind` | `internal`, `server`, `client`, `producer`, `consumer` |
+| `SpanStatus` | `unset`, `ok`, `error` |
+| `markError` | Marks the span and force-samples the trace |
+
+A trace holds at most 200 spans; further `startSpan` calls return a no-op. When tracing is off, both APIs return `NoOpSpan`.
+
+Spans POST to `/spans/ingestBatch`. Events stay on `/events/ingestBatch`.
 
 ### Outbound HTTP
 
-Wrap **application** `package:http` clients. Never wrap the ingest client used by `HttpTransport` (or pass a separate `spanHttpClient` for span POSTs).
+Wrap **application** `package:http` clients. Never wrap the ingest client used by `HttpTransport`.
 
 ```dart
 final httpClient = Talaria.wrapHttpClient(http.Client());
@@ -123,31 +226,9 @@ final response = await httpClient.get(Uri.parse('https://api.partner.dev/v1/pay'
 
 This starts a client span, injects W3C `traceparent`, and records an HTTP breadcrumb. Talaria ingest URLs are skipped if wrapped by mistake. `Talaria.getTraceparent()` returns the active header when a span is recording.
 
-For Serverpod 4 apps, use [`talaria_serverpod`](../talaria_serverpod) (`TalariaServerpod.attach` + `databaseInterceptor`) instead of starting transactions by hand. SQL helpers (`SqlSanitizer`, `DbSpan`) and concurrent `SpanScope` live in this core package. ORM spans send a `db.query.text` stand-in (`SELECT Product`) when raw SQL is unavailable. Exception frames mark `package:serverpod*`, `package:relic*`, and `package:talaria*` as not in-app.
+There is no `talaria_dio` package. For Dio, wrap the adapter's `http.Client` with `TalariaHttpClient`, or add an interceptor that calls `Talaria.startSpan` and injects `traceparent`.
 
-There is no `talaria_dio` package. For Dio, wrap the adapter's `http.Client` with `TalariaHttpClient`, or add an interceptor that calls `Talaria.startSpan` / injects `traceparent`. Use `addProcessor` for per-request `url` / `requestId` / tags on a shared client:
-
-```dart
-Talaria.addProcessor((bag) {
-  return {
-    ...bag,
-    'url': currentRequestUrl,
-    'requestId': currentRequestId,
-  };
-});
-```
-
-### Breadcrumbs
-
-A ring buffer of 50 breadcrumbs is attached on error events, with `traceId` / `spanId` when a span is in scope.
-
-```dart
-Talaria.addBreadcrumb(Breadcrumb(
-  type: 'user',
-  category: 'ui',
-  message: 'Tapped Pay',
-));
-```
+SQL helpers (`SqlSanitizer`, `DbSpan`) and concurrent `SpanScope` live in this package for servers that wrap their own stores. Flutter and Serverpod adapters call them for you.
 
 ## Shutdown
 
@@ -156,9 +237,15 @@ await Talaria.flush();
 await Talaria.close();
 ```
 
-## Notes
+Call this from process shutdown (and Serverpod / isolate teardown) so the last batch leaves the queue.
 
-- Events: `POST /events/ingestBatch` with `X-API-Key`
-- Spans: `POST /spans/ingestBatch` when tracing is enabled
-- Never computes fingerprints
-- Main-isolate only in v1 — use Flutter package for framework hooks
+## What this package does not do
+
+- Fingerprints — computed on the server
+- Session replay or native crash dumps
+- Host / Kubernetes metrics or continuous profiling
+- Automatic Flutter or Serverpod hooks — use the adapter packages
+
+## License
+
+MIT

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.3
+
+- Documentation: public README rewrite; no API changes.
+
 ## 0.1.2
 
 - Drop expected Serverpod diagnostics (`ApiUnauthorizedException`, websocket close) and isolate request URL / breadcrumbs / userId on capture.

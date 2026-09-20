@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.3
+
+- Documentation: public README rewrite; no API changes.
+
 ## 0.2.2
 
 - Disable event and span ingest for the process after a permanent client error (`retry: false` / invalid API key). Quota and 5xx keep sending.
