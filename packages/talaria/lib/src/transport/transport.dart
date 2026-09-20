@@ -11,11 +11,27 @@ abstract class Transport {
 
 /// Raised when ingest HTTP fails.
 class TransportException implements Exception {
-  TransportException(this.message, {this.statusCode, this.cause});
+  TransportException(
+    this.message, {
+    this.statusCode,
+    this.cause,
+    this.className,
+    this.retry,
+    this.bodyMessage,
+  });
 
   final String message;
   final int? statusCode;
   final Object? cause;
+
+  /// Serverpod exception class from the body (`ApiUnauthorizedException`, …).
+  final String? className;
+
+  /// Wire `retry` flag. `false` means the credential/project will not recover.
+  final bool? retry;
+
+  /// Exception `message` field from the body, when present.
+  final String? bodyMessage;
 
   @override
   String toString() => 'TransportException: $message';

@@ -70,5 +70,35 @@ void main() {
       expect(events.first['message'], 'hello');
       expect(events.first['environment'], 'production');
     });
+
+    test('attaches className and retry from error body', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          '{"__className__":"ApiUnauthorizedException","message":"Invalid API key","retry":false}',
+          400,
+        );
+      });
+
+      final transport = HttpTransport(
+        baseUrl: 'https://api.example.com',
+        apiKey: 'tal_live_testkey',
+        httpClient: client,
+      );
+
+      try {
+        await transport.sendBatch([
+          Event(
+            message: 'hello',
+            environment: Environment.production,
+            level: SeverityLevel.error,
+          ),
+        ]);
+        fail('expected TransportException');
+      } on TransportException catch (e) {
+        expect(e.className, 'ApiUnauthorizedException');
+        expect(e.retry, isFalse);
+        expect(e.bodyMessage, 'Invalid API key');
+      }
+    });
   });
 }

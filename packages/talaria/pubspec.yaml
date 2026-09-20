@@ -1,6 +1,6 @@
 name: talaria
 description: Official Dart SDK for Talaria — capture exceptions and logs into triageable issues.
-version: 0.2.1
+version: 0.2.2
 homepage: https://www.newtalaria.com
 repository: https://github.com/dunatron/talaria-dart-sdk
 issue_tracker: https://github.com/dunatron/talaria-dart-sdk/issues

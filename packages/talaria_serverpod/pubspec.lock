@@ -580,10 +580,9 @@ packages:
   talaria:
     dependency: "direct main"
     description:
-      name: talaria
-      sha256: c8906b487290a1d6e4c7dd65197b7795e1910813b487d286a7d4d9a7f1aff61c
-      url: "https://pub.dev"
-    source: hosted
+      path: "../talaria"
+      relative: true
+    source: path
     version: "0.2.1"
   term_glyph:
     dependency: transitive

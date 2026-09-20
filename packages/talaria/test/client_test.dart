@@ -145,4 +145,95 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('invalid key disables further event capture', () async {
+    final transport = _ThrowingTransport(
+      TransportException(
+        'Talaria events/ingestBatch failed: HTTP 400',
+        statusCode: 400,
+        className: 'ApiUnauthorizedException',
+        retry: false,
+        bodyMessage: 'Invalid API key',
+      ),
+    );
+    final client = TalariaClient(
+      options(),
+      transport: transport,
+    );
+
+    await client.captureMessage('first');
+    await client.flush();
+    await client.captureMessage('second');
+    await client.flush();
+
+    expect(transport.sendCount, 1);
+    expect(client.isEventsIngestDisabled, isTrue);
+    expect(client.isSpansIngestDisabled, isTrue);
+    await client.close();
+  });
+
+  test('quota does not disable ingest', () async {
+    final transport = _ThrowingTransport(
+      TransportException(
+        'Talaria events/ingestBatch failed: HTTP 400',
+        statusCode: 400,
+        className: 'ApiConflictException',
+        retry: true,
+        bodyMessage: 'quota exceeded',
+      ),
+    );
+    final client = TalariaClient(
+      options(),
+      transport: transport,
+    );
+
+    await client.captureMessage('first');
+    await client.flush();
+    await client.captureMessage('second');
+    await client.flush();
+
+    expect(transport.sendCount, 2);
+    expect(client.isEventsIngestDisabled, isFalse);
+    await client.close();
+  });
+
+  test('5xx does not disable ingest', () async {
+    final transport = _ThrowingTransport(
+      TransportException(
+        'Talaria events/ingestBatch failed: HTTP 503',
+        statusCode: 503,
+      ),
+    );
+    final client = TalariaClient(
+      options(),
+      transport: transport,
+    );
+
+    await client.captureMessage('first');
+    await client.flush();
+    await client.captureMessage('second');
+    await client.flush();
+
+    expect(transport.sendCount, 2);
+    expect(client.isEventsIngestDisabled, isFalse);
+    await client.close();
+  });
+}
+
+class _ThrowingTransport implements Transport {
+  _ThrowingTransport(this.error);
+
+  final TransportException error;
+  int sendCount = 0;
+
+  @override
+  Future<void> sendBatch(List<Event> events) async {
+    sendCount++;
+    throw error;
+  }
+
+  @override
+  Future<void> sendSpanBatch(List<FinishedSpan> spans) async {
+    throw error;
+  }
 }

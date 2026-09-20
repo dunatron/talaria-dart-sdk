@@ -2,7 +2,7 @@
 
 Official Dart SDK for [Talaria](https://www.newtalaria.com) — capture exceptions and application logs into triageable issues.
 
-Events are **queued in memory** and sent with batch ingest when the buffer hits a size limit, exceeds a max age, or you call `flush` / `close`. Fingerprinting stays on the server.
+Events are **queued in memory** and sent with batch ingest when the buffer hits a size limit, exceeds a max age, or you call `flush` / `close`. Fingerprinting stays on the server. A permanent ingest error (`retry: false`, such as an invalid API key) stops further event and span sends for this process; quota and 5xx do not.
 
 Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) · Serverpod: [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
 
@@ -10,7 +10,7 @@ Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`t
 
 ```yaml
 dependencies:
-  talaria: ^0.2.1
+  talaria: ^0.2.2
 ```
 
 ## Initialize

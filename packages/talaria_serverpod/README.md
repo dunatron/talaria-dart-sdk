@@ -8,8 +8,8 @@ Tracing is **off** until `enableTracing: true` or `tracesSampleRate > 0`.
 
 ```yaml
 dependencies:
-  talaria: ^0.2.1
-  talaria_serverpod: ^0.1.1
+  talaria: ^0.2.2
+  talaria_serverpod: ^0.1.2
   serverpod: ^4.0.0
 ```
 

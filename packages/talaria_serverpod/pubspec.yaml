@@ -1,6 +1,6 @@
 name: talaria_serverpod
 description: Serverpod adapter for the Talaria SDK — endpoint, Postgres, and FutureCall tracing.
-version: 0.1.1
+version: 0.1.2
 homepage: https://www.newtalaria.com
 repository: https://github.com/dunatron/talaria-dart-sdk
 issue_tracker: https://github.com/dunatron/talaria-dart-sdk/issues
@@ -11,7 +11,7 @@ environment:
 
 dependencies:
   serverpod: ^4.0.0
-  talaria: ^0.2.1
+  talaria: ^0.2.2
 
 dev_dependencies:
   lints: ^5.0.0

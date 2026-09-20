@@ -50,3 +50,4 @@ Spans (when tracing is enabled):
 - Short HTTP timeout (~3s)
 - No unbounded retries; on 429 log warning and drop
 - Transport failures must not crash the host app
+- Classify ingest errors by body `retry` + `__className__` / `className`, never HTTP 401. `retry: false` (invalid key, missing project, disallowed origin) disables events **and** spans for this isolate. Quota / 5xx keep sending. Do not persist across process restart.

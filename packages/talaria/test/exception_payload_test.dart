@@ -58,4 +58,19 @@ void main() {
     );
     expect(StackFrameBuilder.isInApp('package:talaria/talaria.dart'), isFalse);
   });
+
+  test('sanitizeTypeName strips private Impl suffixes', () {
+    expect(
+      ExceptionPayloadBuilder.sanitizeTypeName('_ApiUnauthorizedExceptionImpl'),
+      'ApiUnauthorizedException',
+    );
+    expect(
+      ExceptionPayloadBuilder.sanitizeTypeName(
+        'package:foo._WebSocketConnectionClosedImpl',
+      ),
+      'WebSocketConnectionClosed',
+    );
+    expect(
+        ExceptionPayloadBuilder.sanitizeTypeName('StateError'), 'StateError');
+  });
 }

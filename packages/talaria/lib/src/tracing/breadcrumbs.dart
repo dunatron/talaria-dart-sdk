@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:collection';
 
 import '../context/runtime_context.dart';
+import 'span_scope.dart';
 
 /// Default ring-buffer capacity (locked APM contract).
 const int kMaxBreadcrumbs = 50;
@@ -42,6 +44,76 @@ class Breadcrumb {
       wire['data'] = data;
     }
     return wire;
+  }
+}
+
+/// Zone / session scoped breadcrumb buffers for concurrent Serverpod requests.
+class BreadcrumbScope {
+  BreadcrumbScope._();
+
+  static const Object zoneKey = #talariaBreadcrumbBuffer;
+  static final Map<String, BreadcrumbBuffer> _sessions = {};
+
+  static BreadcrumbBuffer? zoneBuffer() {
+    final fromZone = Zone.current[zoneKey];
+    if (fromZone is BreadcrumbBuffer) {
+      return fromZone;
+    }
+    return null;
+  }
+
+  static void bindSession(String sessionId, BreadcrumbBuffer buffer) {
+    final id = sessionId.trim();
+    if (id.isEmpty) {
+      return;
+    }
+    _sessions[id] = buffer;
+  }
+
+  static void unbindSession(String sessionId) {
+    _sessions.remove(sessionId.trim());
+  }
+
+  static BreadcrumbBuffer? forSession(String sessionId) {
+    final id = sessionId.trim();
+    if (id.isEmpty) {
+      return null;
+    }
+    return _sessions[id];
+  }
+
+  static BreadcrumbBuffer? current({String? sessionId}) {
+    final fromZone = zoneBuffer();
+    if (fromZone != null) {
+      return fromZone;
+    }
+    if (sessionId != null) {
+      return forSession(sessionId);
+    }
+    final bound = SpanScope.currentSessionId;
+    if (bound != null) {
+      return forSession(bound);
+    }
+    return null;
+  }
+
+  static T runWith<T>(T Function() body, {BreadcrumbBuffer? buffer}) {
+    return Zone.current.fork(zoneValues: {
+      zoneKey: buffer ?? BreadcrumbBuffer(),
+    }).run(body);
+  }
+
+  static Future<T> runWithAsync<T>(
+    Future<T> Function() body, {
+    BreadcrumbBuffer? buffer,
+  }) {
+    return Zone.current.fork(zoneValues: {
+      zoneKey: buffer ?? BreadcrumbBuffer(),
+    }).run(body);
+  }
+
+  static void clearSessions() {
+    _sessions.clear();
   }
 }
 

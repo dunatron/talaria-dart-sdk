@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../event.dart';
 import '../tracing/span.dart';
+import 'ingest_error.dart';
 import 'transport.dart';
 
 /// Minimal Serverpod RPC client for `events/ingestBatch` and `spans/ingestBatch`.
@@ -104,10 +105,14 @@ class HttpTransport implements Transport {
       return;
     }
 
+    final parsed = IngestError.parse(response.body);
+    final detail = _formatErrorDetail(response.body, parsed);
     throw TransportException(
-      'Talaria $label failed: HTTP $status'
-      '${_formatErrorDetail(response.body).isEmpty ? '' : ' — ${_formatErrorDetail(response.body)}'}',
+      'Talaria $label failed: HTTP $status${detail.isEmpty ? '' : ' — $detail'}',
       statusCode: status,
+      className: parsed.className,
+      retry: parsed.retry,
+      bodyMessage: parsed.message,
     );
   }
 
@@ -117,21 +122,14 @@ class HttpTransport implements Transport {
     }
   }
 
-  static String _formatErrorDetail(String body) {
-    try {
-      final parsed = jsonDecode(body);
-      if (parsed is Map) {
-        final className = parsed['className'] ?? parsed['exception'];
-        final message = parsed['message'];
-        final parts = <String>[
-          if (className is String) className,
-          if (message is String) message,
-        ];
-        if (parts.isNotEmpty) {
-          return parts.join(': ');
-        }
-      }
-    } catch (_) {}
+  static String _formatErrorDetail(String body, IngestError parsed) {
+    final parts = <String>[
+      if (parsed.className != null) parsed.className!,
+      if (parsed.message != null) parsed.message!,
+    ];
+    if (parts.isNotEmpty) {
+      return parts.join(': ');
+    }
     if (body.length <= 400) {
       return body;
     }

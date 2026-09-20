@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+## 0.2.2
+
+- Disable event and span ingest for the process after a permanent client error (`retry: false` / invalid API key). Quota and 5xx keep sending.
+- Sanitize generated `_…Impl` exception type names in payloads.
+
 ## 0.2.1
 
 - Deny `package:serverpod*`, `package:relic*`, and `package:talaria*` frames in `inApp`.

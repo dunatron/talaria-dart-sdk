@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+## 0.1.2
+
+- Drop expected Serverpod diagnostics (`ApiUnauthorizedException`, websocket close) and isolate request URL / breadcrumbs / userId on capture.
+
 ## 0.1.1
 
 - Session roots no longer adopt another session's `currentSpan`. FutureCalls always start `FutureCall.{name}` CONSUMER.

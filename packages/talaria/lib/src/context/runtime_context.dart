@@ -11,10 +11,12 @@ class RuntimeContext {
 
   static const Object urlZoneKey = #talariaRuntimeUrl;
   static const Object requestIdZoneKey = #talariaRuntimeRequestId;
+  static const Object userIdZoneKey = #talariaRuntimeUserId;
 
   static String? _url;
   static String? _requestId;
   static String? _userAgent;
+  static String? _userId;
 
   /// Isolate-wide current URL (Flutter route, Dart request URL, …).
   static String? get url {
@@ -47,23 +49,71 @@ class RuntimeContext {
   /// Process-wide browser / device user agent when the host collected one.
   static String? get userAgent => _userAgent;
 
+  /// Zone-local user id (JWT / session), then isolate fallback.
+  static String? get userId {
+    final fromZone = Zone.current[userIdZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _userId;
+  }
+
   static void setUserAgent(String? userAgent) {
     final trimmed = userAgent?.trim();
     _userAgent = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  static void setCurrent({String? url, String? requestId}) {
+  static void setUserId(String? userId) {
+    final trimmed = userId?.trim();
+    _userId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setCurrent({String? url, String? requestId, String? userId}) {
     if (url != null) {
       setUrl(url);
     }
     if (requestId != null) {
       setRequestId(requestId);
     }
+    if (userId != null) {
+      setUserId(userId);
+    }
   }
 
   static void clearCurrent() {
     _url = null;
     _requestId = null;
+    _userId = null;
+  }
+
+  /// Bind request URL / ids on this Zone only (no isolate-wide leak).
+  static T runWith<T>(
+    T Function() body, {
+    String? url,
+    String? requestId,
+    String? userId,
+  }) {
+    return Zone.current.fork(zoneValues: {
+      if (url != null && url.isNotEmpty) urlZoneKey: url,
+      if (requestId != null && requestId.isNotEmpty)
+        requestIdZoneKey: requestId,
+      if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
+    }).run(body);
+  }
+
+  /// Async variant of [runWith].
+  static Future<T> runWithAsync<T>(
+    Future<T> Function() body, {
+    String? url,
+    String? requestId,
+    String? userId,
+  }) {
+    return Zone.current.fork(zoneValues: {
+      if (url != null && url.isNotEmpty) urlZoneKey: url,
+      if (requestId != null && requestId.isNotEmpty)
+        requestIdZoneKey: requestId,
+      if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
+    }).run(body);
   }
 
   static Map<String, Object?> collect({String runtime = 'dart'}) {

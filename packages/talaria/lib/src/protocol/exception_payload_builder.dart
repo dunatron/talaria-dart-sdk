@@ -35,17 +35,28 @@ class ExceptionPayloadBuilder {
   }
 
   static String typeName(Object error) {
-    if (error is Error || error is Exception) {
-      return error.runtimeType.toString();
-    }
-    return error.runtimeType.toString();
+    return sanitizeTypeName(error.runtimeType.toString());
   }
 
-  static String shortName(Object error) {
-    final full = typeName(error);
-    final dot = full.lastIndexOf('.');
-    return dot == -1 ? full : full.substring(dot + 1);
+  /// Strips private `_` prefixes and generated `Impl` suffixes.
+  ///
+  /// `_ApiUnauthorizedExceptionImpl` → `ApiUnauthorizedException`.
+  static String sanitizeTypeName(String raw) {
+    var name = raw.trim();
+    final dot = name.lastIndexOf('.');
+    if (dot != -1 && dot < name.length - 1) {
+      name = name.substring(dot + 1);
+    }
+    if (name.startsWith('_')) {
+      name = name.substring(1);
+    }
+    if (name.endsWith('Impl') && name.length > 4) {
+      name = name.substring(0, name.length - 4);
+    }
+    return name;
   }
+
+  static String shortName(Object error) => typeName(error);
 
   static String messageOf(Object error) {
     if (error is Error) {

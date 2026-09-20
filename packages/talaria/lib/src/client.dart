@@ -12,10 +12,12 @@ import 'protocol/exception_payload_builder.dart';
 import 'severity.dart';
 import 'tracing/breadcrumbs.dart';
 import 'tracing/span.dart';
+import 'tracing/span_scope.dart';
 import 'tracing/tracer.dart';
 import 'tracing/trace_context.dart';
 import 'transport/event_queue.dart';
 import 'transport/http_transport.dart';
+import 'transport/ingest_error.dart';
 import 'transport/span_queue.dart';
 import 'transport/transport.dart';
 import 'integration/zone_integration.dart';
@@ -61,6 +63,7 @@ class TalariaClient {
           maxBatchSize: options.maxBatchSize,
           flushIntervalMs: options.flushIntervalMs,
           onError: (e) {
+            _handleTransportError(e, IngestSignal.events);
             onTransportError?.call(e);
             developer.log('[Talaria] ${e.message}', name: 'talaria');
           },
@@ -71,6 +74,7 @@ class TalariaClient {
       maxBatchSize: options.maxBatchSize,
       flushIntervalMs: options.flushIntervalMs,
       onError: (e) {
+        _handleTransportError(e, IngestSignal.spans);
         onTransportError?.call(e);
         developer.log('[Talaria] ${e.message}', name: 'talaria');
       },
@@ -78,7 +82,12 @@ class TalariaClient {
 
     tracer = Tracer(
       options: options,
-      enqueue: _spanQueue.enqueue,
+      enqueue: (span) {
+        if (_spansDisabled) {
+          return;
+        }
+        _spanQueue.enqueue(span);
+      },
       enrichment: _spanEnrichment,
     );
 
@@ -105,6 +114,9 @@ class TalariaClient {
   HttpTransport? _ownedHttp;
   final String _sessionId;
   bool _closed = false;
+  bool _eventsDisabled = false;
+  bool _spansDisabled = false;
+  bool _loggedIngestDisable = false;
 
   SeverityLevel _minLevel;
   bool _enforceDefaultLevel;
@@ -271,8 +283,20 @@ class TalariaClient {
   }
 
   void addBreadcrumb(Breadcrumb breadcrumb) {
+    final scoped = BreadcrumbScope.current();
+    if (scoped != null) {
+      scoped.add(breadcrumb);
+      return;
+    }
     _breadcrumbs.add(breadcrumb);
   }
+
+  /// True after a permanent ingest auth error (`retry: false` / invalid key).
+  bool get isIngestDisabled => _eventsDisabled && _spansDisabled;
+
+  bool get isEventsIngestDisabled => _eventsDisabled;
+
+  bool get isSpansIngestDisabled => _spansDisabled;
 
   Span startTransaction(
     String name, {
@@ -355,13 +379,56 @@ class TalariaClient {
 
   int queueSize() => _queue.count;
 
+  Span? _spanForCapture() {
+    final sessionId = SpanScope.currentSessionId;
+    if (sessionId != null) {
+      final bound = SpanScope.forSession(sessionId);
+      if (bound != null && bound.isRecording) {
+        return bound;
+      }
+    }
+    return tracer.currentSpan;
+  }
+
+  void _handleTransportError(TransportException error, IngestSignal signal) {
+    final parsed = IngestError(
+      className: error.className,
+      message: error.bodyMessage ?? error.message,
+      retry: error.retry,
+    );
+    if (!parsed.isPermanent) {
+      return;
+    }
+    if (parsed.isScopeOnly) {
+      switch (signal) {
+        case IngestSignal.events:
+          _eventsDisabled = true;
+        case IngestSignal.spans:
+          _spansDisabled = true;
+        case IngestSignal.replay:
+          _eventsDisabled = true;
+          _spansDisabled = true;
+      }
+    } else {
+      _eventsDisabled = true;
+      _spansDisabled = true;
+    }
+    if (!_loggedIngestDisable) {
+      _loggedIngestDisable = true;
+      developer.log(
+        '[Talaria] ingest disabled after permanent client error: ${error.message}',
+        name: 'talaria',
+      );
+    }
+  }
+
   Future<void> _captureExceptionInternal(
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
     required bool respectMinLevel,
   }) async {
-    if (_closed) {
+    if (_closed || _eventsDisabled) {
       return;
     }
     if (respectMinLevel && !SeverityLevel.error.atLeast(_minLevel)) {
@@ -417,7 +484,7 @@ class TalariaClient {
     CaptureContext? context,
     required bool respectMinLevel,
   }) async {
-    if (_closed) {
+    if (_closed || _eventsDisabled) {
       return;
     }
 
@@ -465,6 +532,9 @@ class TalariaClient {
     String? platform,
     CaptureContext? originalContext,
   }) async {
+    if (_eventsDisabled) {
+      return;
+    }
     final runtime = RuntimeContext.collect(
       runtime: (platformOverride ?? _options.platform) == 'flutter'
           ? 'dart'
@@ -532,7 +602,9 @@ class TalariaClient {
 
     var userId = context.userId;
     if (userId == null || userId.isEmpty) {
-      userId = _globalUserId ?? userIdFromSpan(tracer.currentSpan);
+      userId = RuntimeContext.userId ??
+          _globalUserId ??
+          userIdFromSpan(_spanForCapture());
     }
 
     var outMessage = message;
@@ -592,12 +664,12 @@ class TalariaClient {
     List<Map<String, Object?>>? breadcrumbs;
     if (isError) {
       tracer.markErrorInScope(message: outMessage);
-      final span = tracer.currentSpan;
+      final span = _spanForCapture();
       if (span != null && span.isRecording) {
         traceId = span.traceId;
         spanId = span.spanId;
       }
-      final trail = _breadcrumbs.snapshot();
+      final trail = (BreadcrumbScope.current() ?? _breadcrumbs).snapshot();
       if (trail.isNotEmpty) {
         breadcrumbs = [for (final b in trail) b.toWire()];
       }

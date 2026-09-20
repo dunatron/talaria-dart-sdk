@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 import 'package:talaria/talaria.dart';
 
+import 'diagnostic_filter.dart';
 import 'relic_middleware.dart';
 import 'session_spans.dart';
 import 'session_transaction.dart';
@@ -66,25 +67,64 @@ class TalariaServerpod {
   }
 
   /// Serverpod diagnostic exceptions → Talaria events (with active trace ids).
-  static void handleExceptionEvent(ExceptionEvent event) {
-    if (SessionTransaction.isGenericDiagnosticMessage(event.message)) {
+  static void handleExceptionEvent(
+    ExceptionEvent event, {
+    DiagnosticEventContext? context,
+  }) {
+    if (DiagnosticFilter.shouldDrop(event)) {
       return;
     }
     final client = Talaria.getClient();
     if (client == null) {
       return;
     }
-    // ignore: discarded_futures
-    client.captureException(
-      event.exception,
-      stackTrace: event.stackTrace,
-      context: CaptureContext(
-        mechanism: const ExceptionMechanism(
-          type: 'serverpod_diagnostic',
-          handled: false,
+
+    final sessionId =
+        context is OperationEventContext ? context.sessionId?.toString() : null;
+    final uri = context is ClientCallOpContext ? context.uri.toString() : null;
+    final userId = context is OperationEventContext
+        ? context.userAuthInfo?.userIdentifier.trim()
+        : null;
+    final resolvedUserId =
+        (userId != null && userId.isNotEmpty) ? userId : null;
+
+    if (sessionId != null && sessionId.isNotEmpty) {
+      final zoneCrumbs = BreadcrumbScope.zoneBuffer();
+      if (zoneCrumbs != null) {
+        BreadcrumbScope.bindSession(sessionId, zoneCrumbs);
+      }
+    }
+
+    Future<void> capture() {
+      return client.captureException(
+        event.exception,
+        stackTrace: event.stackTrace,
+        context: CaptureContext(
+          mechanism: const ExceptionMechanism(
+            type: 'serverpod_diagnostic',
+            handled: false,
+          ),
+          title: DiagnosticFilter.titleOf(event),
+          userId: resolvedUserId,
         ),
-        title: event.message,
-      ),
+      );
+    }
+
+    // ignore: discarded_futures
+    RuntimeContext.runWithAsync(
+      () async {
+        if (sessionId != null && sessionId.isNotEmpty) {
+          await SpanScope.runAsync(
+            capture,
+            sessionId: sessionId,
+          );
+        } else {
+          await capture();
+        }
+      },
+      url: uri,
+      requestId: sessionId,
+      userId: resolvedUserId,
     );
   }
 
@@ -107,6 +147,10 @@ class TalariaServerpod {
       isFutureCall: session is FutureCallSession,
       userId: _sessionUserId(session),
     );
+    final zoneCrumbs = BreadcrumbScope.zoneBuffer();
+    if (zoneCrumbs != null) {
+      BreadcrumbScope.bindSession(sessionId, zoneCrumbs);
+    }
     if (!result.created) {
       return;
     }
@@ -114,6 +158,7 @@ class TalariaServerpod {
       final bound = SpanScope.forSession(sessionId);
       bound?.finish();
       SpanScope.unbindSession(sessionId);
+      BreadcrumbScope.unbindSession(sessionId);
     });
   }
 
