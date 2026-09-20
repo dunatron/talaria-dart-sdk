@@ -86,6 +86,151 @@ void main() {
     expect(RuntimeContext.url, '/checkout');
   });
 
+  testWidgets(
+      'navigator observer finishes the route span without a second push',
+      (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        tracesSampleRate: 1.0,
+      ),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [TalariaNavigatorObserver()],
+        home: const Scaffold(body: Text('home')),
+      ),
+    );
+    await tester.pump();
+    await Talaria.flush();
+
+    final finished = transport.spanBatches.expand((b) => b).toList();
+    expect(finished, isNotEmpty);
+    expect(finished.first.name, '/');
+    expect(finished.first.kind, SpanKind.internal);
+  });
+
+  testWidgets('setScreen starts a short INTERNAL span', (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        tracesSampleRate: 1.0,
+      ),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    TalariaFlutter.setScreen('/lab');
+    TalariaFlutter.setScreen('/cart');
+    await Talaria.flush();
+
+    final finished = transport.spanBatches.expand((b) => b).toList();
+    expect(finished.map((s) => s.name), contains('/lab'));
+    expect(
+      finished.firstWhere((s) => s.name == '/lab').kind,
+      SpanKind.internal,
+    );
+    expect(RuntimeContext.url, '/cart');
+  });
+
+  testWidgets('widget build errors are captured once as error_widget',
+      (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+      observeLifecycle: false,
+    );
+    final previousBuilder = ErrorWidget.builder;
+    ErrorWidget.builder = talariaErrorWidgetBuilder();
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (_) => throw FlutterError('Harbor lab ErrorWidget'),
+          ),
+        ),
+      );
+      tester.takeException();
+      await tester.pump();
+      await Talaria.flush();
+      await tester.idle();
+
+      final events = transport.batches.expand((b) => b).toList();
+      expect(events, hasLength(1));
+      final exception = events.single.exception!;
+      final values = exception['values'] as List;
+      final mechanism = (values.first as Map)['mechanism'] as Map;
+      expect(mechanism['type'], 'error_widget');
+    } finally {
+      ErrorWidget.builder = previousBuilder;
+    }
+  });
+
+  test('isWidgetBuildError detects widgets library failures', () {
+    expect(
+      TalariaFlutter.isWidgetBuildError(
+        FlutterErrorDetails(
+          exception: FlutterError('broken'),
+          library: 'widgets library',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      TalariaFlutter.isWidgetBuildError(
+        FlutterErrorDetails(
+          exception: FlutterError('other'),
+          library: 'rendering library',
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('init enriches runtime extra with locale and os', (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    await Talaria.captureException(StateError('runtime extra'));
+    await Talaria.flush();
+
+    final extra = transport.batches.expand((b) => b).single.extraJson;
+    expect(extra, isNotNull);
+    expect(extra, contains('locale'));
+    expect(extra, contains('os'));
+  });
+
   testWidgets('init installs FlutterError hook and sets flutter platform',
       (tester) async {
     final transport = FakeTransport();

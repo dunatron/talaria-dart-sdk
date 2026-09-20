@@ -10,7 +10,7 @@ Docs: [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter)
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.1.0
+  talaria_flutter: ^0.1.2
 ```
 
 ## Bootstrap
@@ -67,15 +67,16 @@ Future<void> main() async {
 | `FlutterError.onError` | Framework errors → `captureException` |
 | `PlatformDispatcher.onError` | Platform/async errors |
 | Zone (via `runApp` helper) | Uncaught zone errors |
-| `TalariaNavigatorObserver` | `route` / `screen` tags and a navigation transaction on push/pop |
+| `TalariaNavigatorObserver` | `route` / `screen` tags and a short page-load transaction (finishes on idle) |
+| `TalariaFlutter.setScreen` | Same short span for IndexedStack / tab destinations |
 | Lifecycle observer | `app.state` tag |
-| `talariaErrorWidgetBuilder` | Build failures |
+| `talariaErrorWidgetBuilder` | Build failures (one event; installed by `runZonedApp`) |
 
 Events are tagged with `platform: flutter`.
 
 ## Tracing
 
-Pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. The navigator observer starts a transaction per route. Wrap application HTTP with `Talaria.wrapHttpClient` — do not wrap Talaria's ingest client.
+Pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. The navigator observer starts a short INTERNAL transaction per route and finishes it when the frame is idle, so later HTTP is its own trace. For `IndexedStack` shells call `TalariaFlutter.setScreen('/lab')` on destination change. Wrap application HTTP with `Talaria.wrapHttpClient` — do not wrap Talaria's ingest client.
 
 There is no `talaria_dio` package; intercept Dio via a wrapped `http.Client` or `addProcessor`.
 

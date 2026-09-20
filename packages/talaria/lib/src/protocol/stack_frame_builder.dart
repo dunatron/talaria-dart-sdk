@@ -65,6 +65,16 @@ class StackFrameBuilder {
     return wire;
   }
 
+  static const Set<String> _deniedPackages = {
+    'serverpod',
+    'relic',
+    'relic_core',
+    'relic_io',
+    'talaria',
+    'talaria_flutter',
+    'talaria_serverpod',
+  };
+
   static bool isInApp(String path) {
     if (path.startsWith('dart:') || path.startsWith('package:flutter/')) {
       return false;
@@ -72,8 +82,21 @@ class StackFrameBuilder {
     if (path.contains('/.pub-cache/') || path.contains('/flutter/packages/')) {
       return false;
     }
-    // package: apps and file: sources are in-app by default.
-    return path.startsWith('package:') || path.startsWith('file:');
+    if (path.startsWith('package:')) {
+      final package = _packageName(path);
+      if (package != null && _isDeniedPackage(package)) {
+        return false;
+      }
+      return true;
+    }
+    return path.startsWith('file:');
+  }
+
+  static bool _isDeniedPackage(String package) {
+    if (_deniedPackages.contains(package)) {
+      return true;
+    }
+    return package.startsWith('serverpod_') || package.startsWith('relic_');
   }
 
   static String _basename(String path) {

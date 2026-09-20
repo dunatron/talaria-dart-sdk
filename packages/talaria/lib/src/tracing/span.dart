@@ -71,9 +71,13 @@ abstract class Span {
   /// Head-based sample bit (may be upgraded on error).
   bool get sampled;
 
+  /// Current status (`unset` until [setStatus] / [markError] / [finish]).
+  SpanStatus get status;
+
   void setStatus(SpanStatus status, {String? message});
   void setAttribute(String key, Object? value);
   void setAttributes(Map<String, Object?> attributes);
+  String? getAttribute(String key);
   void addEvent(String name, {Map<String, String>? attributes});
   void addLink(SpanLink link);
 
@@ -207,6 +211,9 @@ class NoOpSpan implements Span {
   bool get sampled => false;
 
   @override
+  SpanStatus get status => SpanStatus.unset;
+
+  @override
   void setStatus(SpanStatus status, {String? message}) {}
 
   @override
@@ -214,6 +221,9 @@ class NoOpSpan implements Span {
 
   @override
   void setAttributes(Map<String, Object?> attributes) {}
+
+  @override
+  String? getAttribute(String key) => null;
 
   @override
   void addEvent(String name, {Map<String, String>? attributes}) {}

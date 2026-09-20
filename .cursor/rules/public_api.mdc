@@ -3,6 +3,7 @@ description: Dart SDK public API and capture semantics
 globs:
   - "packages/talaria/lib/**"
   - "packages/talaria_flutter/lib/**"
+  - "packages/talaria_serverpod/lib/**"
 ---
 
 # Public API
@@ -28,7 +29,8 @@ Talaria.close();
 ```
 
 Also export `TalariaClient` for DI and `TalariaLogger` for scoped capture.
-Flutter: `TalariaFlutter.init`, `TalariaFlutter.runZonedApp`, `TalariaNavigatorObserver`.
+Flutter: `TalariaFlutter.init`, `TalariaFlutter.runZonedApp`, `TalariaFlutter.setScreen`, `TalariaNavigatorObserver`.
+Serverpod: `TalariaServerpod.init`, `TalariaServerpod.attach`, `TalariaServerpod.interceptDatabase`.
 
 ## Init options
 

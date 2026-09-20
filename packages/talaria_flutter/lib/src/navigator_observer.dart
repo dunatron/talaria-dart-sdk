@@ -1,14 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
-/// Sets `route` / `screen` tags and starts a navigation transaction per route.
+import 'screen_span.dart';
+
+/// Sets `route` / `screen` tags and starts a short navigation transaction.
 class TalariaNavigatorObserver extends NavigatorObserver {
-  TalariaNavigatorObserver({TalariaClient? client})
-      : _client = client ?? Talaria.getClient();
+  TalariaNavigatorObserver({
+    TalariaClient? client,
+    ScreenSpanController? screens,
+  })  : _client = client ?? Talaria.getClient(),
+        _screens = screens ?? ScreenSpanController.instance;
 
   final TalariaClient? _client;
+  final ScreenSpanController _screens;
   String? _currentRoute;
-  Span? _routeSpan;
 
   String? get currentRoute => _currentRoute;
 
@@ -29,7 +34,7 @@ class TalariaNavigatorObserver extends NavigatorObserver {
     if (previousRoute != null) {
       _update(previousRoute);
     } else {
-      _finishRouteSpan();
+      _screens.finish();
     }
   }
 
@@ -38,44 +43,6 @@ class TalariaNavigatorObserver extends NavigatorObserver {
     final label =
         (name != null && name.isNotEmpty) ? name : route.runtimeType.toString();
     _currentRoute = label;
-
-    RuntimeContext.setUrl(label);
-
-    final client = _client ?? Talaria.getClient();
-    client?.setTags({
-      'route': label,
-      'screen': label,
-    });
-    client?.addBreadcrumb(Breadcrumb(
-      type: 'navigation',
-      category: 'navigation',
-      message: label,
-      data: {'ui.screen.name': label},
-    ));
-
-    _finishRouteSpan();
-    _routeSpan = client?.startTransaction(
-      label,
-      kind: SpanKind.internal,
-      attributes: {
-        'ui.screen.name': label,
-      },
-    );
-    final span = _routeSpan;
-    if (span != null && span.isRecording) {
-      RuntimeContext.setRequestId(span.spanId);
-    }
-  }
-
-  void _finishRouteSpan() {
-    final span = _routeSpan;
-    if (span == null) {
-      return;
-    }
-    if (span.isRecording) {
-      span.setStatus(SpanStatus.ok);
-      span.finish();
-    }
-    _routeSpan = null;
+    _screens.start(label, client: _client ?? Talaria.getClient());
   }
 }

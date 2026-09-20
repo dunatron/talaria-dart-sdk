@@ -4,6 +4,7 @@ import '../config.dart';
 import '../context/runtime_context.dart';
 import '../environment.dart';
 import 'span.dart';
+import 'span_scope.dart';
 import 'trace_context.dart';
 
 /// Snapshot of client fields copied onto finished spans.
@@ -44,15 +45,22 @@ class Tracer {
   final SpanEnrichment Function() _enrichment;
   final Random _random;
 
-  final List<_RecordingSpan> _stack = [];
+  final List<Span> _stack = [];
   final Map<String, _TraceState> _traces = {};
 
+  List<Span> get _activeStack => SpanScope.zoneStack() ?? _stack;
+
   Span? get currentSpan {
-    for (var i = _stack.length - 1; i >= 0; i--) {
-      final span = _stack[i];
-      if (!span._finished) {
+    final stack = _activeStack;
+    for (var i = stack.length - 1; i >= 0; i--) {
+      final span = stack[i];
+      if (span.isRecording) {
         return span;
       }
+    }
+    final sessionId = SpanScope.currentSessionId;
+    if (sessionId != null) {
+      return SpanScope.forSession(sessionId);
     }
     return null;
   }
@@ -87,7 +95,7 @@ class Tracer {
       span.setAttributes(attributes);
     }
     state.spanCount = 1;
-    _stack.add(span);
+    _activeStack.add(span);
     return span;
   }
 
@@ -125,7 +133,7 @@ class Tracer {
     if (attributes != null) {
       span.setAttributes(attributes);
     }
-    _stack.add(span);
+    _activeStack.add(span);
     return span;
   }
 
@@ -137,9 +145,9 @@ class Tracer {
   }
 
   void finishAll() {
-    final open = List<_RecordingSpan>.from(_stack.reversed);
+    final open = List<Span>.from(_activeStack.reversed);
     for (final span in open) {
-      if (!span._finished) {
+      if (span.isRecording) {
         span.finish();
       }
     }
@@ -157,7 +165,7 @@ class Tracer {
   }
 
   void _onFinish(_RecordingSpan span) {
-    _stack.remove(span);
+    _activeStack.remove(span);
     final state = _traces[span.traceId];
     if (state == null) {
       return;
@@ -242,6 +250,12 @@ class _RecordingSpan implements Span {
     final state = _tracer._traces[traceId];
     return state != null && (state.sampled || state.forceSampled);
   }
+
+  @override
+  SpanStatus get status => _status;
+
+  @override
+  String? getAttribute(String key) => _attributes[key];
 
   @override
   void setStatus(SpanStatus status, {String? message}) {
@@ -345,7 +359,9 @@ class _RecordingSpan implements Span {
       links: List<SpanLink>.from(_links),
       environment: enrichment.environment,
       release: enrichment.release,
-      userId: enrichment.userId,
+      userId: enrichment.userId ??
+          _attributes['enduser.id'] ??
+          _attributes['user.id'],
       sessionId: enrichment.sessionId,
       requestId: enrichment.requestId ?? RuntimeContext.requestId,
     );

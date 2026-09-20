@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
+import 'flutter_runtime.dart';
 import 'lifecycle_observer.dart';
+import 'screen_span.dart';
+import 'widgets/error_widget.dart';
 
 typedef _PlatformErrorHandler = bool Function(Object error, StackTrace stack);
 
@@ -37,6 +40,7 @@ class TalariaFlutter {
 
     final client = await Talaria.init(flutterOptions, transport: transport);
     client.platformOverride = 'flutter';
+    FlutterRuntime.enrich(client);
 
     if (installHooks) {
       installErrorHooks(client);
@@ -59,17 +63,19 @@ class TalariaFlutter {
 
     _previousFlutterOnError = FlutterError.onError;
     FlutterError.onError = (details) {
-      // ignore: discarded_futures
-      client.captureException(
-        details.exception,
-        stackTrace: details.stack,
-        context: const CaptureContext(
-          mechanism: ExceptionMechanism(
-            type: 'flutter_error',
-            handled: false,
+      if (!isWidgetBuildError(details)) {
+        // ignore: discarded_futures
+        client.captureException(
+          details.exception,
+          stackTrace: details.stack,
+          context: const CaptureContext(
+            mechanism: ExceptionMechanism(
+              type: 'flutter_error',
+              handled: false,
+            ),
           ),
-        ),
-      );
+        );
+      }
       final previous = _previousFlutterOnError;
       if (previous != null) {
         previous(details);
@@ -113,6 +119,7 @@ class TalariaFlutter {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
       await init(options, transport: transport);
+      ErrorWidget.builder = talariaErrorWidgetBuilder();
       runApp(app);
       if (!started.isCompleted) {
         started.complete();
@@ -142,8 +149,22 @@ class TalariaFlutter {
     return started.future;
   }
 
+  /// Short INTERNAL screen span + breadcrumb for IndexedStack / tab hosts.
+  static void setScreen(String name, {TalariaClient? client}) {
+    ScreenSpanController.instance.start(name, client: client);
+  }
+
+  /// Whether [details] will also be reported by [ErrorWidget.builder].
+  static bool isWidgetBuildError(FlutterErrorDetails details) {
+    final library = details.library ?? '';
+    final context = details.context?.toDescription() ?? '';
+    return library == 'widgets library' ||
+        context.toLowerCase().contains('building');
+  }
+
   /// Tear down Flutter observers and close the SDK.
   static Future<void> close() async {
+    ScreenSpanController.instance.finish();
     _lifecycle?.dispose();
     _lifecycle = null;
     RuntimeContext.clearCurrent();

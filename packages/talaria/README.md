@@ -4,13 +4,13 @@ Official Dart SDK for [Talaria](https://www.newtalaria.com) — capture exceptio
 
 Events are **queued in memory** and sent with batch ingest when the buffer hits a size limit, exceeds a max age, or you call `flush` / `close`. Fingerprinting stays on the server.
 
-Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
+Docs: [Dart SDK guide](https://www.newtalaria.com/docs/sdk/dart) · Flutter: [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) · Serverpod: [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) · Dashboard: [one.newtalaria.com](https://one.newtalaria.com)
 
 ## Install
 
 ```yaml
 dependencies:
-  talaria: ^0.1.0
+  talaria: ^0.2.1
 ```
 
 ## Initialize
@@ -122,6 +122,8 @@ final response = await httpClient.get(Uri.parse('https://api.partner.dev/v1/pay'
 ```
 
 This starts a client span, injects W3C `traceparent`, and records an HTTP breadcrumb. Talaria ingest URLs are skipped if wrapped by mistake. `Talaria.getTraceparent()` returns the active header when a span is recording.
+
+For Serverpod 4 apps, use [`talaria_serverpod`](../talaria_serverpod) (`TalariaServerpod.attach` + `databaseInterceptor`) instead of starting transactions by hand. SQL helpers (`SqlSanitizer`, `DbSpan`) and concurrent `SpanScope` live in this core package. ORM spans send a `db.query.text` stand-in (`SELECT Product`) when raw SQL is unavailable. Exception frames mark `package:serverpod*`, `package:relic*`, and `package:talaria*` as not in-app.
 
 There is no `talaria_dio` package. For Dio, wrap the adapter's `http.Client` with `TalariaHttpClient`, or add an interceptor that calls `Talaria.startSpan` / injects `traceparent`. Use `addProcessor` for per-request `url` / `requestId` / tags on a shared client:
 

@@ -36,6 +36,26 @@ void main() {
     expect(
         StackFrameBuilder.isInApp('package:flutter/src/widgets.dart'), isFalse);
     expect(StackFrameBuilder.isInApp('package:my_app/main.dart'), isTrue);
+    expect(StackFrameBuilder.isInApp('package:harbor_server/lab.dart'), isTrue);
     expect(StackFrameBuilder.isInApp('file:///tmp/main.dart'), isTrue);
+    expect(
+      StackFrameBuilder.isInApp('package:serverpod/serverpod.dart'),
+      isFalse,
+    );
+    expect(
+      StackFrameBuilder.isInApp('package:serverpod_auth/auth.dart'),
+      isFalse,
+    );
+    expect(
+      StackFrameBuilder.isInApp('package:relic_core/src/middleware.dart'),
+      isFalse,
+    );
+    expect(
+      StackFrameBuilder.isInApp(
+        'package:talaria_serverpod/src/relic_middleware.dart',
+      ),
+      isFalse,
+    );
+    expect(StackFrameBuilder.isInApp('package:talaria/talaria.dart'), isFalse);
   });
 }

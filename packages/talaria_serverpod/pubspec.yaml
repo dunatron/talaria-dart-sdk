@@ -1,18 +1,17 @@
-name: talaria
-description: Official Dart SDK for Talaria — capture exceptions and logs into triageable issues.
-version: 0.2.1
+name: talaria_serverpod
+description: Serverpod adapter for the Talaria SDK — endpoint, Postgres, and FutureCall tracing.
+version: 0.1.1
 homepage: https://www.newtalaria.com
 repository: https://github.com/dunatron/talaria-dart-sdk
 issue_tracker: https://github.com/dunatron/talaria-dart-sdk/issues
-documentation: https://www.newtalaria.com/docs/sdk/dart
+documentation: https://www.newtalaria.com/docs/sdk/serverpod
 
 environment:
   sdk: ^3.5.0
 
 dependencies:
-  http: ^1.2.2
-  meta: ^1.15.0
-  stack_trace: ^1.11.1
+  serverpod: ^4.0.0
+  talaria: ^0.2.1
 
 dev_dependencies:
   lints: ^5.0.0

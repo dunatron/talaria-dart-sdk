@@ -17,7 +17,7 @@ App → TalariaClient (capture* / tracer) → EventQueue + SpanQueue
 - Fingerprinting is **server-side only** — never compute fingerprints here
 - Auth: project API key via `X-API-Key` (`tal_live_…`)
 - Always send via **batch** ingest; never one HTTP call per log in the normal path
-- Packages: `talaria` (pure Dart) + `talaria_flutter` (Flutter hooks)
+- Packages: `talaria` (pure Dart) + `talaria_flutter` (Flutter hooks) + `talaria_serverpod` (Serverpod 4)
 
 ## Explicit don'ts
 

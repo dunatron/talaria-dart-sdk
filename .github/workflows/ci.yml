@@ -37,3 +37,19 @@ jobs:
       - run: dart format --set-exit-if-changed .
       - run: flutter analyze --fatal-infos
       - run: flutter test
+
+  talaria_serverpod:
+    name: talaria_serverpod (Dart)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/talaria_serverpod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test

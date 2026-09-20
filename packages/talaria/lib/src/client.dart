@@ -122,6 +122,18 @@ class TalariaClient {
   /// Optional override for platform wire field (Flutter sets `flutter`).
   String? platformOverride;
 
+  /// `enduser.id` / `user.id` on the current span when no global user is set.
+  static String? userIdFromSpan(Span? span) {
+    if (span == null || !span.isRecording) {
+      return null;
+    }
+    final id = span.getAttribute('enduser.id') ?? span.getAttribute('user.id');
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return id;
+  }
+
   TalariaOptions get options => _options;
 
   SeverityLevel getMinLevel() => _minLevel;
@@ -520,7 +532,7 @@ class TalariaClient {
 
     var userId = context.userId;
     if (userId == null || userId.isEmpty) {
-      userId = _globalUserId;
+      userId = _globalUserId ?? userIdFromSpan(tracer.currentSpan);
     }
 
     var outMessage = message;
@@ -612,6 +624,7 @@ class TalariaClient {
       traceId: traceId,
       spanId: spanId,
       breadcrumbs: breadcrumbs,
+      userAgent: RuntimeContext.userAgent,
     );
 
     _queue.enqueue(event);
@@ -625,7 +638,7 @@ class TalariaClient {
     return SpanEnrichment(
       environment: _options.environment,
       release: _options.release,
-      userId: _globalUserId,
+      userId: _globalUserId ?? userIdFromSpan(tracer.currentSpan),
       sessionId: _sessionId,
       requestId: currentRequestId,
       resource: {

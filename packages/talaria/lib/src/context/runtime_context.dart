@@ -14,6 +14,7 @@ class RuntimeContext {
 
   static String? _url;
   static String? _requestId;
+  static String? _userAgent;
 
   /// Isolate-wide current URL (Flutter route, Dart request URL, …).
   static String? get url {
@@ -41,6 +42,14 @@ class RuntimeContext {
   static void setRequestId(String? requestId) {
     final trimmed = requestId?.trim();
     _requestId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  /// Process-wide browser / device user agent when the host collected one.
+  static String? get userAgent => _userAgent;
+
+  static void setUserAgent(String? userAgent) {
+    final trimmed = userAgent?.trim();
+    _userAgent = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
   static void setCurrent({String? url, String? requestId}) {
