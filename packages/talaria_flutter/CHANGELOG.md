@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Persist `anonymousId` / session ids with SharedPreferences.
+- Auto `$screen` (and `$pageview` on Flutter web) from `TalariaNavigatorObserver` when analytics is enabled.
+
 ## 0.1.3
 
 - Documentation: public README rewrite; no API changes.

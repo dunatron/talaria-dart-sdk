@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'analytics/analytics.dart';
 import 'capture_context.dart';
 import 'config.dart';
 import 'event_filters.dart';
 import 'context/runtime_context.dart';
 import 'environment.dart';
 import 'event.dart';
+import 'identity/identity.dart';
+import 'identity/storage.dart';
 import 'logger.dart';
 import 'protocol/exception_payload_builder.dart';
 import 'severity.dart';
@@ -15,6 +18,7 @@ import 'tracing/span.dart';
 import 'tracing/span_scope.dart';
 import 'tracing/tracer.dart';
 import 'tracing/trace_context.dart';
+import 'transport/analytics_queue.dart';
 import 'transport/event_queue.dart';
 import 'transport/http_transport.dart';
 import 'transport/ingest_error.dart';
@@ -34,8 +38,13 @@ class TalariaClient {
     Transport? transport,
     EventQueue? queue,
     void Function(Object error, [StackTrace? stack])? onTransportError,
+    DateTime Function()? clock,
+    TalariaStorage? storage,
   })  : _options = options,
-        _sessionId = RuntimeContext.newSessionId(),
+        _identity = Identity(
+          storage: storage ?? options.storage,
+          clock: clock,
+        ),
         _globalTags = Map<String, String>.from(options.tags),
         _globalUserId = options.userId,
         _minLevel = options.minLevel,
@@ -80,6 +89,34 @@ class TalariaClient {
       },
     );
 
+    _analyticsQueue = AnalyticsQueue(
+      transport: resolvedTransport,
+      maxBatchSize: options.maxBatchSize,
+      flushIntervalMs: options.flushIntervalMs,
+      onError: (e) {
+        _handleTransportError(e, IngestSignal.analytics);
+        onTransportError?.call(e);
+        developer.log('[Talaria] ${e.message}', name: 'talaria');
+      },
+    );
+
+    analytics = TalariaAnalytics(
+      identity: _identity,
+      queue: _analyticsQueue,
+      enabled: options.enableAnalytics,
+      isDisabled: () => _analyticsDisabled,
+      isClosed: () => _closed,
+      isFlutter: () =>
+          platformOverride == 'flutter' || _options.platform == 'flutter',
+      platform: () => platformOverride ?? _options.platform,
+      environment: () => _options.environment.wireValue,
+      release: () => _options.release,
+      userId: () => _globalUserId,
+      setUser: setUser,
+      currentSpan: _spanForCapture,
+      requestId: () => currentRequestId,
+    );
+
     tracer = Tracer(
       options: options,
       enqueue: (span) {
@@ -109,13 +146,16 @@ class TalariaClient {
   final TalariaOptions _options;
   late final EventQueue _queue;
   late final SpanQueue _spanQueue;
+  late final AnalyticsQueue _analyticsQueue;
   late final Tracer tracer;
+  late final TalariaAnalytics analytics;
+  final Identity _identity;
   final BreadcrumbBuffer _breadcrumbs = BreadcrumbBuffer();
   HttpTransport? _ownedHttp;
-  final String _sessionId;
   bool _closed = false;
   bool _eventsDisabled = false;
   bool _spansDisabled = false;
+  bool _analyticsDisabled = false;
   bool _loggedIngestDisable = false;
 
   SeverityLevel _minLevel;
@@ -292,11 +332,22 @@ class TalariaClient {
   }
 
   /// True after a permanent ingest auth error (`retry: false` / invalid key).
-  bool get isIngestDisabled => _eventsDisabled && _spansDisabled;
+  bool get isIngestDisabled =>
+      _eventsDisabled && _spansDisabled && _analyticsDisabled;
 
   bool get isEventsIngestDisabled => _eventsDisabled;
 
   bool get isSpansIngestDisabled => _spansDisabled;
+
+  bool get isAnalyticsIngestDisabled => _analyticsDisabled;
+
+  bool get isClosed => _closed;
+
+  /// Durable visitor id (persisted when [TalariaStorage] is durable).
+  String get anonymousId => _identity.anonymousId;
+
+  /// Current session id (rotates after 30 minutes idle or midnight UTC).
+  String get sessionId => _identity.sessionId;
 
   Span startTransaction(
     String name, {
@@ -365,6 +416,7 @@ class TalariaClient {
   Future<void> flush() async {
     await _queue.flush();
     await _spanQueue.flush();
+    await _analyticsQueue.flush();
   }
 
   Future<void> close() async {
@@ -408,10 +460,13 @@ class TalariaClient {
         case IngestSignal.replay:
           _eventsDisabled = true;
           _spansDisabled = true;
+        case IngestSignal.analytics:
+          _analyticsDisabled = true;
       }
     } else {
       _eventsDisabled = true;
       _spansDisabled = true;
+      _analyticsDisabled = true;
     }
     if (!_loggedIngestDisable) {
       _loggedIngestDisable = true;
@@ -675,6 +730,7 @@ class TalariaClient {
       }
     }
 
+    _identity.touch();
     final event = Event(
       message: outMessage,
       environment: Environment.fromMixed(_options.environment),
@@ -685,7 +741,8 @@ class TalariaClient {
       release: _options.release,
       commitSha: _options.commitSha,
       userId: outUserId,
-      sessionId: _sessionId,
+      anonymousId: _identity.anonymousId,
+      sessionId: _identity.sessionId,
       requestId: requestId,
       url: url,
       tags: outTags.isEmpty ? null : outTags,
@@ -707,11 +764,13 @@ class TalariaClient {
         (_options.platform == 'flutter' || platformOverride == 'flutter'
             ? 'flutter'
             : 'dart');
+    _identity.touch();
     return SpanEnrichment(
       environment: _options.environment,
       release: _options.release,
       userId: _globalUserId ?? userIdFromSpan(tracer.currentSpan),
-      sessionId: _sessionId,
+      anonymousId: _identity.anonymousId,
+      sessionId: _identity.sessionId,
       requestId: currentRequestId,
       resource: {
         'service.name': service,

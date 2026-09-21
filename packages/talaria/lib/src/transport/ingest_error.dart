@@ -94,4 +94,4 @@ class IngestError {
 }
 
 /// Which ingest path a permanent error applies to.
-enum IngestSignal { events, spans, replay }
+enum IngestSignal { events, spans, replay, analytics }

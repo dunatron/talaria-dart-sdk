@@ -28,6 +28,7 @@ void main() {
     expect(wire['tags'], {'a': '1'});
     expect(wire['extraJson'], '{"x":1}');
     expect(wire['userAgent'], 'Mozilla/5.0');
+    expect(wire['anonymousId'], isNull);
     expect(wire['exception'], isA<Map<String, Object?>>());
   });
 
@@ -50,6 +51,19 @@ void main() {
     expect(wire['traceId'], '0af7651916cd43dd8448eb211c80319c');
     expect(wire['spanId'], 'b7ad6b7169203331');
     expect(wire['breadcrumbs'], hasLength(1));
+  });
+
+  test('Event.toWire includes anonymousId', () {
+    final event = Event(
+      message: 'boom',
+      environment: Environment.production,
+      level: SeverityLevel.error,
+      anonymousId: 'anon-1',
+      sessionId: 'sess-1',
+    );
+    final wire = event.toWire();
+    expect(wire['anonymousId'], 'anon-1');
+    expect(wire['sessionId'], 'sess-1');
   });
 
   test('empty message rejected', () {

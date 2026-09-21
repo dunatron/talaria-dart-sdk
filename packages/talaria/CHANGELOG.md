@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.4
+
+- Durable `anonymousId` and session rotation (30 minutes idle or midnight UTC) via a storage port; Flutter persists with SharedPreferences.
+- Product analytics (`Talaria.analytics`) with consent default off (`enableAnalytics` / `optIn`), batch ingest to `/analytics/ingestBatch`.
+- Stamp `anonymousId` on event and span payloads.
 
 ## 0.2.3
 

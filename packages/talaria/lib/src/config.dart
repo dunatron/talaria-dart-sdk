@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'capture_context.dart';
 import 'environment.dart';
+import 'identity/storage.dart';
 import 'severity.dart';
 
 typedef BeforeSendCallback = BeforeSendEvent? Function(
@@ -34,6 +35,8 @@ class TalariaOptions {
     this.platform = 'dart',
     this.enableTracing = false,
     double? tracesSampleRate,
+    this.enableAnalytics = false,
+    this.storage,
   })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
         environment = Environment.fromMixed(environment),
         sampleRate = sampleRate.clamp(0.0, 1.0),
@@ -84,6 +87,12 @@ class TalariaOptions {
   /// tracing is enabled. Setting a value `> 0` also turns tracing on.
   final double? tracesSampleRate;
 
+  /// Product analytics consent. Off until true or [TalariaAnalytics.optIn].
+  final bool enableAnalytics;
+
+  /// Durable anonymous/session storage. Default is in-memory.
+  final TalariaStorage? storage;
+
   /// Tracing is off until [enableTracing] is true or [tracesSampleRate] `> 0`.
   bool get isTracingEnabled =>
       enableTracing || (tracesSampleRate != null && tracesSampleRate! > 0);
@@ -126,6 +135,8 @@ class TalariaOptions {
     String? platform,
     bool? enableTracing,
     double? tracesSampleRate,
+    bool? enableAnalytics,
+    TalariaStorage? storage,
   }) {
     return TalariaOptions(
       dsn: dsn,
@@ -150,6 +161,8 @@ class TalariaOptions {
       platform: platform ?? this.platform,
       enableTracing: enableTracing ?? this.enableTracing,
       tracesSampleRate: tracesSampleRate ?? this.tracesSampleRate,
+      enableAnalytics: enableAnalytics ?? this.enableAnalytics,
+      storage: storage ?? this.storage,
     );
   }
 

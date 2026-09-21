@@ -9,7 +9,7 @@ This package re-exports the core API. Add both `talaria` and `talaria_serverpod`
 
 **Docs:** [Serverpod guide](https://www.newtalaria.com/docs/sdk/serverpod) · [Dart core](https://www.newtalaria.com/docs/sdk/dart) · [Flutter](https://pub.dev/packages/talaria_flutter)
 
-Tracing is **off** until `enableTracing: true` or `tracesSampleRate > 0`.
+Turn tracing on in the project (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0`. Sampled root transactions are included on the plan — there is no Performance add-on.
 
 ## Install
 

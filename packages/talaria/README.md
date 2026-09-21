@@ -13,7 +13,7 @@ Events queue in memory and flush on batch size, max age, or `flush` / `close`. F
 
 ```yaml
 dependencies:
-  talaria: ^0.2.3
+  talaria: ^0.2.4
 ```
 
 Building a Flutter app? Use [`talaria_flutter`](https://pub.dev/packages/talaria_flutter) instead — it re-exports this package and installs framework hooks. Building a Serverpod 4 server? Add [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) for endpoint, database, and FutureCall tracing.
@@ -174,7 +174,7 @@ Talaria.addBreadcrumb(Breadcrumb(
 
 ## Tracing (APM)
 
-Tracing is **off** until you set `enableTracing: true` or `tracesSampleRate > 0`. Successful transactions default to a 10% sample; **error** transactions are always sent. Child spans are not billed — only sampled root transactions.
+Turn tracing on in the project first (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0` in the SDK. Successful transactions default to a 10% sample; **error** transactions are always sent. Child spans are stored, not billed — only sampled root transactions count toward the plan quota. There is no separate Performance add-on.
 
 ```dart
 await Talaria.init(TalariaOptions(
@@ -230,6 +230,30 @@ There is no `talaria_dio` package. For Dio, wrap the adapter's `http.Client` wit
 
 SQL helpers (`SqlSanitizer`, `DbSpan`) and concurrent `SpanScope` live in this package for servers that wrap their own stores. Flutter and Serverpod adapters call them for you.
 
+## Analytics
+
+Consent is **off** until `enableAnalytics: true` or `Talaria.analytics.optIn()`. There is no click autocapture.
+
+```dart
+await Talaria.init(TalariaOptions(
+  dsn: 'https://api.newtalaria.com',
+  apiKey: 'tal_live_…',
+  environment: 'production',
+  enableAnalytics: true,
+));
+
+await Talaria.analytics.identify('user_123', traits: {'plan': 'team'});
+await Talaria.analytics.track('product_viewed', properties: {
+  'product_id': '123',
+  'price': 129.99,
+});
+await Talaria.analytics.page();
+await Talaria.analytics.screen();
+await Talaria.analytics.reset();
+```
+
+On Dart servers, pass `userId` and/or `anonymousId` on each call (or bind them on `RuntimeContext`) so requests are not mixed. Flutter persists `anonymousId` and rotates `sessionId` after 30 minutes idle or midnight UTC. Analytics POST to `/analytics/ingestBatch`.
+
 ## Shutdown
 
 ```dart
@@ -245,6 +269,7 @@ Call this from process shutdown (and Serverpod / isolate teardown) so the last b
 - Session replay or native crash dumps
 - Host / Kubernetes metrics or continuous profiling
 - Automatic Flutter or Serverpod hooks — use the adapter packages
+- Click autocapture
 
 ## License
 

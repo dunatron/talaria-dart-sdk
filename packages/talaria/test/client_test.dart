@@ -236,4 +236,9 @@ class _ThrowingTransport implements Transport {
   Future<void> sendSpanBatch(List<FinishedSpan> spans) async {
     throw error;
   }
+
+  @override
+  Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {
+    throw error;
+  }
 }

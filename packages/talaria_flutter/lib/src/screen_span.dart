@@ -1,11 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
+
+import 'flutter_web_info_stub.dart'
+    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
 
 /// Short INTERNAL page-load / screen span that finishes on the next idle frame.
 ///
 /// A 10s cap prevents a shell route from becoming a multi-minute transaction.
+/// When analytics is enabled, also emits `$screen` (and `$pageview` on web).
 class ScreenSpanController {
   ScreenSpanController({this.maxDuration = const Duration(seconds: 10)});
 
@@ -52,7 +57,26 @@ class ScreenSpanController {
     if (span != null && span.isRecording) {
       RuntimeContext.setRequestId(span.spanId);
     }
+    _emitAnalytics(label, resolved);
     _scheduleFinish();
+  }
+
+  void _emitAnalytics(String label, TalariaClient? client) {
+    if (client == null || !client.analytics.isEnabled) {
+      return;
+    }
+    // ignore: discarded_futures
+    client.analytics.screen(path: label, title: label);
+    if (kIsWeb) {
+      final page = web_info.browserPageContext();
+      // ignore: discarded_futures
+      client.analytics.page(
+        path: page?.path ?? label,
+        url: page?.url,
+        title: page?.title ?? label,
+        referrer: page?.referrer,
+      );
+    }
   }
 
   void _scheduleFinish() {

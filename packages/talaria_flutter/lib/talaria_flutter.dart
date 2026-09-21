@@ -5,4 +5,5 @@ export 'package:talaria/talaria.dart';
 
 export 'src/init.dart';
 export 'src/navigator_observer.dart';
+export 'src/shared_preferences_storage.dart';
 export 'src/widgets/error_widget.dart';

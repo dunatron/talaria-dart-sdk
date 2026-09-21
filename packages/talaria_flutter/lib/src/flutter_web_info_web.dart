@@ -1,3 +1,4 @@
+import 'package:talaria/talaria.dart';
 import 'package:web/web.dart' as web;
 
 String? browserUserAgent() {
@@ -27,6 +28,24 @@ String? webRenderer() {
       return 'html';
     }
     return raw;
+  } catch (_) {
+    return null;
+  }
+}
+
+AnalyticsPageContext? browserPageContext() {
+  try {
+    final loc = web.window.location;
+    final href = loc.href;
+    final path = loc.pathname;
+    final title = web.document.title;
+    final referrer = web.document.referrer;
+    return AnalyticsPageContext(
+      url: href.isEmpty ? null : href,
+      path: path.isEmpty ? null : path,
+      title: title.isEmpty ? null : title,
+      referrer: referrer.isEmpty ? null : referrer,
+    );
   } catch (_) {
     return null;
   }

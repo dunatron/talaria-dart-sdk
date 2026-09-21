@@ -1,3 +1,4 @@
+import '../analytics/analytics_event.dart';
 import '../event.dart';
 import '../tracing/span.dart';
 
@@ -7,6 +8,9 @@ abstract class Transport {
 
   /// Span ingest. Default is a no-op so event-only fakes keep compiling.
   Future<void> sendSpanBatch(List<FinishedSpan> spans) async {}
+
+  /// Analytics ingest. Default is a no-op so event-only fakes keep compiling.
+  Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {}
 }
 
 /// Raised when ingest HTTP fails.

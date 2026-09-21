@@ -13,6 +13,7 @@ class Event {
     this.release,
     this.commitSha,
     this.userId,
+    this.anonymousId,
     this.sessionId,
     this.requestId,
     this.url,
@@ -40,6 +41,7 @@ class Event {
   final String? release;
   final String? commitSha;
   final String? userId;
+  final String? anonymousId;
   final String? sessionId;
   final String? requestId;
   final String? url;
@@ -82,6 +84,7 @@ class Event {
     put('release', release);
     put('commitSha', commitSha);
     put('userId', userId);
+    put('anonymousId', anonymousId);
     put('sessionId', sessionId);
     put('requestId', requestId);
     put('url', url);

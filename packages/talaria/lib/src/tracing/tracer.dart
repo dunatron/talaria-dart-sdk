@@ -13,6 +13,7 @@ class SpanEnrichment {
     required this.environment,
     this.release,
     this.userId,
+    this.anonymousId,
     this.sessionId,
     this.requestId,
     this.resource = const {},
@@ -21,6 +22,7 @@ class SpanEnrichment {
   final Environment environment;
   final String? release;
   final String? userId;
+  final String? anonymousId;
   final String? sessionId;
   final String? requestId;
   final Map<String, String> resource;
@@ -362,6 +364,7 @@ class _RecordingSpan implements Span {
       userId: enrichment.userId ??
           _attributes['enduser.id'] ??
           _attributes['user.id'],
+      anonymousId: enrichment.anonymousId,
       sessionId: enrichment.sessionId,
       requestId: enrichment.requestId ?? RuntimeContext.requestId,
     );

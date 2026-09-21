@@ -9,9 +9,10 @@ globs:
 Language-agnostic ingest adapters for Talaria.
 
 ```
-App → TalariaClient (capture* / tracer) → EventQueue + SpanQueue
+App → TalariaClient (capture* / tracer / analytics) → EventQueue + SpanQueue + AnalyticsQueue
         → POST /events/ingestBatch
         → POST /spans/ingestBatch
+        → POST /analytics/ingestBatch
 ```
 
 - Fingerprinting is **server-side only** — never compute fingerprints here

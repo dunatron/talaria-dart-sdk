@@ -1,6 +1,14 @@
 /// Official Dart SDK for Talaria — exception and log capture.
 library;
 
+export 'src/analytics/analytics.dart' show TalariaAnalytics;
+export 'src/analytics/analytics_event.dart'
+    show
+        AnalyticsEvent,
+        AnalyticsEventKind,
+        AnalyticsEventNames,
+        AnalyticsPageContext,
+        AnalyticsContextProvider;
 export 'src/capture_context.dart';
 export 'src/client.dart';
 export 'src/config.dart';
@@ -8,6 +16,9 @@ export 'src/context/runtime_context.dart';
 export 'src/environment.dart';
 export 'src/event.dart';
 export 'src/http/talaria_http_client.dart';
+export 'src/identity/identity.dart' show Identity;
+export 'src/identity/storage.dart' show TalariaStorage, MemoryTalariaStorage;
+export 'src/identity/utm.dart' show Utm;
 export 'src/logger.dart';
 export 'src/severity.dart';
 export 'src/talaria.dart';

@@ -12,11 +12,17 @@ class RuntimeContext {
   static const Object urlZoneKey = #talariaRuntimeUrl;
   static const Object requestIdZoneKey = #talariaRuntimeRequestId;
   static const Object userIdZoneKey = #talariaRuntimeUserId;
+  static const Object anonymousIdZoneKey = #talariaRuntimeAnonymousId;
+  static const Object sessionIdZoneKey = #talariaRuntimeSessionId;
+  static const Object replayIdZoneKey = #talariaRuntimeReplayId;
 
   static String? _url;
   static String? _requestId;
   static String? _userAgent;
   static String? _userId;
+  static String? _anonymousId;
+  static String? _sessionId;
+  static String? _replayId;
 
   /// Isolate-wide current URL (Flutter route, Dart request URL, …).
   static String? get url {
@@ -68,7 +74,54 @@ class RuntimeContext {
     _userId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  static void setCurrent({String? url, String? requestId, String? userId}) {
+  /// Zone-local then isolate fallback. Used by server Dart per request.
+  static String? get anonymousId {
+    final fromZone = Zone.current[anonymousIdZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _anonymousId;
+  }
+
+  static void setAnonymousId(String? anonymousId) {
+    final trimmed = anonymousId?.trim();
+    _anonymousId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static String? get sessionId {
+    final fromZone = Zone.current[sessionIdZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _sessionId;
+  }
+
+  static void setSessionId(String? sessionId) {
+    final trimmed = sessionId?.trim();
+    _sessionId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static String? get replayId {
+    final fromZone = Zone.current[replayIdZoneKey];
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return _replayId;
+  }
+
+  static void setReplayId(String? replayId) {
+    final trimmed = replayId?.trim();
+    _replayId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setCurrent({
+    String? url,
+    String? requestId,
+    String? userId,
+    String? anonymousId,
+    String? sessionId,
+    String? replayId,
+  }) {
     if (url != null) {
       setUrl(url);
     }
@@ -78,12 +131,24 @@ class RuntimeContext {
     if (userId != null) {
       setUserId(userId);
     }
+    if (anonymousId != null) {
+      setAnonymousId(anonymousId);
+    }
+    if (sessionId != null) {
+      setSessionId(sessionId);
+    }
+    if (replayId != null) {
+      setReplayId(replayId);
+    }
   }
 
   static void clearCurrent() {
     _url = null;
     _requestId = null;
     _userId = null;
+    _anonymousId = null;
+    _sessionId = null;
+    _replayId = null;
   }
 
   /// Bind request URL / ids on this Zone only (no isolate-wide leak).
@@ -92,12 +157,20 @@ class RuntimeContext {
     String? url,
     String? requestId,
     String? userId,
+    String? anonymousId,
+    String? sessionId,
+    String? replayId,
   }) {
     return Zone.current.fork(zoneValues: {
       if (url != null && url.isNotEmpty) urlZoneKey: url,
       if (requestId != null && requestId.isNotEmpty)
         requestIdZoneKey: requestId,
       if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
+      if (anonymousId != null && anonymousId.isNotEmpty)
+        anonymousIdZoneKey: anonymousId,
+      if (sessionId != null && sessionId.isNotEmpty)
+        sessionIdZoneKey: sessionId,
+      if (replayId != null && replayId.isNotEmpty) replayIdZoneKey: replayId,
     }).run(body);
   }
 
@@ -107,12 +180,20 @@ class RuntimeContext {
     String? url,
     String? requestId,
     String? userId,
+    String? anonymousId,
+    String? sessionId,
+    String? replayId,
   }) {
     return Zone.current.fork(zoneValues: {
       if (url != null && url.isNotEmpty) urlZoneKey: url,
       if (requestId != null && requestId.isNotEmpty)
         requestIdZoneKey: requestId,
       if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
+      if (anonymousId != null && anonymousId.isNotEmpty)
+        anonymousIdZoneKey: anonymousId,
+      if (sessionId != null && sessionId.isNotEmpty)
+        sessionIdZoneKey: sessionId,
+      if (replayId != null && replayId.isNotEmpty) replayIdZoneKey: replayId,
     }).run(body);
   }
 
@@ -141,6 +222,17 @@ class RuntimeContext {
   static String newSessionId() {
     final bytes = List<int>.generate(16, (_) => Random.secure().nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// UUID v4 for analytics `eventId`.
+  static String newUuid() {
+    final bytes = List<int>.generate(16, (_) => Random.secure().nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+        '${hex.substring(20)}';
   }
 
   static String isoTimestamp([DateTime? now]) {

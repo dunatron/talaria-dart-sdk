@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 
+import 'analytics/analytics.dart';
 import 'capture_context.dart';
 import 'client.dart';
 import 'config.dart';
@@ -38,6 +39,9 @@ class Talaria {
   }
 
   static TalariaClient? getClient() => _client;
+
+  /// Product analytics (`track` / `page` / `screen` / `identify`).
+  static TalariaAnalytics get analytics => _requireClient().analytics;
 
   static TalariaLogger logger({
     String? name,

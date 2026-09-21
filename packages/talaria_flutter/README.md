@@ -13,7 +13,7 @@ Built on [`talaria`](https://pub.dev/packages/talaria). This package re-exports 
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.1.3
+  talaria_flutter: ^0.1.4
 ```
 
 ## Bootstrap
@@ -40,6 +40,7 @@ Future<void> main() async {
     release: const String.fromEnvironment('APP_RELEASE'),
     minLevel: SeverityLevel.warning,
     enableTracing: true,
+    enableAnalytics: true,
   ));
 
   ErrorWidget.builder = talariaErrorWidgetBuilder();
@@ -78,7 +79,7 @@ Never hardcode keys. Map flavors and `--dart-define` into `environment` and `rel
 | `FlutterError.onError` | Framework errors → `captureException` |
 | `PlatformDispatcher.onError` | Platform / async errors |
 | Zone (via `runZonedApp`) | Uncaught zone errors |
-| `TalariaNavigatorObserver` | `route` / `screen` tags and a short page-load transaction (finishes on idle) |
+| `TalariaNavigatorObserver` | `route` / `screen` tags, a short page-load transaction (finishes on idle), and `$screen` when analytics is on (`$pageview` on Flutter web) |
 | `TalariaFlutter.setScreen` | Same short span for IndexedStack / tab destinations |
 | Lifecycle observer | `app.state` tag |
 | `talariaErrorWidgetBuilder` | Build failures (one event; installed by `runZonedApp`) |
@@ -117,7 +118,7 @@ See the [`talaria`](https://pub.dev/packages/talaria) README for logger levels, 
 
 ## Tracing
 
-Pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. Tracing is **off** until you do. Successful transactions default to 10%; error transactions are always sent.
+Turn tracing on in the project (`tracingEnabled`), then pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. Successful transactions default to 10%; error transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
 
 Wrap **application** HTTP with `Talaria.wrapHttpClient`. Do not wrap Talaria’s ingest client.
 

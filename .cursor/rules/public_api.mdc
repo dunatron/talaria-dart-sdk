@@ -24,6 +24,7 @@ Talaria.addProcessor(processor);
 Talaria.addBreadcrumb(breadcrumb);
 Talaria.startTransaction / startSpan;
 Talaria.wrapHttpClient(http.Client);
+Talaria.analytics (track / page / screen / identify / reset / optIn);
 Talaria.flush();
 Talaria.close();
 ```
@@ -35,7 +36,7 @@ Serverpod: `TalariaServerpod.init`, `TalariaServerpod.attach`, `TalariaServerpod
 ## Init options
 
 - Required: `dsn` or `baseUrl`, `apiKey`, `environment`
-- Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`, `enableTracing` (default `false`), `tracesSampleRate` (default 0.10 once tracing is on; setting `> 0` enables tracing)
+- Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`, `enableTracing` (default `false`), `tracesSampleRate` (default 0.10 once tracing is on; setting `> 0` enables tracing), `enableAnalytics` (default `false`), `storage`
 
 ## Capture rules
 
@@ -46,3 +47,4 @@ Serverpod: `TalariaServerpod.init`, `TalariaServerpod.attach`, `TalariaServerpod
 - Capture enqueues only — network I/O happens on queue drain
 - Error events attach breadcrumbs (cap 50) and `traceId` / `spanId` when a span is in scope
 - Tracing is off until `enableTracing` or `tracesSampleRate > 0`; 100% error transactions, default 10% success
+- Analytics is off until `enableAnalytics` or `Talaria.analytics.optIn()`. Server Dart requires caller `userId` and/or `anonymousId`. Flutter auto-stamps persisted `anonymousId` and emits `$screen` from `TalariaNavigatorObserver`.

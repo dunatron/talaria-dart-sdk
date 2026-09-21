@@ -5,8 +5,11 @@ import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
 import 'flutter_runtime.dart';
+import 'flutter_web_info_stub.dart'
+    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
 import 'lifecycle_observer.dart';
 import 'screen_span.dart';
+import 'shared_preferences_storage.dart';
 import 'widgets/error_widget.dart';
 
 typedef _PlatformErrorHandler = bool Function(Object error, StackTrace stack);
@@ -29,6 +32,15 @@ class TalariaFlutter {
     bool installHooks = true,
     bool observeLifecycle = true,
   }) async {
+    TalariaStorage? storage = options.storage;
+    if (storage == null) {
+      try {
+        storage = await SharedPreferencesTalariaStorage.create();
+      } catch (_) {
+        storage = MemoryTalariaStorage();
+      }
+    }
+
     final flutterOptions = options.copyWith(
       platform: 'flutter',
       tags: {
@@ -36,10 +48,20 @@ class TalariaFlutter {
         'flutter': 'true',
       },
       defaultIntegrations: false,
+      storage: storage,
     );
 
     final client = await Talaria.init(flutterOptions, transport: transport);
     client.platformOverride = 'flutter';
+    client.analytics.contextProvider = () {
+      final page = web_info.browserPageContext();
+      return AnalyticsPageContext(
+        url: page?.url ?? RuntimeContext.url,
+        path: page?.path ?? RuntimeContext.url,
+        title: page?.title,
+        referrer: page?.referrer,
+      );
+    };
     FlutterRuntime.enrich(client);
 
     if (installHooks) {

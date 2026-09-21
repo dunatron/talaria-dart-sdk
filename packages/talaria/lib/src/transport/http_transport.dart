@@ -2,12 +2,13 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../analytics/analytics_event.dart';
 import '../event.dart';
 import '../tracing/span.dart';
 import 'ingest_error.dart';
 import 'transport.dart';
 
-/// Minimal Serverpod RPC client for `events/ingestBatch` and `spans/ingestBatch`.
+/// Minimal Serverpod RPC client for ingestBatch endpoints.
 ///
 /// [httpClient] is the ingest client — never wrap it with `TalariaHttpClient`.
 /// Wrap application HTTP separately, or pass [spanHttpClient] for span ingest.
@@ -70,6 +71,27 @@ class HttpTransport implements Transport {
       payload: payload,
       client: _spansClient,
       label: 'spans/ingestBatch',
+    );
+  }
+
+  @override
+  Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {
+    if (events.isEmpty) {
+      return;
+    }
+
+    final payload = <String, Object?>{
+      'input': {
+        '__className__': 'IngestAnalyticsEventBatchInput',
+        'events': [for (final e in events) e.toWire()],
+      },
+    };
+
+    await _postJson(
+      path: '/analytics/ingestBatch',
+      payload: payload,
+      client: _http,
+      label: 'analytics/ingestBatch',
     );
   }
 

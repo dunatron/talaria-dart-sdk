@@ -4,7 +4,7 @@ Set up Talaria on **Serverpod 4** with `talaria` + `talaria_serverpod`. The core
 
 Public docs: [Serverpod SDK](https://www.newtalaria.com/docs/sdk/serverpod).
 
-Tracing is **off** until `enableTracing: true` or `tracesSampleRate > 0`. When enabled without an explicit rate, successful transactions sample at **10%**; **error** transactions are always sent.
+Turn tracing on in the project (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0`. When enabled without an explicit rate, successful transactions sample at **10%**; **error** transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
 
 ## Install
 

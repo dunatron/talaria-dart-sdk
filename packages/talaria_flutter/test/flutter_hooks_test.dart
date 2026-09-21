@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talaria/src/transport/fake_transport.dart';
 import 'package:talaria_flutter/talaria_flutter.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   tearDown(() async {
     await TalariaFlutter.close();
   });
@@ -258,5 +263,48 @@ void main() {
     expect(transport.batches, isNotEmpty);
     expect(transport.batches.first.single.message, contains('from flutter'));
     expect(transport.batches.first.single.platform, 'flutter');
+  });
+
+  testWidgets('navigator observer emits \$screen when analytics is on',
+      (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        enableAnalytics: true,
+        storage: MemoryTalariaStorage(),
+      ),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [TalariaNavigatorObserver()],
+        home: const Scaffold(body: Text('home')),
+      ),
+    );
+    await tester.pump();
+    await Talaria.flush();
+
+    final events = transport.analyticsBatches.expand((b) => b).toList();
+    expect(events, isNotEmpty);
+    expect(events.first.name, r'$screen');
+    expect(events.first.kind, AnalyticsEventKind.screen);
+    expect(events.first.path, '/');
+    expect(events.first.anonymousId, isNotEmpty);
+  });
+
+  test('SharedPreferences storage persists anonymousId', () async {
+    SharedPreferences.setMockInitialValues({});
+    final first = await SharedPreferencesTalariaStorage.create();
+    await first.write(Identity.anonymousIdKey, 'anon-persist');
+
+    final second = await SharedPreferencesTalariaStorage.create();
+    expect(second.read(Identity.anonymousIdKey), 'anon-persist');
   });
 }

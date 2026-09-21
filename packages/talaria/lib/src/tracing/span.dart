@@ -108,6 +108,7 @@ class FinishedSpan {
     required this.environment,
     this.release,
     this.userId,
+    this.anonymousId,
     this.sessionId,
     this.requestId,
   })  : attributes = attributes ?? const {},
@@ -131,6 +132,7 @@ class FinishedSpan {
   final Environment environment;
   final String? release;
   final String? userId;
+  final String? anonymousId;
   final String? sessionId;
   final String? requestId;
 
@@ -179,6 +181,7 @@ class FinishedSpan {
     put('environment', environment.wireValue);
     put('release', release);
     put('userId', userId);
+    put('anonymousId', anonymousId);
     put('sessionId', sessionId);
     put('requestId', requestId);
 

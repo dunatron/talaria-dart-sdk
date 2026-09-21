@@ -31,6 +31,12 @@ Spans (when tracing is enabled):
 - Body: `{ "input": { "__className__": "IngestSpanBatchInput", "spans": [ { "__className__": "IngestSpanInput", … } ] } }`
 - `HttpTransport.httpClient` is ingest-only — never wrap it with `TalariaHttpClient`. Optional `spanHttpClient` for span POSTs.
 
+Analytics:
+
+- `POST {baseUrl}/analytics/ingestBatch`
+- Body: `{ "input": { "__className__": "IngestAnalyticsEventBatchInput", "events": [ { "__className__": "IngestAnalyticsEventInput", … } ] } }`
+- Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `anonymousId` + `sessionId`.
+
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string
 - Flat `userId` / `url` — not nested `user` / `request`
@@ -50,4 +56,4 @@ Spans (when tracing is enabled):
 - Short HTTP timeout (~3s)
 - No unbounded retries; on 429 log warning and drop
 - Transport failures must not crash the host app
-- Classify ingest errors by body `retry` + `__className__` / `className`, never HTTP 401. `retry: false` (invalid key, missing project, disallowed origin) disables events **and** spans for this isolate. Quota / 5xx keep sending. Do not persist across process restart.
+- Classify ingest errors by body `retry` + `__className__` / `className`, never HTTP 401. `retry: false` (invalid key, missing project, disallowed origin) disables events **and** spans **and** analytics for this isolate. Quota / 5xx keep sending. Message `lacks required scope` disables that signal only. Do not persist across process restart.
