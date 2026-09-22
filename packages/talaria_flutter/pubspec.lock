@@ -307,7 +307,7 @@ packages:
       path: "../talaria"
       relative: true
     source: path
-    version: "0.2.3"
+    version: "0.2.4"
   term_glyph:
     dependency: transitive
     description:

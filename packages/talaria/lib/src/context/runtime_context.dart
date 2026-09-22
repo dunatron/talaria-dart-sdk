@@ -19,6 +19,8 @@ class RuntimeContext {
   static String? _url;
   static String? _requestId;
   static String? _userAgent;
+  static String? _locale;
+  static String? _timezone;
   static String? _userId;
   static String? _anonymousId;
   static String? _sessionId;
@@ -55,6 +57,10 @@ class RuntimeContext {
   /// Process-wide browser / device user agent when the host collected one.
   static String? get userAgent => _userAgent;
 
+  static String? get locale => _locale;
+
+  static String? get timezone => _timezone;
+
   /// Zone-local user id (JWT / session), then isolate fallback.
   static String? get userId {
     final fromZone = Zone.current[userIdZoneKey];
@@ -67,6 +73,16 @@ class RuntimeContext {
   static void setUserAgent(String? userAgent) {
     final trimmed = userAgent?.trim();
     _userAgent = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setLocale(String? locale) {
+    final trimmed = locale?.trim();
+    _locale = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setTimezone(String? timezone) {
+    final trimmed = timezone?.trim();
+    _timezone = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
   static void setUserId(String? userId) {

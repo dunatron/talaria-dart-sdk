@@ -275,6 +275,9 @@ class TalariaAnalytics {
         utmTerm: utm?.term,
         utmContent: utm?.content,
         propertiesJson: _encodeProperties(properties),
+        locale: RuntimeContext.locale,
+        timezone: RuntimeContext.timezone,
+        userAgent: RuntimeContext.userAgent,
       ),
     );
   }

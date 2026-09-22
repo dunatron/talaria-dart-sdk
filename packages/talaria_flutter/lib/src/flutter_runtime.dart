@@ -13,6 +13,7 @@ class FlutterRuntime {
     final os = defaultTargetPlatform.name;
     final renderer = web_info.webRenderer();
     final userAgent = web_info.browserUserAgent();
+    final timezone = web_info.browserTimeZone();
 
     client.setTags({
       'os': os,
@@ -24,6 +25,10 @@ class FlutterRuntime {
       'locale': locale,
       if (renderer != null && renderer.isNotEmpty) 'renderer': renderer,
     });
+    RuntimeContext.setLocale(locale);
+    if (timezone != null && timezone.isNotEmpty) {
+      RuntimeContext.setTimezone(timezone);
+    }
     if (userAgent != null && userAgent.isNotEmpty) {
       RuntimeContext.setUserAgent(userAgent);
     }

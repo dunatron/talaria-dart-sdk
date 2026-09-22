@@ -98,6 +98,26 @@ void main() {
     await client.close();
   });
 
+  test('stamps timezone and omits empty context fields on the wire', () async {
+    RuntimeContext.setTimezone('Pacific/Auckland');
+    final transport = FakeTransport();
+    final client = TalariaClient(
+      options(enableAnalytics: true, platform: 'flutter'),
+      transport: transport,
+    );
+
+    await client.analytics.track('product_viewed', userId: 'u1');
+    await client.flush();
+
+    final event = transport.analyticsBatches.single.single;
+    expect(event.timezone, 'Pacific/Auckland');
+    final wire = event.toWire();
+    expect(wire['timezone'], 'Pacific/Auckland');
+    expect(wire.containsKey('userAgent'), isFalse);
+    expect(wire.containsKey('browserName'), isFalse);
+    await client.close();
+  });
+
   test('server dart drops analytics without caller identity', () async {
     final transport = FakeTransport();
     final client = TalariaClient(
