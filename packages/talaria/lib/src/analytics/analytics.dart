@@ -29,6 +29,7 @@ class TalariaAnalytics {
     required void Function(String? userId) setUser,
     required Span? Function() currentSpan,
     required String? Function() requestId,
+    void Function(String reason)? onDiscard,
     this.contextProvider,
   })  : _identity = identity,
         _queue = queue,
@@ -42,10 +43,12 @@ class TalariaAnalytics {
         _userId = userId,
         _setUser = setUser,
         _currentSpan = currentSpan,
-        _requestId = requestId;
+        _requestId = requestId,
+        _onDiscard = onDiscard;
 
   final Identity _identity;
   final AnalyticsQueue _queue;
+  final void Function(String reason)? _onDiscard;
   bool _enabled;
   final bool Function() _isDisabled;
   final bool Function() _isClosed;
@@ -206,7 +209,11 @@ class TalariaAnalytics {
     String? title,
     String? referrer,
   }) async {
-    if (!_enabled || _isDisabled() || _isClosed()) {
+    if (!_enabled || _isClosed()) {
+      return;
+    }
+    if (_isDisabled()) {
+      _onDiscard?.call('signal_disabled');
       return;
     }
 
@@ -277,6 +284,12 @@ class TalariaAnalytics {
         propertiesJson: _encodeProperties(properties),
         locale: RuntimeContext.locale,
         timezone: RuntimeContext.timezone,
+        osName: RuntimeContext.osName,
+        osVersion: RuntimeContext.osVersion,
+        device: RuntimeContext.device,
+        browserName: RuntimeContext.browserName,
+        browserVersion: RuntimeContext.browserVersion,
+        browserEngine: RuntimeContext.browserEngine,
         userAgent: RuntimeContext.userAgent,
       ),
     );

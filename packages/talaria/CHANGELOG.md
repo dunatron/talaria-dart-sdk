@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.3
+
+- Stamp `device`, `osName`, `osVersion`, and (when known) browser fields on analytics events.
+- `Talaria.setUser`, `anonymousId`, and `sessionId` on the static facade.
+- Honor `ingest.*.state: paused` from `sdk/getConfig`.
+- Report discard counts to `sdk/reportDiscards` (`sample_rate`, `queue_overflow`, `signal_disabled`, `network`).
+- Refresh the project policy document on `ttlSeconds` in a long-lived isolate.
+- `getConfig` sends `sdkVersion` and the client's `platform` (`dart` or `flutter`).
+
 ## 0.3.2
 
 - Span and event timestamps keep sub-millisecond precision when the clock has it.

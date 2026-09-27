@@ -325,6 +325,8 @@ void main() {
     expect(events.first.kind, AnalyticsEventKind.screen);
     expect(events.first.path, '/');
     expect(events.first.anonymousId, isNotEmpty);
+    expect(events.first.osName, isNotEmpty);
+    expect(events.first.device, isNotEmpty);
   });
 
   test('SharedPreferences storage persists anonymousId', () async {

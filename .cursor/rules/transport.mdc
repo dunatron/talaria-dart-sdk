@@ -36,6 +36,7 @@ Analytics:
 - `POST {baseUrl}/analytics/ingestBatch`
 - Body: `{ "input": { "__className__": "IngestAnalyticsEventBatchInput", "events": [ { "__className__": "IngestAnalyticsEventInput", … } ] } }`
 - Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `anonymousId` + `sessionId`.
+- Discard counts: `POST {baseUrl}/sdk/reportDiscards` with `ReportSdkDiscardsInput`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`.
 
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string

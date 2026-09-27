@@ -2,6 +2,8 @@
 library;
 
 export 'src/analytics/analytics.dart' show TalariaAnalytics;
+export 'src/analytics/user_agent.dart' show ParsedUserAgent, UserAgentParser;
+export 'src/sdk_info.dart' show talariaSdkName, talariaSdkVersion;
 export 'src/analytics/analytics_event.dart'
     show
         AnalyticsEvent,
@@ -30,6 +32,8 @@ export 'src/tracing/sql_sanitizer.dart';
 export 'src/tracing/trace_context.dart';
 export 'src/tracing/tracer.dart' show Tracer, SpanEnrichment;
 export 'src/integration/zone_integration.dart' show runZonedTalaria;
+export 'src/transport/discards.dart'
+    show DiscardBuffer, DiscardReason, DiscardRow, DiscardSignal;
 export 'src/transport/http_transport.dart' show HttpTransport;
 export 'src/transport/ingest_error.dart' show IngestError, IngestSignal;
 export 'src/transport/transport.dart' show Transport, TransportException;

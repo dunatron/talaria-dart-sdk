@@ -241,4 +241,7 @@ class _ThrowingTransport implements Transport {
   Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {
     throw error;
   }
+
+  @override
+  Future<void> reportDiscards(List<DiscardRow> discards) async {}
 }

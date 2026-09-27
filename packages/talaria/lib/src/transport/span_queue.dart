@@ -6,17 +6,22 @@ class SpanQueue {
   SpanQueue({
     required Transport transport,
     this.maxBatchSize = 50,
+    this.maxBufferSize = 200,
     this.flushIntervalMs = 2000,
     void Function(TransportException error)? onError,
+    void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
   })  : _transport = transport,
         _onError = onError,
+        _onDiscard = onDiscard,
         _clock = clock ?? DateTime.now;
 
   final Transport _transport;
   final int maxBatchSize;
+  final int maxBufferSize;
   final int flushIntervalMs;
   final void Function(TransportException error)? _onError;
+  final void Function(int count, String reason)? _onDiscard;
   final DateTime Function() _clock;
 
   final List<_QueuedSpan> _buffer = [];
@@ -25,6 +30,10 @@ class SpanQueue {
 
   void enqueue(FinishedSpan span) {
     if (_closed) {
+      return;
+    }
+    if (_buffer.length >= maxBufferSize) {
+      _onDiscard?.call(1, 'queue_overflow');
       return;
     }
     _buffer.add(_QueuedSpan(span: span, enqueuedAt: _clock()));
@@ -49,8 +58,10 @@ class SpanQueue {
         try {
           await _transport.sendSpanBatch(spans);
         } on TransportException catch (e) {
+          _onDiscard?.call(spans.length, 'network');
           _onError?.call(e);
         } catch (e) {
+          _onDiscard?.call(spans.length, 'network');
           _onError?.call(TransportException('$e', cause: e));
         }
       }

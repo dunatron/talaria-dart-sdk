@@ -1,6 +1,7 @@
 import '../analytics/analytics_event.dart';
 import '../event.dart';
 import '../tracing/span.dart';
+import 'discards.dart';
 
 /// Sends a batch of events to Talaria ingest.
 abstract class Transport {
@@ -11,6 +12,9 @@ abstract class Transport {
 
   /// Analytics ingest. Default is a no-op so event-only fakes keep compiling.
   Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {}
+
+  /// Hourly discard telemetry. Default is a no-op.
+  Future<void> reportDiscards(List<DiscardRow> discards) async {}
 }
 
 /// Raised when ingest HTTP fails.

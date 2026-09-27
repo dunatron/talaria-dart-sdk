@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 
 import '../analytics/analytics_event.dart';
 import '../event.dart';
+import '../sdk_info.dart';
 import '../tracing/span.dart';
+import 'discards.dart';
 import 'ingest_error.dart';
 import 'transport.dart';
 
@@ -95,15 +97,21 @@ class HttpTransport implements Transport {
     );
   }
 
-  Future<Map<String, Object?>> fetchSdkConfig({String? revision}) async {
+  Future<Map<String, Object?>> fetchSdkConfig({
+    String? revision,
+    String platform = 'dart',
+    String sdkName = talariaSdkName,
+    String sdkVersion = talariaSdkVersion,
+  }) async {
     final response = await _postJson(
       path: '/sdk/getConfig',
       payload: {
         'input': {
           '__className__': 'GetSdkConfigInput',
           'schemaVersion': 1,
-          'sdkName': 'talaria-dart',
-          'platform': 'dart',
+          'sdkName': sdkName,
+          'sdkVersion': sdkVersion,
+          'platform': platform,
           if (revision != null) 'revision': revision,
         },
       },
@@ -112,6 +120,32 @@ class HttpTransport implements Transport {
       timeout: const Duration(milliseconds: 200),
     );
     return response;
+  }
+
+  @override
+  Future<void> reportDiscards(List<DiscardRow> discards) async {
+    if (discards.isEmpty) {
+      return;
+    }
+    await _postJson(
+      path: '/sdk/reportDiscards',
+      payload: {
+        'input': {
+          '__className__': 'ReportSdkDiscardsInput',
+          'discards': [
+            for (final row in discards)
+              {
+                '__className__': 'SdkDiscardCountInput',
+                'signal': row.signal,
+                'reason': row.reason,
+                'count': row.count,
+              },
+          ],
+        },
+      },
+      client: _http,
+      label: 'sdk/reportDiscards',
+    );
   }
 
   Future<Map<String, Object?>> _postJson({

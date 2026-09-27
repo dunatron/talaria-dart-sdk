@@ -113,6 +113,8 @@ class TalariaHttpClient extends http.BaseClient {
     final path = uri.path;
     return path.contains('/events/ingestBatch') ||
         path.contains('/spans/ingestBatch') ||
-        path.contains('/analytics/ingestBatch');
+        path.contains('/analytics/ingestBatch') ||
+        path.contains('/sdk/getConfig') ||
+        path.contains('/sdk/reportDiscards');
   }
 }

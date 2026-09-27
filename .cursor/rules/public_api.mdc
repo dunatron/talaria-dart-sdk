@@ -25,6 +25,7 @@ Talaria.addBreadcrumb(breadcrumb);
 Talaria.startTransaction / startSpan;
 Talaria.wrapHttpClient(http.Client);
 Talaria.analytics (track / page / screen / identify / reset / optIn);
+Talaria.setUser; Talaria.anonymousId; Talaria.sessionId;
 Talaria.flush();
 Talaria.close();
 ```

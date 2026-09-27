@@ -43,6 +43,12 @@ class Talaria {
   /// Product analytics (`track` / `page` / `screen` / `identify`).
   static TalariaAnalytics get analytics => _requireClient().analytics;
 
+  static void setUser(String? userId) => _requireClient().setUser(userId);
+
+  static String get anonymousId => _requireClient().anonymousId;
+
+  static String get sessionId => _requireClient().sessionId;
+
   static TalariaLogger logger({
     String? name,
     Map<String, String>? tags,
@@ -173,6 +179,7 @@ class Talaria {
   /// Reset singleton between tests.
   static Future<void> reset() async {
     await close();
+    TalariaClient.clearPolicyCache();
   }
 
   static TalariaClient _requireClient() {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- Stamp OS, device class, and (on web) browser fields onto analytics events.
+- `sdk/getConfig` reports `platform: flutter`.
+
 ## 0.2.1
 
 - Package docs point at the marketing guides.

@@ -1,6 +1,7 @@
 import '../analytics/analytics_event.dart';
 import '../event.dart';
 import '../tracing/span.dart';
+import 'discards.dart';
 import 'transport.dart';
 
 /// Test double that records event, span, and analytics batches.
@@ -8,6 +9,7 @@ class FakeTransport implements Transport {
   final List<List<Event>> batches = [];
   final List<List<FinishedSpan>> spanBatches = [];
   final List<List<AnalyticsEvent>> analyticsBatches = [];
+  final List<List<DiscardRow>> discardReports = [];
 
   @override
   Future<void> sendBatch(List<Event> events) async {
@@ -22,5 +24,10 @@ class FakeTransport implements Transport {
   @override
   Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {
     analyticsBatches.add(List.unmodifiable(events));
+  }
+
+  @override
+  Future<void> reportDiscards(List<DiscardRow> discards) async {
+    discardReports.add(List.unmodifiable(discards));
   }
 }

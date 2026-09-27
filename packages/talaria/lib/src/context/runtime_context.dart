@@ -21,6 +21,12 @@ class RuntimeContext {
   static String? _userAgent;
   static String? _locale;
   static String? _timezone;
+  static String? _osName;
+  static String? _osVersion;
+  static String? _device;
+  static String? _browserName;
+  static String? _browserVersion;
+  static String? _browserEngine;
   static String? _userId;
   static String? _anonymousId;
   static String? _sessionId;
@@ -61,6 +67,18 @@ class RuntimeContext {
 
   static String? get timezone => _timezone;
 
+  static String? get osName => _osName;
+
+  static String? get osVersion => _osVersion;
+
+  static String? get device => _device;
+
+  static String? get browserName => _browserName;
+
+  static String? get browserVersion => _browserVersion;
+
+  static String? get browserEngine => _browserEngine;
+
   /// Zone-local user id (JWT / session), then isolate fallback.
   static String? get userId {
     final fromZone = Zone.current[userIdZoneKey];
@@ -83,6 +101,35 @@ class RuntimeContext {
   static void setTimezone(String? timezone) {
     final trimmed = timezone?.trim();
     _timezone = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  }
+
+  static void setOsName(String? osName) {
+    _osName = _trimOrNull(osName);
+  }
+
+  static void setOsVersion(String? osVersion) {
+    _osVersion = _trimOrNull(osVersion);
+  }
+
+  static void setDevice(String? device) {
+    _device = _trimOrNull(device);
+  }
+
+  static void setBrowserName(String? browserName) {
+    _browserName = _trimOrNull(browserName);
+  }
+
+  static void setBrowserVersion(String? browserVersion) {
+    _browserVersion = _trimOrNull(browserVersion);
+  }
+
+  static void setBrowserEngine(String? browserEngine) {
+    _browserEngine = _trimOrNull(browserEngine);
+  }
+
+  static String? _trimOrNull(String? value) {
+    final trimmed = value?.trim();
+    return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
   static void setUserId(String? userId) {
@@ -161,6 +208,15 @@ class RuntimeContext {
   static void clearCurrent() {
     _url = null;
     _requestId = null;
+    _userAgent = null;
+    _locale = null;
+    _timezone = null;
+    _osName = null;
+    _osVersion = null;
+    _device = null;
+    _browserName = null;
+    _browserVersion = null;
+    _browserEngine = null;
     _userId = null;
     _anonymousId = null;
     _sessionId = null;

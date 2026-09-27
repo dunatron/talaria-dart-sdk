@@ -6,17 +6,22 @@ class EventQueue {
   EventQueue({
     required Transport transport,
     this.maxBatchSize = 50,
+    this.maxBufferSize = 200,
     this.flushIntervalMs = 2000,
     void Function(TransportException error)? onError,
+    void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
   })  : _transport = transport,
         _onError = onError,
+        _onDiscard = onDiscard,
         _clock = clock ?? DateTime.now;
 
   final Transport _transport;
   final int maxBatchSize;
+  final int maxBufferSize;
   final int flushIntervalMs;
   final void Function(TransportException error)? _onError;
+  final void Function(int count, String reason)? _onDiscard;
   final DateTime Function() _clock;
 
   final List<_QueuedEvent> _buffer = [];
@@ -25,6 +30,10 @@ class EventQueue {
 
   void enqueue(Event event) {
     if (_closed) {
+      return;
+    }
+    if (_buffer.length >= maxBufferSize) {
+      _onDiscard?.call(1, 'queue_overflow');
       return;
     }
     _buffer.add(_QueuedEvent(event: event, enqueuedAt: _clock()));
@@ -50,9 +59,11 @@ class EventQueue {
         try {
           await _transport.sendBatch(events);
         } on TransportException catch (e) {
+          _onDiscard?.call(events.length, 'network');
           _onError?.call(e);
           // Drop failed batch — no poison-pill retry loop in v1.
         } catch (e) {
+          _onDiscard?.call(events.length, 'network');
           _onError?.call(TransportException('$e', cause: e));
         }
       }

@@ -19,6 +19,7 @@ import 'tracing/span_scope.dart';
 import 'tracing/tracer.dart';
 import 'tracing/trace_context.dart';
 import 'transport/analytics_queue.dart';
+import 'transport/discards.dart';
 import 'transport/event_queue.dart';
 import 'transport/http_transport.dart';
 import 'transport/ingest_error.dart';
@@ -65,6 +66,7 @@ class TalariaClient {
 
     _ownedHttp = httpTransport;
     final resolvedTransport = transport ?? httpTransport!;
+    _discardTransport = resolvedTransport;
 
     _queue = queue ??
         EventQueue(
@@ -76,6 +78,11 @@ class TalariaClient {
             onTransportError?.call(e);
             developer.log('[Talaria] ${e.message}', name: 'talaria');
           },
+          onDiscard: (count, reason) => _recordDiscard(
+            DiscardSignal.events,
+            reason,
+            count,
+          ),
         );
 
     _spanQueue = SpanQueue(
@@ -87,6 +94,11 @@ class TalariaClient {
         onTransportError?.call(e);
         developer.log('[Talaria] ${e.message}', name: 'talaria');
       },
+      onDiscard: (count, reason) => _recordDiscard(
+        DiscardSignal.spans,
+        reason,
+        count,
+      ),
     );
 
     _analyticsQueue = AnalyticsQueue(
@@ -98,13 +110,18 @@ class TalariaClient {
         onTransportError?.call(e);
         developer.log('[Talaria] ${e.message}', name: 'talaria');
       },
+      onDiscard: (count, reason) => _recordDiscard(
+        DiscardSignal.analytics,
+        reason,
+        count,
+      ),
     );
 
     analytics = TalariaAnalytics(
       identity: _identity,
       queue: _analyticsQueue,
       enabled: options.enableAnalytics,
-      isDisabled: () => _analyticsDisabled,
+      isDisabled: () => _analyticsDisabled || _options.analyticsPaused,
       isClosed: () => _closed,
       isFlutter: () =>
           platformOverride == 'flutter' || _options.platform == 'flutter',
@@ -115,12 +132,14 @@ class TalariaClient {
       setUser: setUser,
       currentSpan: _spanForCapture,
       requestId: () => currentRequestId,
+      onDiscard: (reason) => _recordDiscard(DiscardSignal.analytics, reason),
     );
 
     tracer = Tracer(
       options: options,
       enqueue: (span) {
-        if (_spansDisabled) {
+        if (_spansDisabled || _options.transactionsPaused) {
+          _recordDiscard(DiscardSignal.spans, DiscardReason.signalDisabled);
           return;
         }
         _spanQueue.enqueue(span);
@@ -174,6 +193,10 @@ class TalariaClient {
 
   ZoneIntegration? _zoneIntegration;
   Timer? _flushTimer;
+  Timer? _policyTimer;
+  HttpTransport? _policyTransport;
+  Transport? _discardTransport;
+  final DiscardBuffer _discards = DiscardBuffer();
 
   /// Optional override for platform wire field (Flutter sets `flutter`).
   String? platformOverride;
@@ -421,11 +444,14 @@ class TalariaClient {
     await _queue.flush();
     await _spanQueue.flush();
     await _analyticsQueue.flush();
+    await _flushDiscards();
   }
 
   Future<void> close() async {
     _flushTimer?.cancel();
     _flushTimer = null;
+    _policyTimer?.cancel();
+    _policyTimer = null;
     tracer.finishAll();
     await flush();
     _closed = true;
@@ -449,35 +475,101 @@ class TalariaClient {
   static final Map<String, ({int fetchedAt, Map<String, Object?> document})>
       _policyCache = {};
 
+  /// Test-only. Policy cache is process-wide so tests do not share documents.
+  static void clearPolicyCache() => _policyCache.clear();
+
   Future<void> _bootstrapPolicy(HttpTransport transport) async {
+    _policyTransport = transport;
     final key = _options.apiKey.hashCode.toRadixString(16);
     final cached = _policyCache[key];
     final now = DateTime.now().millisecondsSinceEpoch;
     if (cached != null) {
-      _options.applySdkDocument(cached.document);
-      if (_options.enableAnalytics) analytics.optIn();
-      final ttlMs = (((cached.document['ttlSeconds'] as num?)?.toInt() ?? 300)
-              .clamp(60, 3600)) *
-          1000;
-      if (now - cached.fetchedAt < ttlMs) return;
+      _applyPolicyDocument(cached.document);
+      final ttlMs = _ttlMs(cached.document);
+      if (now - cached.fetchedAt < ttlMs) {
+        _schedulePolicyRefresh(transport, ttlMs - (now - cached.fetchedAt));
+        return;
+      }
     }
+    await _refreshPolicy(transport);
+  }
+
+  Future<void> _refreshPolicy(HttpTransport transport) async {
+    if (_closed) {
+      return;
+    }
+    final key = _options.apiKey.hashCode.toRadixString(16);
+    final cached = _policyCache[key];
     try {
       final document = await transport.fetchSdkConfig(
         revision: cached?.document['revision'] as String?,
+        platform: platformOverride ?? _options.platform,
       );
+      final now = DateTime.now().millisecondsSinceEpoch;
       if (document['unchanged'] == true && cached != null) {
         _policyCache[key] = (fetchedAt: now, document: cached.document);
+        _schedulePolicyRefresh(transport, _ttlMs(cached.document));
         return;
       }
-      _options.applySdkDocument(document);
-      if (_options.enableAnalytics) {
-        analytics.optIn();
-      } else {
-        analytics.optOut();
-      }
+      _applyPolicyDocument(document);
       _policyCache[key] = (fetchedAt: now, document: document);
+      _schedulePolicyRefresh(transport, _ttlMs(document));
     } catch (_) {
-      // Errors keep flowing until a later refresh.
+      _schedulePolicyRefresh(transport, 60 * 1000);
+    }
+  }
+
+  void _applyPolicyDocument(Map<String, Object?> document) {
+    _options.applySdkDocument(document);
+    if (_options.enableAnalytics) {
+      analytics.optIn();
+    } else {
+      analytics.optOut();
+    }
+  }
+
+  void _schedulePolicyRefresh(HttpTransport transport, int delayMs) {
+    _policyTimer?.cancel();
+    if (_closed) {
+      return;
+    }
+    final wait = delayMs.clamp(60 * 1000, 60 * 60 * 1000);
+    _policyTimer = Timer(Duration(milliseconds: wait), () {
+      unawaited(_refreshPolicy(transport));
+    });
+  }
+
+  static int _ttlMs(Map<String, Object?> document) {
+    return (((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(60, 3600)) *
+        1000;
+  }
+
+  void _recordDiscard(String signal, String reason, [int count = 1]) {
+    if (_closed || isIngestDisabled) {
+      return;
+    }
+    _discards.record(signal: signal, reason: reason, count: count);
+  }
+
+  Future<void> _flushDiscards() async {
+    final rows = _discards.drain();
+    if (rows.isEmpty || isIngestDisabled) {
+      return;
+    }
+    final transport = _discardTransport;
+    if (transport == null) {
+      return;
+    }
+    try {
+      await transport.reportDiscards(rows);
+    } catch (_) {
+      for (final row in rows) {
+        _discards.record(
+          signal: row.signal,
+          reason: row.reason,
+          count: row.count,
+        );
+      }
     }
   }
 
@@ -535,7 +627,11 @@ class TalariaClient {
     CaptureContext? context,
     required bool respectMinLevel,
   }) async {
-    if (_closed || _eventsDisabled) {
+    if (_closed) {
+      return;
+    }
+    if (_eventsDisabled || _options.eventsPaused) {
+      _recordDiscard(DiscardSignal.events, DiscardReason.signalDisabled);
       return;
     }
     if (respectMinLevel && !SeverityLevel.error.atLeast(_minLevel)) {
@@ -550,6 +646,7 @@ class TalariaClient {
       return;
     }
     if (!_options.shouldSample()) {
+      _recordDiscard(DiscardSignal.events, DiscardReason.sampleRate);
       return;
     }
 
@@ -591,7 +688,11 @@ class TalariaClient {
     CaptureContext? context,
     required bool respectMinLevel,
   }) async {
-    if (_closed || _eventsDisabled) {
+    if (_closed) {
+      return;
+    }
+    if (_eventsDisabled || _options.eventsPaused) {
+      _recordDiscard(DiscardSignal.events, DiscardReason.signalDisabled);
       return;
     }
 
@@ -607,6 +708,7 @@ class TalariaClient {
       return;
     }
     if (!_options.shouldSample()) {
+      _recordDiscard(DiscardSignal.events, DiscardReason.sampleRate);
       return;
     }
 
@@ -639,7 +741,8 @@ class TalariaClient {
     String? platform,
     CaptureContext? originalContext,
   }) async {
-    if (_eventsDisabled) {
+    if (_eventsDisabled || _options.eventsPaused) {
+      _recordDiscard(DiscardSignal.events, DiscardReason.signalDisabled);
       return;
     }
     final runtime = RuntimeContext.collect(

@@ -88,6 +88,15 @@ class TalariaOptions {
   /// Set from the project policy document. Browser consent is [TalariaAnalytics.optIn].
   bool enableAnalytics;
 
+  /// Quota pause from `ingest.events.state`. Separate from a permanent kill switch.
+  bool eventsPaused = false;
+
+  /// Quota pause from `ingest.transactions.state`.
+  bool transactionsPaused = false;
+
+  /// Quota pause from `ingest.analytics.state`.
+  bool analyticsPaused = false;
+
   /// Durable anonymous/session storage. Default is in-memory.
   final TalariaStorage? storage;
 
@@ -108,6 +117,9 @@ class TalariaOptions {
       tracesSampleRate = 0;
       enableAnalytics = false;
       sampleRate = 0;
+      eventsPaused = true;
+      transactionsPaused = true;
+      analyticsPaused = true;
       return;
     }
     final events = document['events'];
@@ -124,6 +136,23 @@ class TalariaOptions {
     if (analytics is Map) {
       enableAnalytics = analytics['enabled'] == true;
     }
+    final ingest = document['ingest'];
+    if (ingest is Map) {
+      eventsPaused = _meterPaused(ingest['events']);
+      transactionsPaused = _meterPaused(ingest['transactions']);
+      analyticsPaused = _meterPaused(ingest['analytics']);
+    } else {
+      eventsPaused = false;
+      transactionsPaused = false;
+      analyticsPaused = false;
+    }
+  }
+
+  static bool _meterPaused(Object? meter) {
+    if (meter is Map) {
+      return meter['state'] == 'paused';
+    }
+    return false;
   }
 
   bool shouldSample([Random? random]) {
@@ -188,6 +217,9 @@ class TalariaOptions {
     created.tracesSampleRate = tracesSampleRate;
     created.enableAnalytics = enableAnalytics;
     created.sampleRate = sampleRate ?? this.sampleRate;
+    created.eventsPaused = eventsPaused;
+    created.transactionsPaused = transactionsPaused;
+    created.analyticsPaused = analyticsPaused;
     return created;
   }
 
