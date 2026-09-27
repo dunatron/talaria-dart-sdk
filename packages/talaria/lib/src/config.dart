@@ -88,6 +88,9 @@ class TalariaOptions {
   /// Set from the project policy document. Browser consent is [TalariaAnalytics.optIn].
   bool enableAnalytics;
 
+  /// Set from `heatmaps.enabled`. Flutter screen capture reads this.
+  bool heatmapsEnabled = false;
+
   /// Quota pause from `ingest.events.state`. Separate from a permanent kill switch.
   bool eventsPaused = false;
 
@@ -116,6 +119,7 @@ class TalariaOptions {
       enableTracing = false;
       tracesSampleRate = 0;
       enableAnalytics = false;
+      heatmapsEnabled = false;
       sampleRate = 0;
       eventsPaused = true;
       transactionsPaused = true;
@@ -136,6 +140,8 @@ class TalariaOptions {
     if (analytics is Map) {
       enableAnalytics = analytics['enabled'] == true;
     }
+    final heatmaps = document['heatmaps'];
+    heatmapsEnabled = heatmaps is Map && heatmaps['enabled'] == true;
     final ingest = document['ingest'];
     if (ingest is Map) {
       eventsPaused = _meterPaused(ingest['events']);
@@ -216,6 +222,7 @@ class TalariaOptions {
     created.enableTracing = enableTracing;
     created.tracesSampleRate = tracesSampleRate;
     created.enableAnalytics = enableAnalytics;
+    created.heatmapsEnabled = heatmapsEnabled;
     created.sampleRate = sampleRate ?? this.sampleRate;
     created.eventsPaused = eventsPaused;
     created.transactionsPaused = transactionsPaused;

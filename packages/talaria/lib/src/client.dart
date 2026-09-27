@@ -164,6 +164,7 @@ class TalariaClient {
     if (options.defaultIntegrations) {
       _zoneIntegration = ZoneIntegration()..register();
     }
+    _screenTransport = resolvedTransport;
   }
 
   final TalariaOptions _options;
@@ -175,6 +176,7 @@ class TalariaClient {
   final Identity _identity;
   final BreadcrumbBuffer _breadcrumbs = BreadcrumbBuffer();
   HttpTransport? _ownedHttp;
+  Transport? _screenTransport;
   bool _closed = false;
   bool _eventsDisabled = false;
   bool _spansDisabled = false;
@@ -213,6 +215,9 @@ class TalariaClient {
   }
 
   TalariaOptions get options => _options;
+
+  /// User id from [setUser], falling back to the id in options.
+  String? get userId => _globalUserId;
 
   SeverityLevel getMinLevel() => _minLevel;
 
@@ -439,7 +444,42 @@ class TalariaClient {
     _globalUserId = (userId != null && userId.isNotEmpty) ? userId : null;
   }
 
+  /// Flutter screen heatmap ingest. No-op until a transport implements it.
+  Future<Map<String, Object?>> sendScreenHeatmapBatch(
+    List<Map<String, Object?>> screenViews,
+  ) {
+    final transport = _screenTransport;
+    if (transport == null || screenViews.isEmpty) return Future.value(const {});
+    return transport.sendScreenHeatmapBatch(screenViews);
+  }
+
+  Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) {
+    final transport = _screenTransport;
+    if (transport == null) return Future.value();
+    return transport.uploadScreenHeatmapSnapshot(input);
+  }
+
+  Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) {
+    final transport = _screenTransport;
+    if (transport == null) return Future.value();
+    return transport.uploadScreenHeatmapRecording(input);
+  }
+
+  final List<Future<void> Function()> _beforeFlush = [];
+
+  /// Runs before the queues drain. Flutter screen heatmaps register here.
+  void addBeforeFlush(Future<void> Function() hook) {
+    _beforeFlush.add(hook);
+  }
+
+  void removeBeforeFlush(Future<void> Function() hook) {
+    _beforeFlush.remove(hook);
+  }
+
   Future<void> flush() async {
+    for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
+      await hook();
+    }
     await _queue.flush();
     await _spanQueue.flush();
     await _analyticsQueue.flush();

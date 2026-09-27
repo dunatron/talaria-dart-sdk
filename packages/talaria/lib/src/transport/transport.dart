@@ -13,6 +13,22 @@ abstract class Transport {
   /// Analytics ingest. Default is a no-op so event-only fakes keep compiling.
   Future<void> sendAnalyticsBatch(List<AnalyticsEvent> events) async {}
 
+  /// Flutter screen heatmaps. Default is a no-op.
+  Future<Map<String, Object?>> sendScreenHeatmapBatch(
+    List<Map<String, Object?>> screenViews,
+  ) async =>
+      const {};
+
+  /// Fold snapshot plus tiles. Default is a no-op.
+  Future<void> uploadScreenHeatmapSnapshot(
+    Map<String, Object?> input,
+  ) async {}
+
+  /// Masked filmstrip. Default is a no-op.
+  Future<void> uploadScreenHeatmapRecording(
+    Map<String, Object?> input,
+  ) async {}
+
   /// Hourly discard telemetry. Default is a no-op.
   Future<void> reportDiscards(List<DiscardRow> discards) async {}
 }

@@ -10,6 +10,20 @@ import 'discards.dart';
 import 'ingest_error.dart';
 import 'transport.dart';
 
+String serverpodByteData(List<int> bytes) {
+  final b64 = base64Encode(bytes);
+  return "decode('$b64', 'base64')";
+}
+
+Map<String, Object?> unwrapServerpodResult(Map<String, Object?> raw) {
+  final data = raw['data'];
+  if (data is Map<String, Object?>) return data;
+  if (data is Map) {
+    return data.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return raw;
+}
+
 /// Minimal Serverpod RPC client for ingestBatch endpoints.
 ///
 /// [httpClient] is the ingest client — never wrap it with `TalariaHttpClient`.
@@ -94,6 +108,47 @@ class HttpTransport implements Transport {
       payload: payload,
       client: _http,
       label: 'analytics/ingestBatch',
+    );
+  }
+
+  @override
+  Future<Map<String, Object?>> sendScreenHeatmapBatch(
+    List<Map<String, Object?>> screenViews,
+  ) async {
+    if (screenViews.isEmpty) return const {};
+    final raw = await _postJson(
+      path: '/screenHeatmaps/ingestBatch',
+      payload: {
+        'input': {
+          '__className__': 'IngestScreenHeatmapBatchInput',
+          'screenViews': screenViews,
+        },
+      },
+      client: _http,
+      label: 'screenHeatmaps/ingestBatch',
+    );
+    return unwrapServerpodResult(raw);
+  }
+
+  @override
+  Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {
+    await _postJson(
+      path: '/screenHeatmaps/uploadSnapshot',
+      payload: {
+        'input': _encodeByteFields(input, const ['pngBytes']),
+      },
+      client: _http,
+      label: 'screenHeatmaps/uploadSnapshot',
+    );
+  }
+
+  @override
+  Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) async {
+    await _postJson(
+      path: '/screenHeatmaps/uploadRecording',
+      payload: {'input': _encodeRecording(input)},
+      client: _http,
+      label: 'screenHeatmaps/uploadRecording',
     );
   }
 
@@ -216,5 +271,42 @@ class HttpTransport implements Transport {
       return body;
     }
     return body.substring(0, 400);
+  }
+
+  static Map<String, Object?> _encodeByteFields(
+    Map<String, Object?> input,
+    List<String> fields,
+  ) {
+    final out = Map<String, Object?>.from(input);
+    for (final field in fields) {
+      final value = out[field];
+      if (value is List<int>) out[field] = serverpodByteData(value);
+    }
+    final tiles = out['tiles'];
+    if (tiles is List) {
+      out['tiles'] = [
+        for (final tile in tiles)
+          if (tile is Map<String, Object?>)
+            _encodeByteFields(tile, const ['pngBytes'])
+          else
+            tile,
+      ];
+    }
+    return out;
+  }
+
+  static Map<String, Object?> _encodeRecording(Map<String, Object?> input) {
+    final out = Map<String, Object?>.from(input);
+    final frames = out['frames'];
+    if (frames is List) {
+      out['frames'] = [
+        for (final frame in frames)
+          if (frame is Map<String, Object?>)
+            _encodeByteFields(frame, const ['pngBytes'])
+          else
+            frame,
+      ];
+    }
+    return out;
   }
 }

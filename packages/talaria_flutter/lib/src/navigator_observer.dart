@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
 import 'screen_span.dart';
+import 'heatmaps/session.dart';
 
 /// Sets `route` / `screen` tags and starts a short navigation transaction.
 class TalariaNavigatorObserver extends NavigatorObserver {
@@ -44,5 +45,8 @@ class TalariaNavigatorObserver extends NavigatorObserver {
         (name != null && name.isNotEmpty) ? name : route.runtimeType.toString();
     _currentRoute = label;
     _screens.start(label, client: _client ?? Talaria.getClient());
+    if (name != null && name.isNotEmpty) {
+      ScreenHeatmapController.instance.notifyObservedRoute(name);
+    }
   }
 }

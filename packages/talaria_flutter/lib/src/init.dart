@@ -7,6 +7,7 @@ import 'package:talaria/talaria.dart';
 import 'flutter_runtime.dart';
 import 'flutter_web_info_stub.dart'
     if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
+import 'heatmaps/session.dart';
 import 'lifecycle_observer.dart';
 import 'screen_span.dart';
 import 'shared_preferences_storage.dart';
@@ -97,6 +98,7 @@ class TalariaFlutter {
             ),
           ),
         );
+        ScreenHeatmapController.instance.noteError();
       }
       final previous = _previousFlutterOnError;
       if (previous != null) {
@@ -119,6 +121,7 @@ class TalariaFlutter {
           ),
         ),
       );
+      ScreenHeatmapController.instance.noteError();
       final previous = _previousPlatformOnError;
       if (previous != null) {
         return previous(error, stack);
@@ -160,6 +163,7 @@ class TalariaFlutter {
             ),
           ),
         );
+        ScreenHeatmapController.instance.noteError();
       } else {
         debugPrint('[Talaria] early zone error: $error\n$stack');
       }
@@ -174,6 +178,7 @@ class TalariaFlutter {
   /// Short INTERNAL screen span + breadcrumb for IndexedStack / tab hosts.
   static void setScreen(String name, {TalariaClient? client}) {
     ScreenSpanController.instance.start(name, client: client);
+    ScreenHeatmapController.instance.setManualScreen(name);
   }
 
   /// Whether [details] will also be reported by [ErrorWidget.builder].
