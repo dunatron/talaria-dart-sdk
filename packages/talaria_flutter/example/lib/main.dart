@@ -8,7 +8,7 @@ Future<void> main() async {
     TalariaOptions(
       dsn: const String.fromEnvironment(
         'TALARIA_DSN',
-        defaultValue: 'https://api.newtalaria.com',
+        defaultValue: 'https://ingest.newtalaria.com',
       ),
       apiKey: const String.fromEnvironment(
         'TALARIA_API_KEY',

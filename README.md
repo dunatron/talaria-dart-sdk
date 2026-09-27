@@ -18,7 +18,7 @@ Pick one package for your surface. Flutter and Serverpod re-export the core API,
 - **Flutter app** — `talaria_flutter` (includes the core SDK)
 - **Serverpod 4 server** — `talaria` + `talaria_serverpod`
 
-Turn tracing on in the project (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0`. Existing error-only apps keep sending events only. There is no Performance add-on SKU — sampled root transactions are included on the plan.
+Tracing follows the project policy from `POST /sdk/getConfig`. Until that document is cached, the SDK sends errors only. There is no Performance add-on SKU — sampled root transactions are included on the plan.
 
 ## Develop
 

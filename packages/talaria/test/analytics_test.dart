@@ -17,16 +17,23 @@ void main() {
     String platform = 'dart',
     TalariaStorage? storage,
   }) {
-    return TalariaOptions(
+    final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
       environment: 'development',
-      enableAnalytics: enableAnalytics,
       platform: platform,
       storage: storage,
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
+    if (enableAnalytics) {
+      created.applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      });
+    }
+    return created;
   }
 
   test('analytics is off until enableAnalytics or optIn', () async {
@@ -182,17 +189,21 @@ void main() {
 
   test('stamps live traceId and spanId', () async {
     final transport = FakeTransport();
+    final options = TalariaOptions(
+      dsn: 'https://api.example.com',
+      apiKey: 'tal_live_test_key_for_unit_tests',
+      environment: 'development',
+      platform: 'flutter',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      });
     final client = TalariaClient(
-      TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
-        enableAnalytics: true,
-        platform: 'flutter',
-        tracesSampleRate: 1.0,
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      ),
+      options,
       transport: transport,
     );
 
@@ -209,15 +220,19 @@ void main() {
 
   test('events and spans include anonymousId', () async {
     final transport = FakeTransport();
+    final options = TalariaOptions(
+      dsn: 'https://api.example.com',
+      apiKey: 'tal_live_test_key_for_unit_tests',
+      environment: 'development',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      });
     final client = TalariaClient(
-      TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
-        tracesSampleRate: 1.0,
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      ),
+      options,
       transport: transport,
     );
 

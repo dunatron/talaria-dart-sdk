@@ -33,9 +33,6 @@ class TalariaOptions {
     List<Pattern>? ignoreErrors,
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
-    this.enableTracing = false,
-    double? tracesSampleRate,
-    this.enableAnalytics = false,
     this.storage,
   })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
         environment = Environment.fromMixed(environment),
@@ -48,7 +45,9 @@ class TalariaOptions {
         loggers = Map.unmodifiable(loggers ?? const {}),
         ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
         ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
-        tracesSampleRate = tracesSampleRate?.clamp(0.0, 1.0) {
+        enableTracing = false,
+        tracesSampleRate = null,
+        enableAnalytics = false {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw ArgumentError('Talaria init requires apiKey.');
@@ -63,7 +62,7 @@ class TalariaOptions {
   final Environment environment;
   final String? release;
   final String? commitSha;
-  final double sampleRate;
+  double sampleRate;
   final int maxBatchSize;
   final int flushIntervalMs;
   final bool defaultIntegrations;
@@ -80,15 +79,14 @@ class TalariaOptions {
   /// Wire `platform` field (`dart` or `flutter`).
   final String platform;
 
-  /// When true, tracing is on at [effectiveTracesSampleRate] (default 10%).
-  final bool enableTracing;
+  /// Set from the project policy document. Init does not take this flag.
+  bool enableTracing;
 
-  /// Head-sample rate for **successful** transactions. `null` means 0.10 once
-  /// tracing is enabled. Setting a value `> 0` also turns tracing on.
-  final double? tracesSampleRate;
+  /// Head-sample rate for successful transactions once [enableTracing] is on.
+  double? tracesSampleRate;
 
-  /// Product analytics consent. Off until true or [TalariaAnalytics.optIn].
-  final bool enableAnalytics;
+  /// Set from the project policy document. Browser consent is [TalariaAnalytics.optIn].
+  bool enableAnalytics;
 
   /// Durable anonymous/session storage. Default is in-memory.
   final TalariaStorage? storage;
@@ -99,6 +97,34 @@ class TalariaOptions {
 
   /// Success-path sample rate once tracing is on. Errors are always 100%.
   double get effectiveTracesSampleRate => tracesSampleRate ?? 0.10;
+
+  void applySdkDocument(Map<String, Object?> document) {
+    if (document['schemaVersion'] != null && document['schemaVersion'] != 1) {
+      return;
+    }
+    if (document['unchanged'] == true) return;
+    if (document['active'] == false) {
+      enableTracing = false;
+      tracesSampleRate = 0;
+      enableAnalytics = false;
+      sampleRate = 0;
+      return;
+    }
+    final events = document['events'];
+    if (events is Map && events['sampleRate'] is num) {
+      sampleRate = (events['sampleRate'] as num).toDouble().clamp(0.0, 1.0);
+    }
+    final tracing = document['tracing'];
+    if (tracing is Map) {
+      enableTracing = tracing['enabled'] == true;
+      final rate = tracing['tracesSampleRate'];
+      tracesSampleRate = enableTracing && rate is num ? rate.toDouble() : 0;
+    }
+    final analytics = document['analytics'];
+    if (analytics is Map) {
+      enableAnalytics = analytics['enabled'] == true;
+    }
+  }
 
   bool shouldSample([Random? random]) {
     if (sampleRate >= 1.0) {
@@ -133,12 +159,9 @@ class TalariaOptions {
     List<Pattern>? ignoreErrors,
     List<Pattern>? ignoreUrls,
     String? platform,
-    bool? enableTracing,
-    double? tracesSampleRate,
-    bool? enableAnalytics,
     TalariaStorage? storage,
   }) {
-    return TalariaOptions(
+    final created = TalariaOptions(
       dsn: dsn,
       baseUrl: baseUrl ?? this.baseUrl,
       apiKey: apiKey ?? this.apiKey,
@@ -159,11 +182,13 @@ class TalariaOptions {
       ignoreErrors: ignoreErrors ?? this.ignoreErrors,
       ignoreUrls: ignoreUrls ?? this.ignoreUrls,
       platform: platform ?? this.platform,
-      enableTracing: enableTracing ?? this.enableTracing,
-      tracesSampleRate: tracesSampleRate ?? this.tracesSampleRate,
-      enableAnalytics: enableAnalytics ?? this.enableAnalytics,
       storage: storage ?? this.storage,
     );
+    created.enableTracing = enableTracing;
+    created.tracesSampleRate = tracesSampleRate;
+    created.enableAnalytics = enableAnalytics;
+    created.sampleRate = sampleRate ?? this.sampleRate;
+    return created;
   }
 
   static String _resolveBaseUrl({String? dsn, String? baseUrl}) {

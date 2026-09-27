@@ -62,6 +62,26 @@ class IngestError {
     return false;
   }
 
+  bool get isGlobalCredentialFailure {
+    final name = className ?? '';
+    return name.contains('ApiUnauthorizedException') ||
+        name.contains('ApiDisallowedDomainException') ||
+        name.contains('ApiNotFoundException');
+  }
+
+  /// Tracing, analytics, or replay disabled on the project. Not a dead key.
+  String? get disabledSignal {
+    if (!isPermanent || isGlobalCredentialFailure || isScopeOnly) return null;
+    final text = (message ?? '').toLowerCase();
+    if (text.contains('tracing is disabled') ||
+        text.contains('performance is disabled')) {
+      return 'spans';
+    }
+    if (text.contains('analytics is disabled')) return 'analytics';
+    if (text.contains('session replay is disabled')) return 'replay';
+    return null;
+  }
+
   /// Missing a single scope — disable that signal only, not the whole client.
   bool get isScopeOnly {
     final msg = (message ?? '').toLowerCase();

@@ -26,7 +26,7 @@ Create a client key under **Project settings → Client keys** (`tal_live_…`).
 import 'package:talaria/talaria.dart';
 
 await Talaria.init(TalariaOptions(
-  dsn: 'https://api.newtalaria.com',
+  dsn: 'https://ingest.newtalaria.com',
   apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
   environment: 'production', // staging | development also accepted
   release: '1.4.2',
@@ -126,7 +126,7 @@ Gates run in order. Filtered calls are quiet no-ops.
 
 ```dart
 await Talaria.init(TalariaOptions(
-  dsn: 'https://api.newtalaria.com',
+  dsn: 'https://ingest.newtalaria.com',
   apiKey: 'tal_live_…',
   environment: 'production',
   minLevel: SeverityLevel.warning,
@@ -174,15 +174,14 @@ Talaria.addBreadcrumb(Breadcrumb(
 
 ## Tracing (APM)
 
-Turn tracing on in the project first (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0` in the SDK. Successful transactions default to a 10% sample; **error** transactions are always sent. Child spans are stored, not billed — only sampled root transactions count toward the plan quota. There is no separate Performance add-on.
+Tracing and analytics follow the project policy from `POST /sdk/getConfig`. Successful transactions use the project's sample rate; **error** transactions are always sent. Child spans are stored, not billed — only sampled root transactions count toward the plan quota. There is no separate Performance add-on.
 
 ```dart
 await Talaria.init(TalariaOptions(
-  dsn: 'https://api.newtalaria.com',
+  dsn: 'https://ingest.newtalaria.com',
   apiKey: 'tal_live_…',
   environment: 'production',
-  enableTracing: true, // 10% of successful transactions
-  // tracesSampleRate: 0.25, // also enables tracing
+  // tracing and analytics come from the project policy document
 ));
 
 final txn = Talaria.startTransaction('checkout');
@@ -236,7 +235,7 @@ Consent is **off** until `enableAnalytics: true` or `Talaria.analytics.optIn()`.
 
 ```dart
 await Talaria.init(TalariaOptions(
-  dsn: 'https://api.newtalaria.com',
+  dsn: 'https://ingest.newtalaria.com',
   apiKey: 'tal_live_…',
   environment: 'production',
   enableAnalytics: true,

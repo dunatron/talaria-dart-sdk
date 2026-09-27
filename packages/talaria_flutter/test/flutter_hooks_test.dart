@@ -22,7 +22,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -60,8 +64,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-        tracesSampleRate: 1.0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -102,8 +109,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-        tracesSampleRate: 1.0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -132,8 +142,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-        tracesSampleRate: 1.0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -162,7 +175,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -222,7 +239,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -246,7 +267,11 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -275,9 +300,12 @@ void main() {
         environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-        enableAnalytics: true,
         storage: MemoryTalariaStorage(),
-      ),
+      )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      }),
       transport: transport,
       observeLifecycle: false,
     );

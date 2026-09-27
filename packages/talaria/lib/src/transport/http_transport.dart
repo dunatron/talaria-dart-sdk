@@ -95,11 +95,31 @@ class HttpTransport implements Transport {
     );
   }
 
-  Future<void> _postJson({
+  Future<Map<String, Object?>> fetchSdkConfig({String? revision}) async {
+    final response = await _postJson(
+      path: '/sdk/getConfig',
+      payload: {
+        'input': {
+          '__className__': 'GetSdkConfigInput',
+          'schemaVersion': 1,
+          'sdkName': 'talaria-dart',
+          'platform': 'dart',
+          if (revision != null) 'revision': revision,
+        },
+      },
+      client: _http,
+      label: 'sdk/getConfig',
+      timeout: const Duration(milliseconds: 200),
+    );
+    return response;
+  }
+
+  Future<Map<String, Object?>> _postJson({
     required String path,
     required Map<String, Object?> payload,
     required http.Client client,
     required String label,
+    Duration? timeout,
   }) async {
     final uri = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}$path');
 
@@ -114,7 +134,7 @@ class HttpTransport implements Transport {
             },
             body: jsonEncode(payload),
           )
-          .timeout(timeout);
+          .timeout(timeout ?? this.timeout);
     } catch (e) {
       throw TransportException(
         'Talaria $label failed: $e',
@@ -124,7 +144,13 @@ class HttpTransport implements Transport {
 
     final status = response.statusCode;
     if (status >= 200 && status < 300) {
-      return;
+      if (response.body.isEmpty) return const {};
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, Object?>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+      return const {};
     }
 
     final parsed = IngestError.parse(response.body);

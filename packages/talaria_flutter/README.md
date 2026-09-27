@@ -30,7 +30,7 @@ Future<void> main() async {
   await TalariaFlutter.init(TalariaOptions(
     dsn: const String.fromEnvironment(
       'TALARIA_DSN',
-      defaultValue: 'https://api.newtalaria.com',
+      defaultValue: 'https://ingest.newtalaria.com',
     ),
     apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
     environment: const String.fromEnvironment(
@@ -39,7 +39,7 @@ Future<void> main() async {
     ),
     release: const String.fromEnvironment('APP_RELEASE'),
     minLevel: SeverityLevel.warning,
-    enableTracing: true,
+    // tracing follows the project policy document
     enableAnalytics: true,
   ));
 
@@ -57,11 +57,11 @@ Or wrap init and `runApp` in a zone so async errors outside the framework are ca
 Future<void> main() async {
   await TalariaFlutter.runZonedApp(
     TalariaOptions(
-      dsn: 'https://api.newtalaria.com',
+      dsn: 'https://ingest.newtalaria.com',
       apiKey: 'tal_live_…',
       environment: 'production',
       minLevel: SeverityLevel.warning,
-      enableTracing: true,
+      // tracing follows the project policy document
     ),
     const MyApp(),
   );
@@ -118,7 +118,7 @@ See the [`talaria`](https://pub.dev/packages/talaria) README for logger levels, 
 
 ## Tracing
 
-Turn tracing on in the project (`tracingEnabled`), then pass `enableTracing: true` (or `tracesSampleRate > 0`) in `TalariaOptions`. Successful transactions default to 10%; error transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
+Tracing follows the project policy from `POST /sdk/getConfig`. Successful transactions use the project's sample rate; error transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
 
 Wrap **application** HTTP with `Talaria.wrapHttpClient`. Do not wrap Talaria’s ingest client.
 

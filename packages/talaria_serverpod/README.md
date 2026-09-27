@@ -9,7 +9,7 @@ This package re-exports the core API. Add both `talaria` and `talaria_serverpod`
 
 **Docs:** [Serverpod guide](https://www.newtalaria.com/docs/sdk/serverpod) · [Dart core](https://www.newtalaria.com/docs/sdk/dart) · [Flutter](https://pub.dev/packages/talaria_flutter)
 
-Turn tracing on in the project (`tracingEnabled`), then set `enableTracing: true` or `tracesSampleRate > 0`. Sampled root transactions are included on the plan — there is no Performance add-on.
+Tracing follows the project policy from `POST /sdk/getConfig`. Sampled root transactions are included on the plan — there is no Performance add-on.
 
 ## Install
 
@@ -46,12 +46,12 @@ void run(List<String> args) async {
   );
 
   await TalariaServerpod.init(TalariaOptions(
-    dsn: 'https://api.newtalaria.com',
+    dsn: 'https://ingest.newtalaria.com',
     apiKey: 'tal_live_…',
     environment: 'production',
     release: '1.2.3',
     minLevel: SeverityLevel.warning,
-    enableTracing: true,
+    // tracing follows the project policy document
     tags: {'service': 'my_api'},
   ));
 

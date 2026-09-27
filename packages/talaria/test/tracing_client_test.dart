@@ -16,15 +16,24 @@ void main() {
     bool enableTracing = false,
     double? tracesSampleRate,
   }) {
-    return TalariaOptions(
+    final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
       environment: 'development',
-      enableTracing: enableTracing,
-      tracesSampleRate: tracesSampleRate,
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
+    if (enableTracing || (tracesSampleRate != null && tracesSampleRate > 0)) {
+      created.applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {
+          'enabled': true,
+          'tracesSampleRate': tracesSampleRate ?? 0.1,
+        },
+      });
+    }
+    return created;
   }
 
   test('errors attach breadcrumbs and trace ids', () async {

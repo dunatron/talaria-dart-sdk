@@ -128,6 +128,10 @@ class TalariaClient {
       enrichment: _spanEnrichment,
     );
 
+    if (httpTransport != null) {
+      unawaited(_bootstrapPolicy(httpTransport));
+    }
+
     if (options.flushIntervalMs > 0) {
       _flushTimer = Timer.periodic(
         Duration(milliseconds: options.flushIntervalMs),
@@ -442,6 +446,41 @@ class TalariaClient {
     return tracer.currentSpan;
   }
 
+  static final Map<String, ({int fetchedAt, Map<String, Object?> document})>
+      _policyCache = {};
+
+  Future<void> _bootstrapPolicy(HttpTransport transport) async {
+    final key = _options.apiKey.hashCode.toRadixString(16);
+    final cached = _policyCache[key];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (cached != null) {
+      _options.applySdkDocument(cached.document);
+      if (_options.enableAnalytics) analytics.optIn();
+      final ttlMs = (((cached.document['ttlSeconds'] as num?)?.toInt() ?? 300)
+              .clamp(60, 3600)) *
+          1000;
+      if (now - cached.fetchedAt < ttlMs) return;
+    }
+    try {
+      final document = await transport.fetchSdkConfig(
+        revision: cached?.document['revision'] as String?,
+      );
+      if (document['unchanged'] == true && cached != null) {
+        _policyCache[key] = (fetchedAt: now, document: cached.document);
+        return;
+      }
+      _options.applySdkDocument(document);
+      if (_options.enableAnalytics) {
+        analytics.optIn();
+      } else {
+        analytics.optOut();
+      }
+      _policyCache[key] = (fetchedAt: now, document: document);
+    } catch (_) {
+      // Errors keep flowing until a later refresh.
+    }
+  }
+
   void _handleTransportError(TransportException error, IngestSignal signal) {
     final parsed = IngestError(
       className: error.className,
@@ -449,6 +488,19 @@ class TalariaClient {
       retry: error.retry,
     );
     if (!parsed.isPermanent) {
+      return;
+    }
+    final signalOff = parsed.disabledSignal;
+    if (signalOff == 'spans') {
+      _spansDisabled = true;
+      return;
+    }
+    if (signalOff == 'analytics') {
+      _analyticsDisabled = true;
+      return;
+    }
+    if (signalOff == 'events') {
+      _eventsDisabled = true;
       return;
     }
     if (parsed.isScopeOnly) {

@@ -7,14 +7,19 @@ void main() {
   });
 
   TalariaOptions options() {
-    return TalariaOptions(
+    final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
       environment: 'development',
-      tracesSampleRate: 1.0,
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
+    created.applySdkDocument({
+      'schemaVersion': 1,
+      'active': true,
+      'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+    });
+    return created;
   }
 
   Tracer tracer(List<FinishedSpan> finished) {
