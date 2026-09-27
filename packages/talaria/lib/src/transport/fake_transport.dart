@@ -27,6 +27,18 @@ class FakeTransport implements Transport {
   }
 
   @override
+  Future<Map<String, Object?>> sendScreenHeatmapBatch(
+    List<Map<String, Object?>> screenViews,
+  ) async =>
+      const {};
+
+  @override
+  Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
+
+  @override
+  Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) async {}
+
+  @override
   Future<void> reportDiscards(List<DiscardRow> discards) async {
     discardReports.add(List.unmodifiable(discards));
   }

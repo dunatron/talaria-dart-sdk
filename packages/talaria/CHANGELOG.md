@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Flutter screen heatmaps: `sendScreenHeatmapBatch`, `uploadScreenHeatmapSnapshot`, and `uploadScreenHeatmapRecording`.
+- Apply `heatmaps.enabled` from `sdk/getConfig`. Taps are not analytics events.
+
 ## 0.3.3
 
 - Stamp `device`, `osName`, `osVersion`, and (when known) browser fields on analytics events.

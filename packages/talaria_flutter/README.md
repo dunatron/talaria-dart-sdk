@@ -11,7 +11,7 @@ Flutter bindings for [Talaria](https://www.newtalaria.com). Re-exports [`talaria
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.1.4
+  talaria_flutter: ^0.2.3
 ```
 
 ## Bootstrap
@@ -34,6 +34,21 @@ Future<void> main() async {
 ```
 
 Pass `TalariaNavigatorObserver` on `MaterialApp`. Tracing and analytics follow Project settings.
+
+## Screen heatmaps
+
+Wrap the app once. Taps, scroll depth, and masked snapshots upload when the project has analytics and heatmaps enabled.
+
+```dart
+TalariaScreenCapture(
+  child: MaterialApp(
+    navigatorObservers: [TalariaNavigatorObserver()],
+    home: const HomePage(),
+  ),
+)
+```
+
+`TalariaMask` covers a subtree in the snapshot. `TalariaHeatmapAnchor` gives a control a stable id.
 
 ## License
 

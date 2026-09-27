@@ -13,7 +13,7 @@ Flutter apps should use [`talaria_flutter`](https://www.newtalaria.com/docs/sdk/
 
 ```yaml
 dependencies:
-  talaria: ^0.2.4
+  talaria: ^0.3.4
 ```
 
 ## Initialize

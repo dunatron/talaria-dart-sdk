@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Screen heatmaps via `TalariaScreenCapture`, with `TalariaHeatmapAnchor`, `TalariaMask`, and `TalariaUnmask`.
+- Depends on `talaria` 0.3.4. Capture follows `heatmaps.enabled` and analytics in project settings.
+
 ## 0.2.2
 
 - Stamp OS, device class, and (on web) browser fields onto analytics events.
