@@ -194,7 +194,6 @@ class TalariaClient {
   ZoneIntegration? _zoneIntegration;
   Timer? _flushTimer;
   Timer? _policyTimer;
-  HttpTransport? _policyTransport;
   Transport? _discardTransport;
   final DiscardBuffer _discards = DiscardBuffer();
 
@@ -479,7 +478,6 @@ class TalariaClient {
   static void clearPolicyCache() => _policyCache.clear();
 
   Future<void> _bootstrapPolicy(HttpTransport transport) async {
-    _policyTransport = transport;
     final key = _options.apiKey.hashCode.toRadixString(16);
     final cached = _policyCache[key];
     final now = DateTime.now().millisecondsSinceEpoch;
