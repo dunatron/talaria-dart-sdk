@@ -3,11 +3,9 @@
 [![pub package](https://img.shields.io/pub/v/talaria_flutter.svg)](https://pub.dev/packages/talaria_flutter)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dunatron/talaria-dart-sdk/blob/main/LICENSE)
 
-Flutter bindings for [Talaria](https://www.newtalaria.com) — framework error hooks, zone bootstrap, navigator route tags, and lifecycle state.
+Flutter bindings for [Talaria](https://www.newtalaria.com). Re-exports [`talaria`](https://pub.dev/packages/talaria).
 
-Built on [`talaria`](https://pub.dev/packages/talaria). This package re-exports the core API, so you do not add `talaria` as a direct dependency unless you share a Dart library across targets.
-
-**Docs:** [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter) · [Dart core](https://www.newtalaria.com/docs/sdk/dart) · [Serverpod](https://pub.dev/packages/talaria_serverpod)
+**Docs:** [Flutter guide](https://www.newtalaria.com/docs/sdk/flutter) · [Project configuration](https://www.newtalaria.com/docs/configuration)
 
 ## Install
 
@@ -18,125 +16,24 @@ dependencies:
 
 ## Bootstrap
 
-`TalariaFlutter.init` installs framework hooks and tracks `app.state`. Add `TalariaNavigatorObserver` so events carry `route` / `screen`.
-
 ```dart
 import 'package:flutter/material.dart';
 import 'package:talaria_flutter/talaria_flutter.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await TalariaFlutter.init(TalariaOptions(
-    dsn: const String.fromEnvironment(
-      'TALARIA_DSN',
-      defaultValue: 'https://ingest.newtalaria.com',
-    ),
-    apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
-    environment: const String.fromEnvironment(
-      'APP_ENV',
-      defaultValue: 'development',
-    ),
-    release: const String.fromEnvironment('APP_RELEASE'),
-    minLevel: SeverityLevel.warning,
-    // tracing follows the project policy document
-    enableAnalytics: true,
-  ));
-
-  ErrorWidget.builder = talariaErrorWidgetBuilder();
-
-  runApp(MyApp(
-    navigatorObservers: [TalariaNavigatorObserver()],
-  ));
-}
-```
-
-Or wrap init and `runApp` in a zone so async errors outside the framework are captured too:
-
-```dart
-Future<void> main() async {
   await TalariaFlutter.runZonedApp(
     TalariaOptions(
       dsn: 'https://ingest.newtalaria.com',
-      apiKey: 'tal_live_…',
+      apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
       environment: 'production',
       minLevel: SeverityLevel.warning,
-      // tracing follows the project policy document
     ),
     const MyApp(),
   );
 }
 ```
 
-`runZonedApp` installs `ErrorWidget.builder` for you. Pass `TalariaNavigatorObserver` on your `MaterialApp` / `CupertinoApp` either way.
-
-Never hardcode keys. Map flavors and `--dart-define` into `environment` and `release`.
-
-## What you get
-
-| Integration | Behavior |
-| --- | --- |
-| `FlutterError.onError` | Framework errors → `captureException` |
-| `PlatformDispatcher.onError` | Platform / async errors |
-| Zone (via `runZonedApp`) | Uncaught zone errors |
-| `TalariaNavigatorObserver` | `route` / `screen` tags, a short page-load transaction (finishes on idle), and `$screen` when analytics is on (`$pageview` on Flutter web) |
-| `TalariaFlutter.setScreen` | Same short span for IndexedStack / tab destinations |
-| Lifecycle observer | `app.state` tag |
-| `talariaErrorWidgetBuilder` | Build failures (one event; installed by `runZonedApp`) |
-| Runtime extras | locale, OS, and on web the renderer / user agent |
-
-Events are tagged with `platform: flutter`.
-
-## Navigation and screen spans
-
-`TalariaNavigatorObserver` starts an **INTERNAL** transaction named after the route and finishes it on the next idle frame (10s cap). That keeps a shell route from parenting every later HTTP call.
-
-For `IndexedStack`, `TabBar`, or other hosts that do not push routes:
-
-```dart
-TalariaFlutter.setScreen('/lab');
-```
-
-## Capture
-
-The core facade is re-exported. Prefer a scoped logger and `captureException` with a stack:
-
-```dart
-try {
-  await riskyOperation();
-} catch (error, stackTrace) {
-  await Talaria.captureException(
-    error,
-    stackTrace: stackTrace,
-    context: CaptureContext(tags: {'screen': 'checkout'}),
-  );
-  rethrow;
-}
-```
-
-See the [`talaria`](https://pub.dev/packages/talaria) README for logger levels, tags vs extra, `beforeSend`, breadcrumbs, and processors.
-
-## Tracing
-
-Tracing follows the project policy from `POST /sdk/getConfig`. Successful transactions use the project's sample rate; error transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
-
-Wrap **application** HTTP with `Talaria.wrapHttpClient`. Do not wrap Talaria’s ingest client.
-
-```dart
-final httpClient = Talaria.wrapHttpClient(http.Client());
-```
-
-There is no `talaria_dio` package. Intercept Dio via a wrapped `http.Client` or `Talaria.startSpan` / `getTraceparent()`.
-
-When this app talks to a Serverpod API that also runs Talaria, outbound `traceparent` continues the Flutter screen or HTTP span on the server. See [`talaria_serverpod`](https://pub.dev/packages/talaria_serverpod) and [W3C trace context](https://www.newtalaria.com/learn/w3c-trace-context).
-
-Session replay and Web Vitals are browser-SDK features. This package does not record them.
-
-## Shutdown
-
-```dart
-await TalariaFlutter.close();
-```
+Pass `TalariaNavigatorObserver` on `MaterialApp`. Tracing and analytics follow Project settings.
 
 ## License
 

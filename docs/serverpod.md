@@ -4,7 +4,7 @@ Set up Talaria on **Serverpod 4** with `talaria` + `talaria_serverpod`. The core
 
 Public docs: [Serverpod SDK](https://www.newtalaria.com/docs/sdk/serverpod).
 
-Tracing follows the project policy from `POST /sdk/getConfig`. Successful transactions use the project's sample rate; **error** transactions are always sent. Sampled roots are included on the plan — there is no Performance add-on.
+Tracing and analytics follow [project configuration](https://www.newtalaria.com/docs/configuration). Successful transactions use the project's sample rate. Error transactions are always sent.
 
 ## Install
 

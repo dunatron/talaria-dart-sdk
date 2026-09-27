@@ -9,7 +9,7 @@ This package re-exports the core API. Add both `talaria` and `talaria_serverpod`
 
 **Docs:** [Serverpod guide](https://www.newtalaria.com/docs/sdk/serverpod) · [Dart core](https://www.newtalaria.com/docs/sdk/dart) · [Flutter](https://pub.dev/packages/talaria_flutter)
 
-Tracing follows the project policy from `POST /sdk/getConfig`. Sampled root transactions are included on the plan — there is no Performance add-on.
+Tracing and analytics follow [project configuration](https://www.newtalaria.com/docs/configuration).
 
 ## Install
 
@@ -107,14 +107,6 @@ See the [`talaria`](https://pub.dev/packages/talaria) README for logger levels, 
 ## Dashboard
 
 Spans use the same wire as the other official SDKs. The customer **Performance** UI (waterfall, dependencies, slow queries, RED) shows them.
-
-## What this package does not do
-
-- Host / Kubernetes metrics, `pg_stat_statements`, or EXPLAIN
-- Bind values on SQL
-- Continuous profiling
-- Session replay (browser SDK)
-- OTLP export — use the Collector path in the [API overview](https://www.newtalaria.com/docs/api) if you already operate one
 
 ## License
 
