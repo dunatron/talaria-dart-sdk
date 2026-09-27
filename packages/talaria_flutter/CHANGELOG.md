@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Upload one snapshot per screen view, and skip the upload if the screen changes while the image is captured.
+- Capture filmstrip frames only when a recording will be sent.
+
 ## 0.2.3
 
 - Screen heatmaps via `TalariaScreenCapture`, with `TalariaHeatmapAnchor`, `TalariaMask`, and `TalariaUnmask`.

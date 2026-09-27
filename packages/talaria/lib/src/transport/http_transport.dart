@@ -139,6 +139,7 @@ class HttpTransport implements Transport {
       },
       client: _http,
       label: 'screenHeatmaps/uploadSnapshot',
+      timeout: const Duration(seconds: 20),
     );
   }
 
@@ -149,6 +150,7 @@ class HttpTransport implements Transport {
       payload: {'input': _encodeRecording(input)},
       client: _http,
       label: 'screenHeatmaps/uploadRecording',
+      timeout: const Duration(seconds: 20),
     );
   }
 

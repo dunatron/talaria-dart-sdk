@@ -14,7 +14,8 @@ import 'session.dart';
 
 /// Names a control the way `data-talaria-heatmap` names a DOM node.
 class TalariaHeatmapAnchor extends StatelessWidget {
-  const TalariaHeatmapAnchor({super.key, required this.id, required this.child});
+  const TalariaHeatmapAnchor(
+      {super.key, required this.id, required this.child});
 
   final String id;
   final Widget child;
@@ -61,6 +62,10 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   final _session = ScreenHeatmapSession();
   Timer? _flush;
   Timer? _frames;
+  var _flushing = false;
+  var _capturing = false;
+  final _snapshotSent = <String>{};
+  final _recordingSent = <String>{};
   Offset? _down;
   String? _routePath;
   String? _observedRoute;
@@ -271,7 +276,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         : (notification.metrics.pixels / notification.metrics.viewportDimension)
             .floor();
     if (bucket > 0) {
-      unawaited(_captureTile(bucket * notification.metrics.viewportDimension.round()));
+      unawaited(_captureTile(
+          bucket * notification.metrics.viewportDimension.round()));
     }
     return false;
   }
@@ -280,11 +286,14 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final root = _boundaryKey.currentContext as Element?;
     if (root == null) return null;
     ({HeatmapElementNode node, Rect rect})? found;
-    void visit(Element element, HeatmapElementNode? parent, {required bool unmasked}) {
+    void visit(Element element, HeatmapElementNode? parent,
+        {required bool unmasked}) {
       final widget = element.widget;
       final nextUnmasked = unmasked || widget is TalariaUnmask;
       HeatmapElementNode? node = parent;
-      if (widget is TalariaHeatmapAnchor || widget is Semantics || widget is TalariaMask) {
+      if (widget is TalariaHeatmapAnchor ||
+          widget is Semantics ||
+          widget is TalariaMask) {
         final box = element.renderObject;
         if (box is RenderBox && box.hasSize && box.attached) {
           final topLeft = box.localToGlobal(Offset.zero);
@@ -327,7 +336,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
           }
         }
       }
-      element.visitChildren((child) => visit(child, node, unmasked: nextUnmasked));
+      element
+          .visitChildren((child) => visit(child, node, unmasked: nextUnmasked));
     }
 
     visit(root, null, unmasked: false);
@@ -346,8 +356,23 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   }
 
   Future<void> _flushSession({required bool uploadVisuals}) async {
-    final client = ScreenHeatmapController.instance.client ?? Talaria.getClient();
+    if (_flushing) return;
+    final client =
+        ScreenHeatmapController.instance.client ?? Talaria.getClient();
     if (client == null || !_session.isOpen) return;
+    _flushing = true;
+    try {
+      await _flushOpenSession(client, uploadVisuals: uploadVisuals);
+    } catch (_) {
+    } finally {
+      _flushing = false;
+    }
+  }
+
+  Future<void> _flushOpenSession(
+    TalariaClient client, {
+    required bool uploadVisuals,
+  }) async {
     _session.classifier.tick(DateTime.now().millisecondsSinceEpoch);
     final view = _session.toView(
       anonymousId: client.anonymousId,
@@ -372,21 +397,28 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       final requests = response['snapshotRequests'];
       final id = _session.screenViewId;
       final requested = id != null && requests is List && requests.contains(id);
-      if (requested) {
+      if (requested && !_snapshotSent.contains(id)) {
         final shot = await _capturePng(mask: true);
-        if (shot != null) {
+        if (shot != null && _session.screenViewId == id) {
           final input = _session.snapshotInput(
             png: shot,
             manifestJson: _manifestJson(),
             nowMs: DateTime.now().millisecondsSinceEpoch,
           );
-          if (input != null) await client.uploadScreenHeatmapSnapshot(input);
+          if (input != null) {
+            await client.uploadScreenHeatmapSnapshot(input);
+            _snapshotSent.add(id);
+          }
         }
       }
       if (uploadVisuals || _session.wantsRecording) {
-        final recording = _session.recordingInput();
-        if (recording != null) {
-          await client.uploadScreenHeatmapRecording(recording);
+        final recordingId = _session.recordingId;
+        if (recordingId != null && !_recordingSent.contains(recordingId)) {
+          final recording = _session.recordingInput();
+          if (recording != null) {
+            await client.uploadScreenHeatmapRecording(recording);
+            _recordingSent.add(recordingId);
+          }
         }
       }
     } catch (_) {}
@@ -437,7 +469,9 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     var hash = 0;
     void visit(Element element) {
       final widget = element.widget;
-      if (widget is Semantics || widget is TalariaHeatmapAnchor || widget is TalariaMask) {
+      if (widget is Semantics ||
+          widget is TalariaHeatmapAnchor ||
+          widget is TalariaMask) {
         final box = element.renderObject;
         if (box is RenderBox && box.hasSize && box.attached) {
           final rect = box.localToGlobal(Offset.zero) & box.size;
@@ -463,7 +497,9 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   String _manifestJson() {
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     final root = _boundaryKey.currentContext as Element?;
-    if (boundary is! RenderBox || !boundary.hasSize || root == null) return '[]';
+    if (boundary is! RenderBox || !boundary.hasSize || root == null) {
+      return '[]';
+    }
     final origin = boundary.localToGlobal(Offset.zero);
     final metrics = _session.scroll.state;
     final items = <String>[];
@@ -471,7 +507,9 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       if (items.length >= 200) return;
       final widget = element.widget;
       HeatmapElementNode? node = parent;
-      if (widget is TalariaHeatmapAnchor || widget is Semantics || widget is TalariaMask) {
+      if (widget is TalariaHeatmapAnchor ||
+          widget is Semantics ||
+          widget is TalariaMask) {
         final box = element.renderObject;
         if (box is RenderBox && box.hasSize && box.attached) {
           final role = widget is TalariaMask ? 'node' : _elementRole(element);
@@ -495,8 +533,10 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
           final hBp = toBasisPoints(box.size.height, boundary.size.height);
           final offset = metrics?.offsetPx ?? 0;
           final horizontal = metrics?.axis == ScreenScrollAxis.horizontal;
-          final contentX = horizontal ? offset + local.dx.round() : local.dx.round();
-          final contentY = horizontal ? local.dy.round() : offset + local.dy.round();
+          final contentX =
+              horizontal ? offset + local.dx.round() : local.dx.round();
+          final contentY =
+              horizontal ? local.dy.round() : offset + local.dy.round();
           items.add(
             '{"path":${jsonEncode(path)},"role":${jsonEncode(role)},'
             '"xBp":$xBp,"yBp":$yBp,"wBp":$wBp,"hBp":$hBp,'
@@ -514,6 +554,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 
   Future<void> _captureFrame() async {
     if (_background || !ScreenHeatmapController.instance.captureEnabled) return;
+    if (!_session.recordFilmstrip && !_session.wantsRecording) return;
     final png = await _capturePng(mask: true);
     if (png == null) return;
     _session.addFrame(
@@ -529,15 +570,20 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   }
 
   Future<List<int>?> _capturePng({required bool mask}) async {
-    if (_background) return null;
+    if (_background || _capturing) return null;
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     if (boundary is! RenderRepaintBoundary || !boundary.hasSize) return null;
     final longEdge = math.max(boundary.size.width, boundary.size.height);
     final ratio = longEdge <= 0 ? 0.5 : math.min(0.5, 800 / longEdge);
+    _capturing = true;
     try {
       final image = await boundary.toImage(pixelRatio: ratio);
-      final masks = mask ? _maskRegions(boundary, ratio) : (covers: const <Rect>[], holes: const <Rect>[]);
-      final painted = masks.covers.isEmpty ? image : await _cover(image, masks.covers, masks.holes);
+      final masks = mask
+          ? _maskRegions(boundary, ratio)
+          : (covers: const <Rect>[], holes: const <Rect>[]);
+      final painted = masks.covers.isEmpty
+          ? image
+          : await _cover(image, masks.covers, masks.holes);
       final data = await painted.toByteData(format: ui.ImageByteFormat.png);
       painted.dispose();
       if (!identical(painted, image)) image.dispose();
@@ -547,10 +593,13 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       return bytes;
     } catch (_) {
       return null;
+    } finally {
+      _capturing = false;
     }
   }
 
-  ({List<Rect> covers, List<Rect> holes}) _maskRegions(RenderBox boundary, double ratio) {
+  ({List<Rect> covers, List<Rect> holes}) _maskRegions(
+      RenderBox boundary, double ratio) {
     final root = _boundaryKey.currentContext as Element?;
     if (root == null) return (covers: const <Rect>[], holes: const <Rect>[]);
     final origin = boundary.localToGlobal(Offset.zero);
@@ -567,7 +616,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
               widget is Image);
       final box = element.renderObject;
       if (box is RenderBox && box.hasSize && box.attached) {
-        final rect = _scale(box.localToGlobal(Offset.zero) - origin & box.size, ratio);
+        final rect =
+            _scale(box.localToGlobal(Offset.zero) - origin & box.size, ratio);
         if (widget is TalariaUnmask && force) holes.add(rect);
         if (inMask || coverDefault) covers.add(rect);
       }
@@ -587,7 +637,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         rect.bottom * ratio,
       );
 
-  Future<ui.Image> _cover(ui.Image image, List<Rect> rects, List<Rect> holes) async {
+  Future<ui.Image> _cover(
+      ui.Image image, List<Rect> rects, List<Rect> holes) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawImage(image, Offset.zero, Paint());

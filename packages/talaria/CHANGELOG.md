@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5
+
+- Screen heatmap snapshot and recording uploads wait up to 20 seconds. The default ingest timeout was cutting off the PNG before the API stored it.
+
 ## 0.3.4
 
 - Flutter screen heatmaps: `sendScreenHeatmapBatch`, `uploadScreenHeatmapSnapshot`, and `uploadScreenHeatmapRecording`.

@@ -11,7 +11,7 @@ Flutter bindings for [Talaria](https://www.newtalaria.com). Re-exports [`talaria
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.2.3
+  talaria_flutter: ^0.2.4
 ```
 
 ## Bootstrap
