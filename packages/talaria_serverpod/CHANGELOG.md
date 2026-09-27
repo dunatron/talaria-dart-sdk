@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+- Depends on `talaria` 0.3.0. Tracing follows the project policy document.
 
 ## 0.1.3
 

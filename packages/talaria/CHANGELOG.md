@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Tracing and analytics follow `POST /sdk/getConfig`. Until that document is cached, the SDK sends errors only.
+- A disabled signal stops that signal. A rejected key stops the isolate.
+
 ## 0.2.4
 
 - Durable `anonymousId` and session rotation (30 minutes idle or midnight UTC) via a storage port; Flutter persists with SharedPreferences.

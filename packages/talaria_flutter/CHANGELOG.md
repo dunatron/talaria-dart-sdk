@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+
+- Depends on `talaria` 0.3.0. Tracing and analytics follow the project policy document.
+
 ## 0.1.4
 
 - Persist `anonymousId` / session ids with SharedPreferences.
