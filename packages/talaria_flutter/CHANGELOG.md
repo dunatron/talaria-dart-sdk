@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Package docs point at the marketing guides.
+
 ## 0.2.0
 
 - Depends on `talaria` 0.3.0. Tracing and analytics follow the project policy document.

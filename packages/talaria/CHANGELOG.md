@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Package docs point at the marketing guides.
+
 ## 0.3.0
 
 - Tracing and analytics follow `POST /sdk/getConfig`. Until that document is cached, the SDK sends errors only.
