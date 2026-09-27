@@ -27,10 +27,18 @@ class DiagnosticFilter {
     if (type.contains('ApiUnauthorizedException')) {
       return true;
     }
+    if (type.contains('QuotaExceeded')) {
+      return true;
+    }
     if (type.contains('WebSocketConnectionClosed')) {
       return true;
     }
     final combined = '${message ?? ''} ${error.toString()}'.toLowerCase();
+    if (combined.contains('rate limit exceeded') ||
+        combined.contains('spending cap reached') ||
+        combined.contains('project not found')) {
+      return true;
+    }
     if (combined.contains('websocketconnectionclosed')) {
       return true;
     }

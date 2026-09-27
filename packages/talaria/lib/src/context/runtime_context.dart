@@ -259,10 +259,16 @@ class RuntimeContext {
     final h = t.hour.toString().padLeft(2, '0');
     final mi = t.minute.toString().padLeft(2, '0');
     final s = t.second.toString().padLeft(2, '0');
-    final ms = t.millisecond.toString().padLeft(3, '0');
+    final fraction = (t.millisecond * 1000 + t.microsecond)
+        .toString()
+        .padLeft(6, '0');
+    var trimmed = fraction;
+    while (trimmed.length > 3 && trimmed.endsWith('0')) {
+      trimmed = trimmed.substring(0, trimmed.length - 1);
+    }
     return '$y-$mo-$d'
         'T'
-        '$h:$mi:$s.$ms'
+        '$h:$mi:$s.$trimmed'
         'Z';
   }
 

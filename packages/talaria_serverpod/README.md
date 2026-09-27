@@ -74,7 +74,7 @@ On shutdown: `await Talaria.flush(); await Talaria.close();`.
 | Authenticated session | `enduser.id` / `user.id` on the session span |
 | Outbound HTTP | Use `Talaria.wrapHttpClient` (skip ingest URLs) |
 
-Skipped: `events/ingestBatch`, `spans/ingestBatch`, Insights, `/livez`, `/readyz`, `/startupz`.
+Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
 
 ORM spans send a `db.query.text` stand-in (`SELECT Product`) when raw SQL is unavailable. Bind values are never sent. Repeated identical queries are each sent so N+1 stays visible.
 

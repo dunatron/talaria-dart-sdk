@@ -26,6 +26,26 @@ void main() {
     );
     expect(
       TalariaServerpodPaths.isNoisy(
+        Uri.parse('http://localhost:8080/robots.txt'),
+      ),
+      isTrue,
+    );
+    expect(
+      TalariaServerpodPaths.isNoisy(
+        Uri.parse('http://localhost:8080/events/ingest'),
+      ),
+      isTrue,
+    );
+    expect(
+      TalariaServerpodPaths.isNoisy(
+        Uri.parse(
+          'http://localhost:8080/.well-known/oauth-protected-resource',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      TalariaServerpodPaths.isNoisy(
         Uri.parse('http://localhost:8080/project/list'),
       ),
       isFalse,
@@ -60,6 +80,13 @@ void main() {
       TalariaServerpodPaths.shouldSkipSession(
         endpoint: 'events',
         method: 'ingestBatch',
+      ),
+      isTrue,
+    );
+    expect(
+      TalariaServerpodPaths.shouldSkipSession(
+        endpoint: 'events',
+        method: 'ingest',
       ),
       isTrue,
     );

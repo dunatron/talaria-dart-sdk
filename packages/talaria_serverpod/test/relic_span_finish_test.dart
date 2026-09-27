@@ -30,6 +30,17 @@ void main() {
     await client.close();
   });
 
+  test('onThrow keeps client errors off the error rate', () {
+    final span = client.startTransaction('POST /project/get');
+    RelicSpanFinish.onThrow(
+      span,
+      _ApiNotFoundException('Project not found'),
+    );
+    expect(span.getAttribute('http.response.status_code'), '404');
+    expect(span.status, SpanStatus.ok);
+    span.finish();
+  });
+
   test('onThrow sets HTTP 500 and error status', () {
     final span = client.startTransaction('POST /lab/uncaughtThrow');
     RelicSpanFinish.onThrow(span, StateError('boom'));
@@ -53,4 +64,12 @@ void main() {
     expect(span.status, SpanStatus.error);
     span.finish();
   });
+}
+
+class _ApiNotFoundException implements Exception {
+  _ApiNotFoundException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'ApiNotFoundException($message)';
 }

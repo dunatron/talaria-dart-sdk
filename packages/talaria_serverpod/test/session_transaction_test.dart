@@ -27,6 +27,21 @@ void main() {
     );
   }
 
+  test('finish marks an unset span ok', () async {
+    final transport = FakeTransport();
+    final c = client(transport);
+    final span = c.startTransaction(
+      'FutureCall.EvaluateAlerts',
+      kind: SpanKind.consumer,
+    );
+
+    SessionTransaction.finish(span);
+
+    expect(span.status, SpanStatus.ok);
+    expect(span.isRecording, isFalse);
+    await c.close();
+  });
+
   test('FutureCall always starts a CONSUMER root', () async {
     final transport = FakeTransport();
     final c = client(transport);

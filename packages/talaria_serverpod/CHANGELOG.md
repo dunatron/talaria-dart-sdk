@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- Depends on `talaria` 0.3.2.
+- Skip probe and ingest paths (`/robots.txt`, `/favicon.ico`, `/.well-known/`, `ingest` and `ingestBatch`) so they do not become transactions.
+- Client results (not-found, unauthorized, conflict, quota, rate limit) stay HTTP 4xx spans with status ok.
+- Drop quota, rate-limit, and "project not found" diagnostics before they become issues.
+- FutureCall spans that finish cleanly are status ok.
+
 ## 0.2.1
 
 - Package docs point at the marketing guides.

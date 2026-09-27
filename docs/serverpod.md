@@ -68,7 +68,7 @@ On shutdown, `await Talaria.flush(); await Talaria.close();`.
 | Uncaught errors | `DiagnosticEventHandler` → events with `traceId` / `spanId` + breadcrumbs |
 | Outbound HTTP | `Talaria.wrapHttpClient` — never wrap the ingest client |
 
-Skipped: `events/ingestBatch`, `spans/ingestBatch`, Insights, `/livez` `/readyz` `/startupz`.
+Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
 
 ## Outbound HTTP
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Span and event timestamps keep sub-millisecond precision when the clock has it.
+
 ## 0.3.1
 
 - Package docs point at the marketing guides.

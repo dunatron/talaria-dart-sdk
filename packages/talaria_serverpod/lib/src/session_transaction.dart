@@ -60,6 +60,17 @@ class SessionTransaction {
     span.setAttribute('user.id', trimmed);
   }
 
+  /// Closes a session root. Successful work that never set a status becomes ok.
+  static void finish(Span? span) {
+    if (span == null || !span.isRecording) {
+      return;
+    }
+    if (span.status == SpanStatus.unset) {
+      span.setStatus(SpanStatus.ok);
+    }
+    span.finish();
+  }
+
   static bool isGenericDiagnosticMessage(String? message) {
     if (message == null || message.isEmpty) {
       return false;

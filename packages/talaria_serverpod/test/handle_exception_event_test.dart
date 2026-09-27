@@ -94,6 +94,44 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
+  test('handleExceptionEvent drops quota and rate-limit control flow', () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        environment: 'development',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _ApiQuotaExceededException(),
+        StackTrace.current,
+        message: 'Transaction spending cap reached',
+      ),
+    );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        StateError('limited'),
+        StackTrace.current,
+        message: 'Ingest rate limit exceeded (100/min)',
+      ),
+    );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _ApiNotFoundException(),
+        StackTrace.current,
+        message: 'Project not found',
+      ),
+    );
+    await drain();
+    expect(transport.batches, isEmpty);
+  });
+
   test('handleExceptionEvent keeps TypeError', () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
@@ -194,5 +232,9 @@ void main() {
 }
 
 class _ApiUnauthorizedException implements Exception {}
+
+class _ApiQuotaExceededException implements Exception {}
+
+class _ApiNotFoundException implements Exception {}
 
 class _WebSocketConnectionClosed implements Exception {}

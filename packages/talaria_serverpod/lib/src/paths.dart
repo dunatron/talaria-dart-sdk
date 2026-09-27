@@ -9,16 +9,25 @@ class TalariaServerpodPaths {
     '/startupz',
   };
 
+  static const _probes = {
+    '/robots.txt',
+    '/favicon.ico',
+    '/sitemap.xml',
+  };
+
   static bool isNoisy(Uri url) {
     final path = url.path;
-    if (path.contains('ingestBatch')) {
+    if (_isIngest(path)) {
       return true;
     }
     final normalized = _normalize(path);
-    if (_health.contains(normalized)) {
+    if (_health.contains(normalized) || _probes.contains(normalized)) {
       return true;
     }
     if (normalized == '/insights' || normalized.startsWith('/insights/')) {
+      return true;
+    }
+    if (normalized.startsWith('/.well-known/')) {
       return true;
     }
     return false;
@@ -31,11 +40,17 @@ class TalariaServerpodPaths {
     if (endpoint == 'InternalSession' || endpoint == 'insights') {
       return true;
     }
-    if (endpoint.contains('ingestBatch') ||
-        (method?.contains('ingestBatch') ?? false)) {
+    if (_isIngest(endpoint) || _isIngest(method ?? '')) {
       return true;
     }
     return false;
+  }
+
+  /// Batch and single-call ingest (`ingestBatch` and `ingest`).
+  static bool _isIngest(String path) {
+    return path.split(RegExp(r'[/?]')).any((segment) {
+      return segment == 'ingest' || segment == 'ingestBatch';
+    });
   }
 
   static String httpRoute(Uri url) {

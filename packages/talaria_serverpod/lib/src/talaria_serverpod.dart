@@ -81,6 +81,10 @@ class TalariaServerpod {
 
     final sessionId =
         context is OperationEventContext ? context.sessionId?.toString() : null;
+    final bound = sessionId == null ? null : SpanScope.forSession(sessionId);
+    if (bound != null && bound.isRecording) {
+      bound.markError(message: event.exception.toString());
+    }
     final uri = context is ClientCallOpContext ? context.uri.toString() : null;
     final userId = context is OperationEventContext
         ? context.userAuthInfo?.userIdentifier.trim()
@@ -155,8 +159,7 @@ class TalariaServerpod {
       return;
     }
     session.addWillCloseListener((_) {
-      final bound = SpanScope.forSession(sessionId);
-      bound?.finish();
+      SessionTransaction.finish(SpanScope.forSession(sessionId));
       SpanScope.unbindSession(sessionId);
       BreadcrumbScope.unbindSession(sessionId);
     });
