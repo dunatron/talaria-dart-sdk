@@ -15,6 +15,7 @@ class AnalyticsEventNames {
   static const pageview = r'$pageview';
   static const screen = r'$screen';
   static const identify = r'$identify';
+  static const featureFlagCalled = r'$feature_flag_called';
 }
 
 /// In-memory analytics event ready to serialize as `IngestAnalyticsEventInput`.

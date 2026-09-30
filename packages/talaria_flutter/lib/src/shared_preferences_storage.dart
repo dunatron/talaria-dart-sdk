@@ -1,7 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talaria/talaria.dart';
 
-/// [SharedPreferences] adapter for durable `anonymousId` / `sessionId`.
+/// [SharedPreferences] adapter for durable `anonymousId` / `sessionId`
+/// and feature-flag evaluation cache.
 class SharedPreferencesTalariaStorage implements TalariaStorage {
   SharedPreferencesTalariaStorage(this._prefs);
 

@@ -132,4 +132,96 @@ void main() {
 
     expect(finished.length, greaterThanOrEqualTo(2));
   });
+
+  test('interleaved SQL rolls up and later phases are stored', () {
+    final finished = <FinishedSpan>[];
+    final tracer = Tracer(
+      options: options(tracesSampleRate: 1.0),
+      enqueue: finished.add,
+      enrichment: () => SpanEnrichment(environment: Environment.development),
+    );
+    final root = tracer.startTransaction('sync');
+    final import = tracer.startSpan('shopify.import_products');
+    for (final name in ['SELECT File', 'SELECT SiteTree', 'SELECT Shopify_ProductVariant']) {
+      for (var i = 0; i < 12; i++) {
+        final query = tracer.startSpan(
+          name,
+          kind: SpanKind.client,
+          attributes: {'db.query.text': name},
+        );
+        query.setStatus(SpanStatus.ok);
+        query.finish();
+      }
+    }
+    import.finish();
+    tracer.startSpan('shopify.import_collections').finish();
+    tracer.startSpan('shopify.import_collects').finish();
+    root.finish();
+
+    final names = finished.map((span) => span.name).toList();
+    expect(names, contains('shopify.import_collections'));
+    expect(names, contains('shopify.import_collects'));
+    final queries = finished.where((span) => span.name.startsWith('SELECT'));
+    expect(queries, hasLength(3));
+    expect(
+      queries.every((span) => span.attributes['db.query.count'] == '12'),
+      isTrue,
+    );
+    expect(finished.singleWhere((span) => span.isRoot).attributes['dropped_span_count'], isNull);
+  });
+
+  test('the 169th distinct statement is dropped and a phase span is kept', () {
+    final finished = <FinishedSpan>[];
+    final tracer = Tracer(
+      options: options(tracesSampleRate: 1.0),
+      enqueue: finished.add,
+      enrichment: () => SpanEnrichment(environment: Environment.development),
+    );
+    final root = tracer.startTransaction('sync');
+    for (var i = 0; i < Tracer.maxSqlSpans + 1; i++) {
+      final query = tracer.startSpan(
+        'SELECT t$i',
+        kind: SpanKind.client,
+        attributes: {'db.query.text': 'SELECT t$i'},
+      );
+      query.setStatus(SpanStatus.ok);
+      query.finish();
+    }
+    tracer.startSpan('shopify.import_collections').finish();
+    root.finish();
+
+    final names = finished.map((span) => span.name).toSet();
+    expect(names, contains('shopify.import_collections'));
+    expect(names, isNot(contains('SELECT t${Tracer.maxSqlSpans}')));
+    expect(
+      finished.singleWhere((span) => span.isRoot).attributes['dropped_span_count'],
+      '1',
+    );
+  });
+
+  test('withoutQuerySpans restores recording when the body throws', () {
+    final finished = <FinishedSpan>[];
+    final tracer = Tracer(
+      options: options(tracesSampleRate: 1.0),
+      enqueue: finished.add,
+      enrichment: () => SpanEnrichment(environment: Environment.development),
+    );
+    final root = tracer.startTransaction('task');
+    expect(
+      () => tracer.withoutQuerySpans(() {
+        final query = tracer.startSpan(
+          'SELECT File',
+          kind: SpanKind.client,
+          attributes: {'db.query.text': 'SELECT File'},
+        );
+        query.finish();
+        throw StateError('sync failed');
+      }),
+      throwsStateError,
+    );
+    expect(tracer.recordQuerySpans, isTrue);
+    tracer.startSpan('shopify.import_collections').finish();
+    root.finish();
+    expect(finished.map((span) => span.name), ['shopify.import_collections', 'task']);
+  });
 }

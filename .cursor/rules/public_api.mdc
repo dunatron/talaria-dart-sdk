@@ -23,6 +23,7 @@ Talaria.isEnforceDefaultLevel(); Talaria.setEnforceDefaultLevel(bool);
 Talaria.addProcessor(processor);
 Talaria.addBreadcrumb(breadcrumb);
 Talaria.startTransaction / startSpan;
+Talaria.setRecordQuerySpans / withoutQuerySpans;
 Talaria.wrapHttpClient(http.Client);
 Talaria.analytics (track / page / screen / identify / reset / optIn);
 Talaria.setUser; Talaria.anonymousId; Talaria.sessionId;

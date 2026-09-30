@@ -31,6 +31,18 @@ abstract class Transport {
 
   /// Hourly discard telemetry. Default is a no-op.
   Future<void> reportDiscards(List<DiscardRow> discards) async {}
+
+  /// Feature flag evaluate. Default is empty (no flags).
+  Future<Map<String, Object?>> evaluateFlags(
+    Map<String, Object?> input,
+  ) async =>
+      const {};
+
+  /// Download flag definitions for local evaluation (`flags:definitions`).
+  Future<Map<String, Object?>> downloadFlagDefinitions(
+    Map<String, Object?> input,
+  ) async =>
+      const {};
 }
 
 /// Raised when ingest HTTP fails.

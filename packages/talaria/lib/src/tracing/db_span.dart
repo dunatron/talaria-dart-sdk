@@ -56,19 +56,24 @@ class DbSpan {
     try {
       final result = await run();
       span.setStatus(SpanStatus.ok);
-      client.addBreadcrumb(Breadcrumb(
-        type: 'query',
-        category: 'db',
-        message: operation.toUpperCase(),
-        level: 'info',
-        data: {'db.system.name': system},
-      ));
+      _breadcrumb(client, system, operation);
       return result;
     } catch (e) {
       span.setStatus(SpanStatus.error, message: e.toString());
+      _breadcrumb(client, system, operation);
       rethrow;
     } finally {
       span.finish();
     }
+  }
+
+  static void _breadcrumb(TalariaClient client, String system, String operation) {
+    client.addBreadcrumb(Breadcrumb(
+      type: 'query',
+      category: 'db',
+      message: operation.toUpperCase(),
+      level: 'info',
+      data: {'db.system.name': system},
+    ));
   }
 }

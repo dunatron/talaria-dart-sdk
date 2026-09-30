@@ -31,6 +31,7 @@ class TalariaAnalytics {
     required String? Function() requestId,
     void Function(String reason)? onDiscard,
     this.contextProvider,
+    this.propertyEnricher,
   })  : _identity = identity,
         _queue = queue,
         _enabled = enabled,
@@ -63,6 +64,9 @@ class TalariaAnalytics {
 
   /// Optional host page fields (Flutter web location).
   AnalyticsContextProvider? contextProvider;
+
+  /// Extra properties merged into every analytics event (e.g. flag stamps).
+  Map<String, Object?> Function()? propertyEnricher;
 
   bool get isEnabled => _enabled && !_isDisabled() && !_isClosed();
 
@@ -254,6 +258,17 @@ class TalariaAnalytics {
       spanId = span.spanId;
     }
 
+    Map<String, Object?>? mergedProperties = properties;
+    final enricher = propertyEnricher;
+    if (enricher != null) {
+      try {
+        final extra = enricher();
+        if (extra.isNotEmpty) {
+          mergedProperties = {...extra, ...?properties};
+        }
+      } catch (_) {}
+    }
+
     _queue.enqueue(
       AnalyticsEvent(
         eventId: RuntimeContext.newUuid(),
@@ -281,7 +296,7 @@ class TalariaAnalytics {
         utmCampaign: utm?.campaign,
         utmTerm: utm?.term,
         utmContent: utm?.content,
-        propertiesJson: _encodeProperties(properties),
+        propertiesJson: _encodeProperties(mergedProperties),
         locale: RuntimeContext.locale,
         timezone: RuntimeContext.timezone,
         osName: RuntimeContext.osName,

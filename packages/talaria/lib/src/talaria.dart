@@ -5,6 +5,7 @@ import 'capture_context.dart';
 import 'client.dart';
 import 'config.dart';
 import 'context/runtime_context.dart';
+import 'flags/flags_client.dart';
 import 'http/talaria_http_client.dart';
 import 'logger.dart';
 import 'severity.dart';
@@ -42,6 +43,9 @@ class Talaria {
 
   /// Product analytics (`track` / `page` / `screen` / `identify`).
   static TalariaAnalytics get analytics => _requireClient().analytics;
+
+  /// Feature flags (`boolVariation` / `stringVariation` / `jsonVariation`).
+  static TalariaFlags get flags => _requireClient().flags;
 
   static void setUser(String? userId) => _requireClient().setUser(userId);
 
@@ -166,6 +170,14 @@ class Talaria {
       attributes: attributes,
       parent: parent,
     );
+  }
+
+  static void setRecordQuerySpans(bool record) {
+    _requireClient().setRecordQuerySpans(record);
+  }
+
+  static T withoutQuerySpans<T>(T Function() body) {
+    return _requireClient().withoutQuerySpans(body);
   }
 
   /// Wrap application HTTP. Never pass the result as the ingest `httpClient`.

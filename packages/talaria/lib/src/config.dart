@@ -47,7 +47,8 @@ class TalariaOptions {
         ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
         enableTracing = false,
         tracesSampleRate = null,
-        enableAnalytics = false {
+        enableAnalytics = false,
+        enableFlags = false {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw ArgumentError('Talaria init requires apiKey.');
@@ -88,6 +89,9 @@ class TalariaOptions {
   /// Set from the project policy document. Browser consent is [TalariaAnalytics.optIn].
   bool enableAnalytics;
 
+  /// Set from `flags.enabled` in the project policy document.
+  bool enableFlags;
+
   /// Set from `heatmaps.enabled`. Flutter screen capture reads this.
   bool heatmapsEnabled = false;
 
@@ -119,6 +123,7 @@ class TalariaOptions {
       enableTracing = false;
       tracesSampleRate = 0;
       enableAnalytics = false;
+      enableFlags = false;
       heatmapsEnabled = false;
       sampleRate = 0;
       eventsPaused = true;
@@ -139,6 +144,10 @@ class TalariaOptions {
     final analytics = document['analytics'];
     if (analytics is Map) {
       enableAnalytics = analytics['enabled'] == true;
+    }
+    final flags = document['flags'];
+    if (flags is Map) {
+      enableFlags = flags['enabled'] == true;
     }
     final heatmaps = document['heatmaps'];
     heatmapsEnabled = heatmaps is Map && heatmaps['enabled'] == true;
@@ -222,6 +231,7 @@ class TalariaOptions {
     created.enableTracing = enableTracing;
     created.tracesSampleRate = tracesSampleRate;
     created.enableAnalytics = enableAnalytics;
+    created.enableFlags = enableFlags;
     created.heatmapsEnabled = heatmapsEnabled;
     created.sampleRate = sampleRate ?? this.sampleRate;
     created.eventsPaused = eventsPaused;

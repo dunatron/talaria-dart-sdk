@@ -32,6 +32,7 @@ class TalariaFlutter {
     Transport? transport,
     bool installHooks = true,
     bool observeLifecycle = true,
+    bool trackLifecycleEvents = true,
   }) async {
     TalariaStorage? storage = options.storage;
     if (storage == null) {
@@ -71,7 +72,10 @@ class TalariaFlutter {
     if (observeLifecycle) {
       WidgetsFlutterBinding.ensureInitialized();
       _lifecycle?.dispose();
-      _lifecycle = LifecycleObserver(client)..register();
+      _lifecycle = LifecycleObserver(
+        client,
+        trackAnalytics: trackLifecycleEvents,
+      )..register();
     }
 
     return client;

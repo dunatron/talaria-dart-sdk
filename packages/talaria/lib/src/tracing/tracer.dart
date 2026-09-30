@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import '../config.dart';
@@ -41,6 +42,10 @@ class Tracer {
         _random = random ?? Random();
 
   static const int maxSpansPerTrace = 200;
+  static const int maxSqlSpans = 168;
+  static const int reservedNonSql = 32;
+  static const double slowQueryMs = 200;
+  static const Object _querySpanZoneKey = #talariaRecordQuerySpans;
 
   final TalariaOptions _options;
   final void Function(FinishedSpan span) _enqueue;
@@ -49,6 +54,22 @@ class Tracer {
 
   final List<Span> _stack = [];
   final Map<String, _TraceState> _traces = {};
+  bool _recordQuerySpans = true;
+
+  bool get recordQuerySpans {
+    final zoned = Zone.current[_querySpanZoneKey];
+    if (zoned is bool) return zoned;
+    return _recordQuerySpans;
+  }
+
+  void setRecordQuerySpans(bool record) {
+    _recordQuerySpans = record;
+  }
+
+  /// Automatic SQL spans stay off for the body, including when it throws.
+  T withoutQuerySpans<T>(T Function() body) {
+    return runZoned(body, zoneValues: {_querySpanZoneKey: false});
+  }
 
   List<Span> get _activeStack => SpanScope.zoneStack() ?? _stack;
 
@@ -119,10 +140,18 @@ class Tracer {
     if (state == null) {
       return startTransaction(name, kind: kind, attributes: attributes);
     }
-    if (state.spanCount >= maxSpansPerTrace) {
+    final queryText = attributes?['db.query.text']?.toString();
+    final isQuery = queryText != null && queryText.isNotEmpty;
+    if (isQuery && !recordQuerySpans) {
       return const NoOpSpan();
     }
-    state.spanCount++;
+    if (!isQuery && state.spanCount >= maxSpansPerTrace) {
+      state.droppedCount++;
+      return const NoOpSpan();
+    }
+    if (!isQuery) {
+      state.spanCount++;
+    }
     final span = _RecordingSpan(
       tracer: this,
       traceId: resolvedParent.traceId,
@@ -134,6 +163,9 @@ class Tracer {
     );
     if (attributes != null) {
       span.setAttributes(attributes);
+    }
+    if (isQuery) {
+      span._pendingQuery = true;
     }
     _activeStack.add(span);
     return span;
@@ -175,25 +207,117 @@ class Tracer {
     if (span._status == SpanStatus.error) {
       state.forceSampled = true;
     }
-    final finished = span._toFinished(_enrichment());
     final shouldSend = state.sampled || state.forceSampled;
-    if (shouldSend) {
-      _enqueue(finished);
-      if (state.held.isNotEmpty) {
-        for (final held in state.held) {
-          _enqueue(held);
-        }
-        state.held.clear();
+    final isRoot = span.parentSpanId == null || span.parentSpanId!.isEmpty;
+
+    if (span._pendingQuery && !isRoot) {
+      if (_absorbQuery(state, span)) {
+        return;
       }
+      if (!_canAdmitSql(state)) {
+        state.droppedCount++;
+        return;
+      }
+      state.spanCount++;
+      state.sqlCount++;
+      final finished = span._toFinished(_enrichment());
+      final text = span.getAttribute('db.query.text') ?? '';
+      final slow = _durationMs(span) >= slowQueryMs;
+      final failed = span._status == SpanStatus.error;
+      if (!failed && !slow && text.isNotEmpty) {
+        final key = '${span.parentSpanId ?? ''}\u0000$text';
+        state.queryGroups[key] = finished;
+        state.pendingQueryGroups.add(finished);
+      } else {
+        _keep(state, finished, shouldSend);
+      }
+      if (shouldSend) {
+        _releaseHeld(state);
+      }
+      return;
+    }
+
+    final finished = span._toFinished(_enrichment());
+    if (isRoot && state.droppedCount > 0) {
+      finished.attributes['dropped_span_count'] = '${state.droppedCount}';
+    }
+    if (isRoot && shouldSend) {
+      _releaseHeld(state);
+      for (final pending in state.pendingQueryGroups) {
+        _enqueue(pending);
+      }
+      state.pendingQueryGroups.clear();
+    }
+    _keep(state, finished, shouldSend);
+    if (isRoot) {
+      if (!shouldSend) {
+        state.held.clear();
+        state.pendingQueryGroups.clear();
+      }
+      _recordQuerySpans = true;
+      _traces.remove(span.traceId);
+    }
+  }
+
+  bool _absorbQuery(_TraceState state, _RecordingSpan span) {
+    final text = span.getAttribute('db.query.text') ?? '';
+    if (text.isEmpty || span._status == SpanStatus.error) {
+      return false;
+    }
+    final duration = _durationMs(span);
+    if (duration >= slowQueryMs) {
+      return false;
+    }
+    final key = '${span.parentSpanId ?? ''}\u0000$text';
+    final group = state.queryGroups[key];
+    if (group == null) {
+      return false;
+    }
+    final updated = group.rollupExecution(
+      executionStart: span.startTime,
+      executionEnd: span._endTime ?? span.startTime,
+      executionMs: duration,
+    );
+    state.queryGroups[key] = updated;
+    final index =
+        state.pendingQueryGroups.indexWhere((item) => item.spanId == group.spanId);
+    if (index >= 0) {
+      state.pendingQueryGroups[index] = updated;
+    }
+    return true;
+  }
+
+  bool _canAdmitSql(_TraceState state) {
+    if (state.sqlCount >= maxSqlSpans || state.spanCount >= maxSpansPerTrace) {
+      return false;
+    }
+    final nonSql = state.spanCount - state.sqlCount;
+    final reserve = reservedNonSql - nonSql;
+    final hold = reserve < 0 ? 0 : reserve;
+    return state.spanCount + hold < maxSpansPerTrace;
+  }
+
+  void _keep(_TraceState state, FinishedSpan finished, bool shouldSend) {
+    if (shouldSend) {
+      _releaseHeld(state);
+      _enqueue(finished);
     } else {
       state.held.add(finished);
     }
-    if (span.parentSpanId == null || span.parentSpanId!.isEmpty) {
-      if (!shouldSend) {
-        state.held.clear();
-      }
-      _traces.remove(span.traceId);
+  }
+
+  void _releaseHeld(_TraceState state) {
+    if (state.held.isEmpty) return;
+    for (final held in state.held) {
+      _enqueue(held);
     }
+    state.held.clear();
+  }
+
+  double _durationMs(_RecordingSpan span) {
+    final end = span._endTime ?? span.startTime;
+    final ms = end.difference(span.startTime).inMicroseconds / 1000.0;
+    return ms < 0 ? 0 : ms;
   }
 }
 
@@ -203,7 +327,11 @@ class _TraceState {
   bool sampled;
   bool forceSampled = false;
   int spanCount = 0;
+  int sqlCount = 0;
+  int droppedCount = 0;
   final List<FinishedSpan> held = [];
+  final List<FinishedSpan> pendingQueryGroups = [];
+  final Map<String, FinishedSpan> queryGroups = {};
 }
 
 class _RecordingSpan implements Span {
@@ -242,6 +370,7 @@ class _RecordingSpan implements Span {
   SpanStatus _status = SpanStatus.unset;
   String? _statusMessage;
   bool _finished = false;
+  bool _pendingQuery = false;
   DateTime? _endTime;
 
   @override

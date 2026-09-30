@@ -37,7 +37,7 @@ Pass `TalariaNavigatorObserver` on `MaterialApp`. Tracing and analytics follow P
 
 ## Screen heatmaps
 
-Wrap the app once. Taps, scroll depth, and masked snapshots upload when the project has analytics and heatmaps enabled.
+Wrap the app once. Continuous capture is taps and scroll depth only (no periodic screenshots). When the project has analytics and heatmaps enabled, the server may ask for one idle fold snapshot after settle. If the user rests deeper in a scroll, that viewport may be stored as a tile (no forced scroll). Rage / dead / error taps may attach up to three short micro-frames.
 
 ```dart
 TalariaScreenCapture(
@@ -48,7 +48,15 @@ TalariaScreenCapture(
 )
 ```
 
-`TalariaMask` covers a subtree in the snapshot. `TalariaHeatmapAnchor` gives a control a stable id.
+The fold snapshot matches the rendered screen. Password fields are covered. `TalariaHeatmapPrivacy(maskInputs: true)` also covers other text fields, and `maskText` / `maskImages` cover text and images. `TalariaMask` always covers a subtree. `TalariaUnmask` opts that subtree back out.
+
+### Stable control names
+
+`TalariaHeatmapAnchor(id: 'checkout_pay')` or `Semantics(identifier: 'checkout_pay', …)` give a control a stable id in the element list. Otherwise the name is the control's label. Typed field values are not stored.
+
+### Flutter Web
+
+Capture uses the same API on Flutter Web (CanvasKit / Skwasm). There is no DOM snapshot path — the idle fold still uses `toImage`. Prefer short settle time and modest pixel density; embedded platform views may appear blank in the PNG.
 
 ## License
 

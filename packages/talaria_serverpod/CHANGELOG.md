@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+- Depends on `talaria` 0.3.6. Mid-request flag helper via `TalariaServerpodFlags`.
+
 ## 0.2.2
 
 - Depends on `talaria` 0.3.2.

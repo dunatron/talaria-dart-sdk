@@ -4,7 +4,10 @@ library;
 export 'package:talaria/talaria.dart';
 
 export 'src/init.dart';
+export 'src/lifecycle_observer.dart' show TalariaLifecycleEvents;
 export 'src/navigator_observer.dart';
 export 'src/heatmaps/capture.dart';
+export 'src/heatmaps/markers.dart';
+export 'src/heatmaps/privacy.dart';
 export 'src/shared_preferences_storage.dart';
 export 'src/widgets/error_widget.dart';

@@ -14,27 +14,99 @@ class ScreenHeatmapFrameBytes {
 
 /// In-memory screen view that becomes an ingest batch.
 class ScreenHeatmapSession {
-  ScreenHeatmapSession({
-    Random? random,
-    this.recordingSampleRate = 0.10,
-  }) : _random = random ?? Random();
+  ScreenHeatmapSession({Random? random}) : _random = random ?? Random();
 
   final Random _random;
-  final double recordingSampleRate;
 
   String? screenViewId;
   String? screenKey;
   String? recordingId;
-  bool recordFilmstrip = false;
   int startedAtMs = 0;
   final List<ClassifiedTap> taps = [];
   final ScreenScrollTracker scroll = ScreenScrollTracker();
   final List<ScreenHeatmapFrameBytes> frames = [];
   final Map<int, List<int>> tiles = {};
 
-  late final ScreenTapClassifier classifier = ScreenTapClassifier(taps.add);
+  late final ScreenTapClassifier classifier = ScreenTapClassifier(_onFinalized);
+
+  void Function(ClassifiedTap tap)? onInterestingTap;
 
   bool get isOpen => screenViewId != null;
+
+  /// Taps already accepted by ingest. Later flushes send only the tail.
+  int _sentTaps = 0;
+  int? _sentDepth;
+  int? _sentContentWidth;
+  int? _sentContentHeight;
+  int? _sentViewportWidth;
+  int? _sentViewportHeight;
+  String? _sentLayout;
+
+  /// Exclusive end index of taps included in the next payload (cap 500).
+  int get unsentTapEnd {
+    final capped = taps.length < 500 ? taps.length : 500;
+    return capped < _sentTaps ? _sentTaps : capped;
+  }
+
+  /// False when this view was already sent and nothing the wire stores changed.
+  ///
+  /// Scroll offset alone does not count: the row stores max depth, not position.
+  bool shouldSend({
+    required String deviceClass,
+    required String orientation,
+    required bool keyboard,
+  }) {
+    final metrics = scroll.state;
+    if (!isOpen || metrics == null || _sentDepth == null) {
+      return isOpen && metrics != null;
+    }
+    if (unsentTapEnd > _sentTaps) return true;
+    if (metrics.maxDepthPx != _sentDepth) return true;
+    if (metrics.contentWidth != _sentContentWidth) return true;
+    if (metrics.contentHeight != _sentContentHeight) return true;
+    if (metrics.viewportWidth != _sentViewportWidth) return true;
+    if (metrics.viewportHeight != _sentViewportHeight) return true;
+    return _layout(deviceClass, orientation, keyboard) != _sentLayout;
+  }
+
+  void markSent({
+    required int throughTap,
+    required String deviceClass,
+    required String orientation,
+    required bool keyboard,
+  }) {
+    final metrics = scroll.state;
+    _sentTaps = throughTap;
+    _sentLayout = _layout(deviceClass, orientation, keyboard);
+    if (metrics == null) return;
+    _sentDepth = metrics.maxDepthPx;
+    _sentContentWidth = metrics.contentWidth;
+    _sentContentHeight = metrics.contentHeight;
+    _sentViewportWidth = metrics.viewportWidth;
+    _sentViewportHeight = metrics.viewportHeight;
+  }
+
+  void _resetSent() {
+    _sentTaps = 0;
+    _sentDepth = null;
+    _sentContentWidth = null;
+    _sentContentHeight = null;
+    _sentViewportWidth = null;
+    _sentViewportHeight = null;
+    _sentLayout = null;
+  }
+
+  static String _layout(String deviceClass, String orientation, bool keyboard) {
+    return '$deviceClass|$orientation|$keyboard';
+  }
+
+  void _onFinalized(ClassifiedTap tap) {
+    taps.add(tap);
+    if (tap.rage || tap.dead || tap.error) {
+      recordingId ??= _id();
+      onInterestingTap?.call(tap);
+    }
+  }
 
   void open({
     required String screenKey,
@@ -46,12 +118,13 @@ class ScreenHeatmapSession {
     screenViewId = _id();
     this.screenKey = screenKey;
     startedAtMs = nowMs;
+    recordingId = null;
     taps.clear();
     frames.clear();
     tiles.clear();
-    recordFilmstrip = _random.nextDouble() < recordingSampleRate;
-    recordingId = recordFilmstrip ? _id() : null;
-    scroll.ensureFold(viewportWidth: viewportWidth, viewportHeight: viewportHeight);
+    _resetSent();
+    scroll.ensureFold(
+        viewportWidth: viewportWidth, viewportHeight: viewportHeight);
   }
 
   void close() {
@@ -61,21 +134,24 @@ class ScreenHeatmapSession {
     taps.clear();
     frames.clear();
     tiles.clear();
+    _resetSent();
   }
 
-  void addFrame(List<int> png, int offsetMs) {
-    if (!isOpen || png.length > 512 * 1024) return;
-    frames.add(ScreenHeatmapFrameBytes(offsetMs: offsetMs, png: png));
-    if (frames.length > 8) frames.removeAt(0);
-  }
-
+  /// Opportunistic tile from the viewport the user actually rested on.
   void addTile(int offsetPx, List<int> png) {
     if (!isOpen || tiles.length >= 8 || png.length > 512 * 1024) return;
+    if (offsetPx <= 0) return;
     tiles.putIfAbsent(offsetPx, () => png);
   }
 
-  bool get wantsRecording =>
-      recordFilmstrip || taps.any((tap) => tap.rage || tap.dead || tap.error);
+  /// Event-driven micro-frames around rage / dead / error (max 3).
+  void addFrame(List<int> png, int offsetMs) {
+    if (!isOpen || png.length > 512 * 1024) return;
+    if (frames.length >= 3) return;
+    frames.add(ScreenHeatmapFrameBytes(offsetMs: offsetMs, png: png));
+  }
+
+  bool get wantsRecording => frames.isNotEmpty && recordingId != null;
 
   Map<String, Object?>? toView({
     required String anonymousId,
@@ -93,8 +169,10 @@ class ScreenHeatmapSession {
     final id = screenViewId;
     final key = screenKey;
     final metrics = scroll.state;
-    if (id == null || key == null || key.isEmpty || metrics == null) return null;
-    final recording = wantsRecording ? (recordingId ??= _id()) : null;
+    if (id == null || key == null || key.isEmpty || metrics == null) {
+      return null;
+    }
+    final recording = wantsRecording ? recordingId : null;
     return {
       '__className__': 'IngestScreenHeatmapViewInput',
       'screenViewId': id,
@@ -105,8 +183,8 @@ class ScreenHeatmapSession {
       'replayId': replayId,
       'startedAt': DateTime.fromMillisecondsSinceEpoch(startedAtMs, isUtc: true)
           .toIso8601String(),
-      'updatedAt':
-          DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true).toIso8601String(),
+      'updatedAt': DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true)
+          .toIso8601String(),
       'viewportWidth': metrics.viewportWidth,
       'viewportHeight': metrics.viewportHeight,
       'contentWidth': metrics.contentWidth,
@@ -122,7 +200,7 @@ class ScreenHeatmapSession {
       'release': release,
       'platform': 'flutter',
       'taps': [
-        for (var i = 0; i < taps.length && i < 500; i++)
+        for (var i = _sentTaps; i < unsentTapEnd; i++)
           {
             '__className__': 'IngestScreenHeatmapTapInput',
             'tapIndex': i,
@@ -141,12 +219,14 @@ class ScreenHeatmapSession {
             'rage': taps[i].rage,
             'dead': taps[i].dead,
             'error': taps[i].error,
-            'recordingId': recording,
+            'recordingId':
+                (taps[i].rage || taps[i].dead || taps[i].error) ? recording : null,
           },
       ],
     };
   }
 
+  /// Fold PNG and/or structural [manifestJson]. At least one must be present.
   Map<String, Object?>? snapshotInput({
     required List<int> png,
     required String manifestJson,
@@ -154,7 +234,8 @@ class ScreenHeatmapSession {
   }) {
     final id = screenViewId;
     final metrics = scroll.state;
-    if (id == null || metrics == null || png.isEmpty) return null;
+    if (id == null || metrics == null) return null;
+    if (png.isEmpty && manifestJson.trim().isEmpty) return null;
     return {
       '__className__': 'UploadScreenHeatmapSnapshotInput',
       'screenViewId': id,
@@ -163,8 +244,8 @@ class ScreenHeatmapSession {
       'viewportWidth': metrics.viewportWidth,
       'viewportHeight': metrics.viewportHeight,
       'contentHeight': metrics.contentHeight,
-      'capturedAt':
-          DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true).toIso8601String(),
+      'capturedAt': DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true)
+          .toIso8601String(),
       'tiles': [
         for (final entry in tiles.entries)
           {
@@ -179,9 +260,7 @@ class ScreenHeatmapSession {
   Map<String, Object?>? recordingInput() {
     final id = screenViewId;
     final recording = recordingId;
-    if (id == null || recording == null || frames.isEmpty || !wantsRecording) {
-      return null;
-    }
+    if (id == null || recording == null || frames.isEmpty) return null;
     return {
       '__className__': 'UploadScreenHeatmapRecordingInput',
       'recordingId': recording,
@@ -252,7 +331,8 @@ class ScreenHeatmapController {
   }
 
   void noteError() {
-    session?.classifier.noteError(DateTime.now().toUtc().millisecondsSinceEpoch);
+    session?.classifier
+        .noteError(DateTime.now().toUtc().millisecondsSinceEpoch);
   }
 
   bool get captureEnabled {

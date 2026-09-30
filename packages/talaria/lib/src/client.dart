@@ -8,6 +8,7 @@ import 'event_filters.dart';
 import 'context/runtime_context.dart';
 import 'environment.dart';
 import 'event.dart';
+import 'flags/flags_client.dart';
 import 'identity/identity.dart';
 import 'identity/storage.dart';
 import 'logger.dart';
@@ -133,6 +134,19 @@ class TalariaClient {
       currentSpan: _spanForCapture,
       requestId: () => currentRequestId,
       onDiscard: (reason) => _recordDiscard(DiscardSignal.analytics, reason),
+      propertyEnricher: () => {
+        for (final entry in flags.stampTags().entries) entry.key: entry.value,
+      },
+    );
+
+    flags = TalariaFlags(
+      options: options,
+      identity: _identity,
+      storage: storage ?? options.storage ?? MemoryTalariaStorage(),
+      evaluate: resolvedTransport.evaluateFlags,
+      downloadDefinitions: resolvedTransport.downloadFlagDefinitions,
+      userId: () => _globalUserId,
+      analytics: analytics,
     );
 
     tracer = Tracer(
@@ -165,6 +179,10 @@ class TalariaClient {
       _zoneIntegration = ZoneIntegration()..register();
     }
     _screenTransport = resolvedTransport;
+
+    if (options.enableFlags) {
+      flags.onPolicyUpdated();
+    }
   }
 
   final TalariaOptions _options;
@@ -173,6 +191,7 @@ class TalariaClient {
   late final AnalyticsQueue _analyticsQueue;
   late final Tracer tracer;
   late final TalariaAnalytics analytics;
+  late final TalariaFlags flags;
   final Identity _identity;
   final BreadcrumbBuffer _breadcrumbs = BreadcrumbBuffer();
   HttpTransport? _ownedHttp;
@@ -408,6 +427,15 @@ class TalariaClient {
     );
   }
 
+  bool get recordsQuerySpans => tracer.recordQuerySpans;
+
+  void setRecordQuerySpans(bool record) {
+    tracer.setRecordQuerySpans(record);
+  }
+
+  /// Automatic SQL spans stay off for [body], including when it throws.
+  T withoutQuerySpans<T>(T Function() body) => tracer.withoutQuerySpans(body);
+
   /// W3C `traceparent` for the active span, or null when tracing is off / idle.
   String? getTraceparent() {
     final span = tracer.currentSpan;
@@ -442,6 +470,7 @@ class TalariaClient {
 
   void setUser(String? userId) {
     _globalUserId = (userId != null && userId.isNotEmpty) ? userId : null;
+    unawaited(flags.setContext(userId: _globalUserId));
   }
 
   /// Flutter screen heatmap ingest. No-op until a transport implements it.
@@ -491,6 +520,7 @@ class TalariaClient {
     _flushTimer = null;
     _policyTimer?.cancel();
     _policyTimer = null;
+    flags.close();
     tracer.finishAll();
     await flush();
     _closed = true;
@@ -564,6 +594,9 @@ class TalariaClient {
     } else {
       analytics.optOut();
     }
+    final ttlSeconds =
+        ((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(60, 3600);
+    flags.onPolicyUpdated(pollInterval: Duration(seconds: ttlSeconds));
   }
 
   void _schedulePolicyRefresh(HttpTransport transport, int delayMs) {
@@ -797,6 +830,7 @@ class TalariaClient {
     var tags = <String, String>{
       ...runtimeTags,
       ..._globalTags,
+      ...flags.stampTags(),
     };
     var extra = <String, Object?>{
       ...runtimeExtra,
@@ -970,6 +1004,7 @@ class TalariaClient {
         if (_options.release != null && _options.release!.isNotEmpty)
           'service.version': _options.release!,
         'deployment.environment': _options.environment.wireValue,
+        ...flags.stampTags(),
       },
     );
   }

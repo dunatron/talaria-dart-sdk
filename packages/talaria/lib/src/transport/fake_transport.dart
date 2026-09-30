@@ -42,4 +42,39 @@ class FakeTransport implements Transport {
   Future<void> reportDiscards(List<DiscardRow> discards) async {
     discardReports.add(List.unmodifiable(discards));
   }
+
+  /// Optional evaluate handler for unit tests.
+  Future<Map<String, Object?>> Function(Map<String, Object?> input)?
+      onEvaluateFlags;
+
+  /// Optional definitions download handler for unit tests.
+  Future<Map<String, Object?>> Function(Map<String, Object?> input)?
+      onDownloadFlagDefinitions;
+
+  final List<Map<String, Object?>> evaluateCalls = [];
+  final List<Map<String, Object?>> downloadDefinitionCalls = [];
+
+  @override
+  Future<Map<String, Object?>> evaluateFlags(
+    Map<String, Object?> input,
+  ) async {
+    evaluateCalls.add(Map<String, Object?>.from(input));
+    final handler = onEvaluateFlags;
+    if (handler != null) {
+      return handler(input);
+    }
+    return const {};
+  }
+
+  @override
+  Future<Map<String, Object?>> downloadFlagDefinitions(
+    Map<String, Object?> input,
+  ) async {
+    downloadDefinitionCalls.add(Map<String, Object?>.from(input));
+    final handler = onDownloadFlagDefinitions;
+    if (handler != null) {
+      return handler(input);
+    }
+    return const {};
+  }
 }

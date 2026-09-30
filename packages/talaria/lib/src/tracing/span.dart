@@ -187,6 +187,60 @@ class FinishedSpan {
 
     return wire;
   }
+
+  double get durationMs {
+    final ms = endTime.difference(startTime).inMicroseconds / 1000.0;
+    return ms < 0 ? 0 : ms;
+  }
+
+  /// Fold another successful execution into this span. The bar stays the slower run.
+  FinishedSpan rollupExecution({
+    required DateTime executionStart,
+    required DateTime executionEnd,
+    required double executionMs,
+  }) {
+    final count = int.tryParse(attributes['db.query.count'] ?? '') ?? 1;
+    final own = durationMs;
+    final sum =
+        double.tryParse(attributes['db.query.duration_sum_ms'] ?? '') ?? own;
+    final slower = executionMs > own;
+    final attrs = Map<String, String>.from(attributes);
+    attrs['db.query.count'] = '${(count < 1 ? 1 : count) + 1}';
+    attrs['db.query.duration_sum_ms'] = formatSpanMs(sum + executionMs);
+    return FinishedSpan(
+      traceId: traceId,
+      spanId: spanId,
+      parentSpanId: parentSpanId,
+      name: name,
+      kind: kind,
+      startTime: slower ? executionStart : startTime,
+      endTime: slower ? executionEnd : endTime,
+      status: status,
+      statusMessage: statusMessage,
+      attributes: attrs,
+      resource: resource,
+      events: events,
+      links: links,
+      environment: environment,
+      release: release,
+      userId: userId,
+      anonymousId: anonymousId,
+      sessionId: sessionId,
+      requestId: requestId,
+    );
+  }
+}
+
+String formatSpanMs(double ms) {
+  final rounded = (ms * 1000).round() / 1000;
+  if ((rounded - rounded.round()).abs() < 0.0005) {
+    return '${rounded.round()}';
+  }
+  var text = rounded.toStringAsFixed(3);
+  while (text.contains('.') && (text.endsWith('0') || text.endsWith('.'))) {
+    text = text.substring(0, text.length - 1);
+  }
+  return text;
 }
 
 class NoOpSpan implements Span {

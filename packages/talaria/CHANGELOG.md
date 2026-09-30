@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- `sdk/getConfig` waits 5 seconds. A slower policy response still enables heatmaps and analytics.
+- Identical SQL under one parent is one span with `db.query.count` and `db.query.duration_sum_ms`. The span stays the slowest execution. Queries of 200ms or more, and failed queries, stay their own spans.
+- A trace stores at most 200 spans and keeps 32 slots for non-SQL spans. The root records `dropped_span_count` when a span is dropped.
+- `withoutQuerySpans` and `setRecordQuerySpans(false)` turn automatic SQL spans off for one run.
+- Query breadcrumbs use at most 15 of the 50 breadcrumb slots.
+
+## 0.3.6
+
+- Feature flags: `Talaria.flags` with `boolVariation` / `stringVariation` / `jsonVariation`, `setContext`, disk cache, TTL poll, and `loadDefinitions` for local evaluation.
+- Stamp up to 20 `flag.<key>` tags on events, spans, and analytics. Optional `$feature_flag_called` once per key per session.
+- Apply `flags.enabled` from `sdk/getConfig`.
+
 ## 0.3.5
 
 - Screen heatmap snapshot and recording uploads wait up to 20 seconds. The default ingest timeout was cutting off the PNG before the API stored it.

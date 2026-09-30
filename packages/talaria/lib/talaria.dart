@@ -17,6 +17,16 @@ export 'src/config.dart';
 export 'src/context/runtime_context.dart';
 export 'src/environment.dart';
 export 'src/event.dart';
+export 'src/flags/flag_definition.dart'
+    show
+        FlagDefinition,
+        FlagRuleDefinition,
+        FlagVariationDefinition,
+        LocalFlagContext,
+        parseFlagDefinitions;
+export 'src/flags/flag_evaluation.dart' show FlagEvaluationResult;
+export 'src/flags/flags_client.dart' show TalariaFlags;
+export 'src/flags/local_flag_evaluator.dart' show LocalFlagEvaluator;
 export 'src/http/talaria_http_client.dart';
 export 'src/identity/identity.dart' show Identity;
 export 'src/identity/storage.dart' show TalariaStorage, MemoryTalariaStorage;

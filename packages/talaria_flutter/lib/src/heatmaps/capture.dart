@@ -8,49 +8,32 @@ import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
 import 'classifier.dart';
-import 'element_path.dart';
+import 'heatmap_tree.dart';
+import 'markers.dart';
+import 'privacy.dart';
 import 'scroll_tracker.dart';
 import 'session.dart';
 
-/// Names a control the way `data-talaria-heatmap` names a DOM node.
-class TalariaHeatmapAnchor extends StatelessWidget {
-  const TalariaHeatmapAnchor(
-      {super.key, required this.id, required this.child});
-
-  final String id;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(identifier: id, container: true, child: child);
-  }
-}
-
-/// Always covered in snapshots. Taps are attributed to this container.
-class TalariaMask extends StatelessWidget {
-  const TalariaMask({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => child;
-}
-
-/// Opts a subtree out of the default text and image covers.
-class TalariaUnmask extends StatelessWidget {
-  const TalariaUnmask({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => child;
-}
-
-/// Captures taps, scroll depth, and masked screenshots for the screen heatmap.
+/// Captures taps, scroll depth, and an on-request fold snapshot for heatmaps.
+///
+/// Continuous work is signals only (no periodic screenshots, no scroll
+/// scrubbing). When the server asks for a snapshot, one idle fold PNG plus a
+/// structural tree upload after settle. While waiting, tiles may be captured
+/// when the user naturally rests deeper in a scroll. Rage / dead / error taps
+/// may take up to three event-driven micro-frames (not a continuous filmstrip).
+///
+/// [privacy] controls which regions are covered on the rare PNG. Inputs, text,
+/// and images stay visible unless you opt in. Password fields are covered
+/// either way.
 class TalariaScreenCapture extends StatefulWidget {
-  const TalariaScreenCapture({super.key, required this.child});
+  const TalariaScreenCapture({
+    super.key,
+    required this.child,
+    this.privacy = const TalariaHeatmapPrivacy(),
+  });
 
   final Widget child;
+  final TalariaHeatmapPrivacy privacy;
 
   @override
   State<TalariaScreenCapture> createState() => _TalariaScreenCaptureState();
@@ -61,9 +44,12 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   final _boundaryKey = GlobalKey();
   final _session = ScreenHeatmapSession();
   Timer? _flush;
-  Timer? _frames;
+  Timer? _settle;
+  Timer? _scrollRest;
   var _flushing = false;
   var _capturing = false;
+  var _snapshotPending = false;
+  var _microFraming = false;
   final _snapshotSent = <String>{};
   final _recordingSent = <String>{};
   Offset? _down;
@@ -72,11 +58,18 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   var _manualScreen = false;
   var _background = false;
   var _flushHooked = false;
+  var _openScheduled = false;
   int? _fingerprintHash;
   var _fingerprintScheduled = false;
   String _deviceClassName = 'mobile';
   String _orientationName = 'portrait';
   var _keyboardOpen = false;
+  DateTime _lastInteraction = DateTime.fromMillisecondsSinceEpoch(0);
+  Rect? _scrollport;
+
+  static const _settleDelay = Duration(seconds: 2);
+  static const _scrollRestDelay = Duration(milliseconds: 450);
+  static const _maxPngBytes = 500 * 1024;
 
   @override
   void initState() {
@@ -86,11 +79,11 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     ScreenHeatmapController.instance.listenScreen(_onManualScreen);
     ScreenHeatmapController.instance.listenRoute(_onObservedRoute);
     FocusManager.instance.addListener(_onFocus);
+    _session.onInterestingTap = (_) {
+      unawaited(_captureMicroFrames());
+    };
     _flush = Timer.periodic(const Duration(seconds: 5), (_) {
-      unawaited(_flushSession(uploadVisuals: false));
-    });
-    _frames = Timer.periodic(const Duration(seconds: 1), (_) {
-      unawaited(_captureFrame());
+      unawaited(_tick());
     });
   }
 
@@ -100,7 +93,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final provider = Router.maybeOf(context)?.routeInformationProvider;
     provider?.removeListener(_onRoute);
     provider?.addListener(_onRoute);
-    _onRoute();
+    unawaited(_syncRoute());
   }
 
   @override
@@ -108,7 +101,9 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     Router.maybeOf(context)?.routeInformationProvider?.removeListener(_onRoute);
     WidgetsBinding.instance.removeObserver(this);
     _flush?.cancel();
-    _frames?.cancel();
+    _settle?.cancel();
+    _scrollRest?.cancel();
+    _session.onInterestingTap = null;
     ScreenHeatmapController.instance.unlistenScreen(_onManualScreen);
     ScreenHeatmapController.instance.unlistenRoute(_onObservedRoute);
     FocusManager.instance.removeListener(_onFocus);
@@ -116,14 +111,21 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     if (ScreenHeatmapController.instance.session == _session) {
       ScreenHeatmapController.instance.session = null;
     }
-    unawaited(_flushSession(uploadVisuals: true));
+    unawaited(_flushSession());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _background = state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused;
+    final hidden = screenHeatmapAppIsHidden(state);
+    final wasHidden = _background;
+    _background = hidden;
+    if (wasHidden && !hidden) unawaited(_syncRoute());
+  }
+
+  void _noteInteraction() {
+    _lastInteraction = DateTime.now();
+    if (_snapshotPending) _armSettle();
   }
 
   void _onManualScreen(String name) {
@@ -140,18 +142,43 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 
   void _onFocus() {
     _session.classifier.noteEffect(DateTime.now().millisecondsSinceEpoch);
+    _noteInteraction();
   }
 
-  Future<void> _onClientFlush() => _flushSession(uploadVisuals: true);
+  Future<void> _onClientFlush() => _flushSession();
 
   void _onRoute() {
-    final uri = Router.maybeOf(context)?.routeInformationProvider?.value.uri;
-    final path = uri?.path;
-    if (path == null || path.isEmpty || path == _routePath) return;
-    _routePath = path;
-    _manualScreen = false;
-    ScreenHeatmapController.instance.manualScreen = null;
-    unawaited(_open(path));
+    unawaited(_syncRoute());
+  }
+
+  /// Opens a screen view once policy allows it.
+  ///
+  /// [MaterialApp.builder] sits above the [Router], so [Router.maybeOf] is
+  /// null for the usual install. The screen name then comes from
+  /// [TalariaFlutter.setScreen] or the navigator observer. Policy often
+  /// arrives after that first name, so this retries until the session opens.
+  Future<void> _syncRoute() async {
+    if (!mounted) return;
+    final router = Router.maybeOf(context);
+    final config = router?.routerDelegate.currentConfiguration;
+    final fromDelegate = config is RouteInformation ? config.uri.path : null;
+    final fromProvider = router?.routeInformationProvider?.value.uri.path;
+    final path = (fromDelegate != null && fromDelegate.isNotEmpty)
+        ? fromDelegate
+        : fromProvider;
+    if (path != null && path.isNotEmpty && path != _routePath) {
+      _routePath = path;
+      _manualScreen = false;
+      ScreenHeatmapController.instance.manualScreen = null;
+    }
+    final key = _screenKey;
+    if (key == null || key.isEmpty) return;
+    await _open(key);
+  }
+
+  Future<void> _tick() async {
+    await _syncRoute();
+    await _flushSession();
   }
 
   Future<void> _open(String key) async {
@@ -161,7 +188,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       final now = DateTime.now().millisecondsSinceEpoch;
       _session.classifier.noteEffect(now);
       _session.classifier.flushAll(now);
-      await _flushSession(uploadVisuals: true);
+      await _flushSession();
     }
     if (!mounted) return;
     final box = context.findRenderObject();
@@ -172,25 +199,31 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       viewportWidth: size.width.round(),
       viewportHeight: size.height.round(),
     );
+    _snapshotPending = false;
+    _settle?.cancel();
   }
 
   void _onPointerDown(PointerDownEvent event) {
     _down = event.position;
+    _noteInteraction();
   }
 
   void _onPointerUp(PointerUpEvent event) {
     final start = _down;
     _down = null;
+    _noteInteraction();
     if (start == null) return;
     if ((event.position - start).distance > 18) return;
     if (!ScreenHeatmapController.instance.captureEnabled || _background) return;
     final key = _screenKey;
     if (key == null || key.isEmpty) return;
     if (!_session.isOpen) unawaited(_open(key));
-    final hit = _hit(event.position);
-    if (hit == null) return;
+    final root = _boundaryKey.currentContext as Element?;
     final boundary = _boundaryKey.currentContext?.findRenderObject();
-    if (boundary is! RenderBox || !boundary.hasSize) return;
+    if (root == null || boundary is! RenderBox || !boundary.hasSize) return;
+    final hit =
+        collectHeatmapTree(root, boundary, includeText: false).hit(event.position);
+    if (hit == null) return;
     final local = boundary.globalToLocal(event.position);
     final metrics = _session.scroll.state;
     final horizontal = metrics?.axis == ScreenScrollAxis.horizontal;
@@ -198,20 +231,20 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         (horizontal ? (metrics?.offsetPx ?? 0) + local.dx : local.dx).round();
     final contentY =
         (horizontal ? local.dy : (metrics?.offsetPx ?? 0) + local.dy).round();
-    final inside = event.position - hit.rect.topLeft;
+    final inside = event.position - hit.globalRect.topLeft;
     _session.classifier.add(
       TapSample(
-        path: buildElementPath(hit.node),
-        role: hit.node.role,
-        relX: toBasisPoints(inside.dx, hit.rect.width),
-        relY: toBasisPoints(inside.dy, hit.rect.height),
+        path: hit.path,
+        role: hit.role,
+        relX: toBasisPoints(inside.dx, hit.globalRect.width),
+        relY: toBasisPoints(inside.dy, hit.globalRect.height),
         xBp: toBasisPoints(local.dx, boundary.size.width),
         yBp: toBasisPoints(local.dy, boundary.size.height),
         contentX: contentX < 0 ? 0 : contentX,
         contentY: contentY < 0 ? 0 : contentY,
         clientX: local.dx,
         clientY: local.dy,
-        deadEligible: tapDeadEligible(hit.node) && !_textSelectionActive(),
+        deadEligible: hit.deadEligible && !_textSelectionActive(),
       ),
       DateTime.now().millisecondsSinceEpoch,
     );
@@ -229,7 +262,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 
   String? get _screenKey {
     final manual = ScreenHeatmapController.instance.manualScreen;
-    if (_manualScreen && manual != null && manual.isNotEmpty) return manual;
+    if (manual != null && manual.isNotEmpty) return manual;
     return _routePath ?? _observedRoute;
   }
 
@@ -262,6 +295,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         (notification.scrollDelta?.abs() ?? 0) > 1;
     if (moved) {
       _session.classifier.noteEffect(DateTime.now().millisecondsSinceEpoch);
+      _noteInteraction();
+      _scrollRest?.cancel();
     }
     _session.scroll.update(
       viewportWidth: size.width.round(),
@@ -271,109 +306,98 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       viewportDimension: notification.metrics.viewportDimension,
       vertical: vertical,
     );
-    final bucket = notification.metrics.viewportDimension <= 0
-        ? 0
-        : (notification.metrics.pixels / notification.metrics.viewportDimension)
-            .floor();
-    if (bucket > 0) {
-      unawaited(_captureTile(
-          bucket * notification.metrics.viewportDimension.round()));
+    final scrollable = notification.context
+        ?.findAncestorStateOfType<ScrollableState>();
+    final boundary = _boundaryKey.currentContext?.findRenderObject();
+    if (scrollable != null &&
+        boundary is RenderBox &&
+        boundary.hasSize) {
+      _scrollport = _scrollportOf(boundary, scrollable);
     }
+    final settled = notification is ScrollEndNotification ||
+        (notification is UserScrollNotification &&
+            notification.direction == ScrollDirection.idle);
+    if (settled) _armScrollRest();
     return false;
   }
 
-  ({HeatmapElementNode node, Rect rect})? _hit(Offset global) {
-    final root = _boundaryKey.currentContext as Element?;
-    if (root == null) return null;
-    ({HeatmapElementNode node, Rect rect})? found;
-    void visit(Element element, HeatmapElementNode? parent,
-        {required bool unmasked}) {
-      final widget = element.widget;
-      final nextUnmasked = unmasked || widget is TalariaUnmask;
-      HeatmapElementNode? node = parent;
-      if (widget is TalariaHeatmapAnchor ||
-          widget is Semantics ||
-          widget is TalariaMask) {
-        final box = element.renderObject;
-        if (box is RenderBox && box.hasSize && box.attached) {
-          final topLeft = box.localToGlobal(Offset.zero);
-          final rect = topLeft & box.size;
-          if (rect.contains(global)) {
-            final anchor = widget is TalariaHeatmapAnchor
-                ? widget.id
-                : widget is Semantics
-                    ? widget.properties.identifier
-                    : null;
-            final props = widget is Semantics ? widget.properties : null;
-            final role = widget is TalariaMask ? 'node' : _role(props);
-            node = HeatmapElementNode(
-              anchor: anchor,
-              role: role,
-              siblingIndex: _siblingIndex(element, role),
-              parent: parent,
-              masked: widget is TalariaMask,
-              deadEligible: props?.textField != true && props?.slider != true,
-            );
-            found = (node: node, rect: rect);
-          }
+  void _armScrollRest() {
+    _scrollRest?.cancel();
+    _scrollRest = Timer(_scrollRestDelay, () {
+      unawaited(_captureOpportunisticTile());
+    });
+  }
+
+  /// Capture the current viewport as a tile when the user rested past the fold.
+  /// Never teleports the scroll position.
+  Future<void> _captureOpportunisticTile() async {
+    if (_background || !ScreenHeatmapController.instance.captureEnabled) return;
+    if (!_session.isOpen || _capturing) return;
+    final metrics = _session.scroll.state;
+    if (metrics == null) return;
+    final viewport = metrics.axis == ScreenScrollAxis.horizontal
+        ? metrics.viewportWidth
+        : metrics.viewportHeight;
+    if (viewport <= 1) return;
+    final offset = metrics.offsetPx;
+    if (offset < viewport ~/ 2) return;
+    // Bucket to viewport steps so nearby rests share one tile.
+    final bucket = (offset ~/ viewport) * viewport;
+    if (bucket <= 0 || _session.tiles.containsKey(bucket)) return;
+    if (_session.tiles.length >= 8) return;
+    final png = await _captureFoldPng(crop: _scrollport);
+    if (png == null) return;
+    _session.addTile(bucket, png);
+  }
+
+  /// Up to three frames around a rage / dead / error tap — not a 1Hz loop.
+  Future<void> _captureMicroFrames() async {
+    if (_microFraming || _background) return;
+    if (!ScreenHeatmapController.instance.captureEnabled) return;
+    if (!_session.isOpen) return;
+    _microFraming = true;
+    try {
+      for (var i = 0; i < 3; i++) {
+        if (!mounted || !_session.isOpen) break;
+        final png = await _captureFoldPng();
+        if (png != null) {
+          _session.addFrame(
+            png,
+            DateTime.now().millisecondsSinceEpoch - _session.startedAtMs,
+          );
         }
+        if (i < 2) await Future<void>.delayed(const Duration(milliseconds: 120));
       }
-      if (widget is EditableText) {
-        final box = element.renderObject;
-        if (box is RenderBox && box.hasSize && box.attached) {
-          final topLeft = box.localToGlobal(Offset.zero);
-          final rect = topLeft & box.size;
-          if (rect.contains(global)) {
-            found = (
-              node: HeatmapElementNode(
-                role: 'textField',
-                siblingIndex: _siblingIndex(element, 'textField'),
-                parent: parent,
-                deadEligible: false,
-              ),
-              rect: rect,
-            );
-          }
-        }
-      }
-      element
-          .visitChildren((child) => visit(child, node, unmasked: nextUnmasked));
+    } finally {
+      _microFraming = false;
     }
-
-    visit(root, null, unmasked: false);
-    return found;
   }
 
-  String _role(SemanticsProperties? props) {
-    if (props == null) return 'node';
-    if (props.button == true) return 'button';
-    if (props.link == true) return 'link';
-    if (props.textField == true) return 'textField';
-    if (props.slider == true) return 'slider';
-    if (props.image == true) return 'image';
-    if (props.checked != null || props.toggled != null) return 'checkbox';
-    return 'node';
-  }
-
-  Future<void> _flushSession({required bool uploadVisuals}) async {
+  Future<void> _flushSession() async {
     if (_flushing) return;
+    if (!ScreenHeatmapController.instance.captureEnabled) return;
     final client =
         ScreenHeatmapController.instance.client ?? Talaria.getClient();
     if (client == null || !_session.isOpen) return;
     _flushing = true;
     try {
-      await _flushOpenSession(client, uploadVisuals: uploadVisuals);
+      await _flushOpenSession(client);
     } catch (_) {
     } finally {
       _flushing = false;
     }
   }
 
-  Future<void> _flushOpenSession(
-    TalariaClient client, {
-    required bool uploadVisuals,
-  }) async {
+  Future<void> _flushOpenSession(TalariaClient client) async {
     _session.classifier.tick(DateTime.now().millisecondsSinceEpoch);
+    if (!_session.shouldSend(
+      deviceClass: _deviceClassName,
+      orientation: _orientationName,
+      keyboard: _keyboardOpen,
+    )) {
+      return;
+    }
+    final throughTap = _session.unsentTapEnd;
     final view = _session.toView(
       anonymousId: client.anonymousId,
       sessionId: client.sessionId,
@@ -394,24 +418,22 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         client.options.heatmapsEnabled = false;
         return;
       }
+      _session.markSent(
+        throughTap: throughTap,
+        deviceClass: _deviceClassName,
+        orientation: _orientationName,
+        keyboard: _keyboardOpen,
+      );
       final requests = response['snapshotRequests'];
       final id = _session.screenViewId;
       final requested = id != null && requests is List && requests.contains(id);
-      if (requested && !_snapshotSent.contains(id)) {
-        final shot = await _capturePng(mask: true);
-        if (shot != null && _session.screenViewId == id) {
-          final input = _session.snapshotInput(
-            png: shot,
-            manifestJson: _manifestJson(),
-            nowMs: DateTime.now().millisecondsSinceEpoch,
-          );
-          if (input != null) {
-            await client.uploadScreenHeatmapSnapshot(input);
-            _snapshotSent.add(id);
-          }
-        }
+      if (requested &&
+          !_snapshotSent.contains(id) &&
+          _session.screenKey == _screenKey) {
+        _snapshotPending = true;
+        _armSettle();
       }
-      if (uploadVisuals || _session.wantsRecording) {
+      if (_session.wantsRecording) {
         final recordingId = _session.recordingId;
         if (recordingId != null && !_recordingSent.contains(recordingId)) {
           final recording = _session.recordingInput();
@@ -424,28 +446,51 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     } catch (_) {}
   }
 
-  int _siblingIndex(Element self, String role) {
-    var index = 0;
-    var found = false;
-    self.visitAncestorElements((ancestor) {
-      ancestor.visitChildren((child) {
-        if (found) return;
-        if (identical(child, self)) {
-          found = true;
-          return;
-        }
-        if (_elementRole(child) == role) index++;
-      });
-      return false;
+  void _armSettle() {
+    _settle?.cancel();
+    final elapsed = DateTime.now().difference(_lastInteraction);
+    final wait = elapsed >= _settleDelay
+        ? Duration.zero
+        : _settleDelay - elapsed;
+    _settle = Timer(wait, () {
+      unawaited(_uploadIdleSnapshot());
     });
-    return index;
   }
 
-  String _elementRole(Element element) {
-    final widget = element.widget;
-    if (widget is Semantics) return _role(widget.properties);
-    if (widget is EditableText) return 'textField';
-    return 'node';
+  Future<void> _uploadIdleSnapshot() async {
+    if (!_snapshotPending || !mounted) return;
+    if (_background || !ScreenHeatmapController.instance.captureEnabled) return;
+    final id = _session.screenViewId;
+    if (id == null || _snapshotSent.contains(id)) {
+      _snapshotPending = false;
+      return;
+    }
+    if (DateTime.now().difference(_lastInteraction) < _settleDelay) {
+      _armSettle();
+      return;
+    }
+    final client =
+        ScreenHeatmapController.instance.client ?? Talaria.getClient();
+    if (client == null) return;
+    await _nextFrame();
+    if (!mounted || _session.screenViewId != id) return;
+    final manifest = _manifestJson();
+    final png = await _captureFoldPng();
+    if (!mounted || _session.screenViewId != id) return;
+    final input = _session.snapshotInput(
+      png: png ?? const <int>[],
+      manifestJson: manifest,
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    if (input == null) return;
+    try {
+      await client.uploadScreenHeatmapSnapshot(input);
+      _snapshotSent.add(id);
+      _snapshotPending = false;
+    } catch (_) {
+      // Retry on next settle if still pending.
+      _armSettle();
+    }
   }
 
   void _scheduleFingerprint() {
@@ -471,13 +516,14 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       final widget = element.widget;
       if (widget is Semantics ||
           widget is TalariaHeatmapAnchor ||
-          widget is TalariaMask) {
+          widget is TalariaMask ||
+          widget is EditableText) {
         final box = element.renderObject;
         if (box is RenderBox && box.hasSize && box.attached) {
           final rect = box.localToGlobal(Offset.zero) & box.size;
           hash = Object.hash(
             hash,
-            _elementRole(element),
+            widget.runtimeType,
             rect.left.round(),
             rect.top.round(),
             rect.width.round(),
@@ -498,144 +544,142 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     final root = _boundaryKey.currentContext as Element?;
     if (boundary is! RenderBox || !boundary.hasSize || root == null) {
-      return '[]';
+      return '{"v":1,"nodes":[]}';
     }
-    final origin = boundary.localToGlobal(Offset.zero);
     final metrics = _session.scroll.state;
     final items = <String>[];
-    void visit(Element element, HeatmapElementNode? parent) {
-      if (items.length >= 200) return;
-      final widget = element.widget;
-      HeatmapElementNode? node = parent;
-      if (widget is TalariaHeatmapAnchor ||
-          widget is Semantics ||
-          widget is TalariaMask) {
-        final box = element.renderObject;
-        if (box is RenderBox && box.hasSize && box.attached) {
-          final role = widget is TalariaMask ? 'node' : _elementRole(element);
-          final anchor = widget is TalariaHeatmapAnchor
-              ? widget.id
-              : widget is Semantics
-                  ? widget.properties.identifier
-                  : null;
-          node = HeatmapElementNode(
-            anchor: anchor,
-            role: role,
-            siblingIndex: _siblingIndex(element, role),
-            parent: parent,
-            masked: widget is TalariaMask,
-          );
-          final local = box.localToGlobal(Offset.zero) - origin;
-          final path = buildElementPath(node);
-          final xBp = toBasisPoints(local.dx, boundary.size.width);
-          final yBp = toBasisPoints(local.dy, boundary.size.height);
-          final wBp = toBasisPoints(box.size.width, boundary.size.width);
-          final hBp = toBasisPoints(box.size.height, boundary.size.height);
-          final offset = metrics?.offsetPx ?? 0;
-          final horizontal = metrics?.axis == ScreenScrollAxis.horizontal;
-          final contentX =
-              horizontal ? offset + local.dx.round() : local.dx.round();
-          final contentY =
-              horizontal ? local.dy.round() : offset + local.dy.round();
-          items.add(
-            '{"path":${jsonEncode(path)},"role":${jsonEncode(role)},'
-            '"xBp":$xBp,"yBp":$yBp,"wBp":$wBp,"hBp":$hBp,'
-            '"contentX":$contentX,"contentY":$contentY,'
-            '"contentW":${box.size.width.round()},"contentH":${box.size.height.round()}}',
-          );
-        }
-      }
-      element.visitChildren((child) => visit(child, node));
+    for (final node in collectHeatmapTree(root, boundary, includeText: true)
+        .forManifest(boundary.size)) {
+      if (items.length >= 200) break;
+      final local = node.localRect;
+      final xBp = toBasisPoints(local.left, boundary.size.width);
+      final yBp = toBasisPoints(local.top, boundary.size.height);
+      final wBp = toBasisPoints(local.width, boundary.size.width);
+      final hBp = toBasisPoints(local.height, boundary.size.height);
+      final offset = metrics?.offsetPx ?? 0;
+      final horizontal = metrics?.axis == ScreenScrollAxis.horizontal;
+      final contentX =
+          horizontal ? offset + local.left.round() : local.left.round();
+      final contentY =
+          horizontal ? local.top.round() : offset + local.top.round();
+      final label = node.label;
+      final labelJson = label == null ? '' : ',"label":${jsonEncode(label)}';
+      items.add(
+        '{"path":${jsonEncode(node.path)},"role":${jsonEncode(node.role)}'
+        '$labelJson,'
+        '"xBp":$xBp,"yBp":$yBp,"wBp":$wBp,"hBp":$hBp,'
+        '"contentX":$contentX,"contentY":$contentY,'
+        '"contentW":${local.width.round()},"contentH":${local.height.round()}}',
+      );
     }
-
-    visit(root, null);
-    return '[${items.join(',')}]';
+    final port = _scrollport;
+    if (port != null && port.width >= 40 && port.height >= 40) {
+      final xBp = toBasisPoints(port.left, boundary.size.width);
+      final yBp = toBasisPoints(port.top, boundary.size.height);
+      final wBp = toBasisPoints(port.width, boundary.size.width);
+      final hBp = toBasisPoints(port.height, boundary.size.height);
+      items.add(
+        '{"path":"$screenHeatmapScrollportPath","role":"scrollport",'
+        '"xBp":$xBp,"yBp":$yBp,"wBp":$wBp,"hBp":$hBp,'
+        '"contentX":${port.left.round()},"contentY":${port.top.round()},'
+        '"contentW":${port.width.round()},"contentH":${port.height.round()}}',
+      );
+    }
+    final vw = metrics?.viewportWidth ?? boundary.size.width.round();
+    final vh = metrics?.viewportHeight ?? boundary.size.height.round();
+    final cw = metrics?.contentWidth ?? vw;
+    final ch = metrics?.contentHeight ?? vh;
+    return '{"v":1,"viewportWidth":$vw,"viewportHeight":$vh,'
+        '"contentWidth":$cw,"contentHeight":$ch,'
+        '"nodes":[${items.join(',')}]}';
   }
 
-  Future<void> _captureFrame() async {
-    if (_background || !ScreenHeatmapController.instance.captureEnabled) return;
-    if (!_session.recordFilmstrip && !_session.wantsRecording) return;
-    final png = await _capturePng(mask: true);
-    if (png == null) return;
-    _session.addFrame(
-      png,
-      DateTime.now().millisecondsSinceEpoch - _session.startedAtMs,
-    );
+  Rect? _scrollportOf(RenderBox boundary, ScrollableState scrollable) {
+    final box = scrollable.context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return null;
+    final origin = boundary.globalToLocal(box.localToGlobal(Offset.zero));
+    final rect = (origin & box.size).intersect(Offset.zero & boundary.size);
+    if (rect.width < 40 || rect.height < 40) return null;
+    return rect;
   }
 
-  Future<void> _captureTile(int offsetPx) async {
-    if (_session.tiles.containsKey(offsetPx)) return;
-    final png = await _capturePng(mask: true);
-    if (png != null) _session.addTile(offsetPx, png);
+  Future<void> _nextFrame() {
+    final completer = Completer<void>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!completer.isCompleted) completer.complete();
+    });
+    WidgetsBinding.instance.scheduleFrame();
+    return completer.future;
   }
 
-  Future<List<int>?> _capturePng({required bool mask}) async {
+  Future<List<int>?> _captureFoldPng({Rect? crop}) async {
     if (_background || _capturing) return null;
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     if (boundary is! RenderRepaintBoundary || !boundary.hasSize) return null;
-    final longEdge = math.max(boundary.size.width, boundary.size.height);
-    final ratio = longEdge <= 0 ? 0.5 : math.min(0.5, 800 / longEdge);
+    var ratio = _targetRatio(boundary.size);
     _capturing = true;
     try {
-      final image = await boundary.toImage(pixelRatio: ratio);
-      final masks = mask
-          ? _maskRegions(boundary, ratio)
-          : (covers: const <Rect>[], holes: const <Rect>[]);
-      final painted = masks.covers.isEmpty
-          ? image
-          : await _cover(image, masks.covers, masks.holes);
-      final data = await painted.toByteData(format: ui.ImageByteFormat.png);
-      painted.dispose();
-      if (!identical(painted, image)) image.dispose();
-      if (data == null) return null;
-      final bytes = data.buffer.asUint8List();
-      if (bytes.length > 512 * 1024) return null;
-      return bytes;
-    } catch (_) {
+      List<int>? best;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final bytes = await _renderPng(boundary, ratio, crop: crop);
+        if (bytes == null) return best;
+        if (bytes.length <= _maxPngBytes) return bytes;
+        best = bytes;
+        ratio *= 0.65;
+        if (ratio < 0.3) break;
+      }
+      if (best != null && best.length <= 512 * 1024) return best;
       return null;
     } finally {
       _capturing = false;
     }
   }
 
-  ({List<Rect> covers, List<Rect> holes}) _maskRegions(
-      RenderBox boundary, double ratio) {
-    final root = _boundaryKey.currentContext as Element?;
-    if (root == null) return (covers: const <Rect>[], holes: const <Rect>[]);
-    final origin = boundary.localToGlobal(Offset.zero);
-    final covers = <Rect>[];
-    final holes = <Rect>[];
-    void visit(Element element, {required bool unmasked, required bool force}) {
-      final widget = element.widget;
-      final optedOut = unmasked || widget is TalariaUnmask;
-      final inMask = (force || widget is TalariaMask) && !optedOut;
-      final coverDefault = !optedOut &&
-          (widget is Text ||
-              widget is EditableText ||
-              widget is RichText ||
-              widget is Image);
-      final box = element.renderObject;
-      if (box is RenderBox && box.hasSize && box.attached) {
-        final rect =
-            _scale(box.localToGlobal(Offset.zero) - origin & box.size, ratio);
-        if (widget is TalariaUnmask && force) holes.add(rect);
-        if (inMask || coverDefault) covers.add(rect);
-      }
-      element.visitChildren(
-        (child) => visit(child, unmasked: optedOut, force: inMask),
-      );
-    }
-
-    visit(root, unmasked: false, force: false);
-    return (covers: covers, holes: holes);
+  double _targetRatio(Size size) {
+    final edge = math.max(size.width, size.height);
+    if (edge <= 0) return 1;
+    // Prefer modest density — rare idle / rest shot, not a filmstrip loop.
+    return math.min(1.5, 1200 / edge);
   }
 
-  Rect _scale(Rect rect, double ratio) => Rect.fromLTRB(
-        rect.left * ratio,
-        rect.top * ratio,
-        rect.right * ratio,
-        rect.bottom * ratio,
-      );
+  Future<List<int>?> _renderPng(
+    RenderRepaintBoundary boundary,
+    double ratio, {
+    Rect? crop,
+  }) async {
+    try {
+      final image = await boundary.toImage(pixelRatio: ratio);
+      final root = _boundaryKey.currentContext as Element?;
+      final masks = root != null
+          ? heatmapCoverRects(
+              root: root,
+              boundary: boundary,
+              ratio: ratio,
+              privacy: widget.privacy,
+            )
+          : (covers: const <Rect>[], holes: const <Rect>[]);
+      var painted = masks.covers.isEmpty
+          ? image
+          : await _cover(image, masks.covers, masks.holes);
+      if (crop != null) {
+        final cropped = await _crop(painted, crop, ratio);
+        if (identical(cropped, painted)) {
+          if (!identical(painted, image)) painted.dispose();
+          image.dispose();
+          return null;
+        }
+        if (!identical(painted, image)) painted.dispose();
+        painted = cropped;
+      }
+      final data = await painted.toByteData(format: ui.ImageByteFormat.png);
+      painted.dispose();
+      if (!identical(painted, image)) image.dispose();
+      if (data == null) return null;
+      return data.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<ui.Image> _cover(
       ui.Image image, List<Rect> rects, List<Rect> holes) async {
@@ -651,6 +695,34 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     }
     final picture = recorder.endRecording();
     final out = await picture.toImage(image.width, image.height);
+    picture.dispose();
+    return out;
+  }
+
+  Future<ui.Image> _crop(ui.Image image, Rect logical, double ratio) async {
+    final bounds = Rect.fromLTWH(
+      0,
+      0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+    final src = Rect.fromLTWH(
+      logical.left * ratio,
+      logical.top * ratio,
+      logical.width * ratio,
+      logical.height * ratio,
+    ).intersect(bounds);
+    if (src.width < 1 || src.height < 1) return image;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      image,
+      src,
+      Rect.fromLTWH(0, 0, src.width, src.height),
+      Paint(),
+    );
+    final picture = recorder.endRecording();
+    final out = await picture.toImage(src.width.round(), src.height.round());
     picture.dispose();
     return out;
   }
@@ -673,6 +745,13 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         client.addBeforeFlush(_onClientFlush);
         _flushHooked = true;
       }
+      if (!_session.isOpen && !_openScheduled) {
+        _openScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _openScheduled = false;
+          if (mounted) unawaited(_syncRoute());
+        });
+      }
     }
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
@@ -680,6 +759,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         behavior: HitTestBehavior.translucent,
         onPointerDown: _onPointerDown,
         onPointerUp: _onPointerUp,
+        // Boundary exists only so the rare idle fold PNG can call toImage.
         child: RepaintBoundary(
           key: _boundaryKey,
           child: widget.child,
@@ -692,4 +772,19 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 /// Manual screen name for shells that do not change the route.
 void talariaSetHeatmapScreen(String name) {
   ScreenHeatmapController.instance.setManualScreen(name);
+}
+
+/// True when the app is not on screen.
+///
+/// [AppLifecycleState.inactive] is an unfocused window, which is still
+/// visible on desktop and web. Capture continues so a dashboard in another
+/// window still records.
+bool screenHeatmapAppIsHidden(AppLifecycleState state) {
+  return switch (state) {
+    AppLifecycleState.paused ||
+    AppLifecycleState.hidden ||
+    AppLifecycleState.detached =>
+      true,
+    AppLifecycleState.resumed || AppLifecycleState.inactive => false,
+  };
 }

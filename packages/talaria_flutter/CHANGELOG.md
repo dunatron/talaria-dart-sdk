@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Lifecycle analytics: `Application Opened` on cold start and every foreground return, `Application Backgrounded` when the app leaves the foreground. Names are exported as `TalariaLifecycleEvents`. Gated by analytics consent like any other analytics call; pass `trackLifecycleEvents: false` to `TalariaFlutter.init` for tags only.
+
+- Screen heatmaps no longer take continuous or mid-scroll screenshots. Capture is taps and scroll depth on the hot path; one idle fold PNG plus a structural tree uploads when the server requests a snapshot.
+- Opportunistic tiles when the user naturally rests past the fold (no `jumpTo`). Up to three event-driven micro-frames on rage / dead / error taps.
+- Stable ids via `TalariaHeatmapAnchor` or `Semantics.identifier`. Flutter Web uses the same raster snapshot path (no DOM).
+- Dropped the 1Hz filmstrip and document `jumpTo` mosaic from the default heatmap path.
+- Tap hit-testing skips walking every `Text` widget; the idle manifest still includes text nodes for the backdrop.
+
+## 0.2.5
+
+- Depends on `talaria` 0.3.6 (feature flags client).
+- Lifecycle analytics: `Application Opened` / `Application Backgrounded` via `LifecycleObserver` (opt out with `trackLifecycleEvents: false`).
+
 ## 0.2.4
 
 - Upload one snapshot per screen view, and skip the upload if the screen changes while the image is captured.

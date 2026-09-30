@@ -174,9 +174,43 @@ class HttpTransport implements Transport {
       },
       client: _http,
       label: 'sdk/getConfig',
-      timeout: const Duration(milliseconds: 200),
+      timeout: const Duration(seconds: 5),
     );
     return response;
+  }
+
+  @override
+  Future<Map<String, Object?>> evaluateFlags(
+    Map<String, Object?> input,
+  ) async {
+    final body = <String, Object?>{
+      '__className__': 'EvaluateFlagsInput',
+      ...input,
+    };
+    final raw = await _postJson(
+      path: '/flags/evaluate',
+      payload: {'input': body},
+      client: _http,
+      label: 'flags/evaluate',
+    );
+    return unwrapServerpodResult(raw);
+  }
+
+  @override
+  Future<Map<String, Object?>> downloadFlagDefinitions(
+    Map<String, Object?> input,
+  ) async {
+    final body = <String, Object?>{
+      '__className__': 'DownloadFlagDefinitionsInput',
+      ...input,
+    };
+    final raw = await _postJson(
+      path: '/flags/downloadDefinitions',
+      payload: {'input': body},
+      client: _http,
+      label: 'flags/downloadDefinitions',
+    );
+    return unwrapServerpodResult(raw);
   }
 
   @override

@@ -7,6 +7,12 @@ import 'span_scope.dart';
 /// Default ring-buffer capacity (locked APM contract).
 const int kMaxBreadcrumbs = 50;
 
+/// Query crumbs cannot grow past this, and cannot evict other crumbs.
+const int kMaxQueryBreadcrumbs = 15;
+
+/// Non-query crumbs. Together with [kMaxQueryBreadcrumbs] this fills the buffer.
+const int kMaxOtherBreadcrumbs = 35;
+
 /// Client-side breadcrumb attached to error events (`BreadcrumbDto`).
 class Breadcrumb {
   Breadcrumb({
@@ -125,10 +131,42 @@ class BreadcrumbBuffer {
   final ListQueue<Breadcrumb> _items = ListQueue<Breadcrumb>();
 
   void add(Breadcrumb breadcrumb) {
-    _items.addLast(breadcrumb);
-    while (_items.length > capacity) {
-      _items.removeFirst();
+    final isQuery = breadcrumb.type == 'query';
+    final cap = isQuery ? _queryCap : _otherCap;
+    var kept = 0;
+    for (final existing in _items) {
+      final existingQuery = existing.type == 'query';
+      if (isQuery == existingQuery) kept++;
     }
+    while (kept >= cap && _items.isNotEmpty) {
+      final oldest = _items.first;
+      final oldestQuery = oldest.type == 'query';
+      if (oldestQuery == isQuery) {
+        _items.removeFirst();
+        kept--;
+      } else {
+        // The oldest is the other tier. Walk forward to drop the oldest of this tier.
+        final next = _items.toList();
+        final index = next.indexWhere((item) => (item.type == 'query') == isQuery);
+        if (index < 0) break;
+        next.removeAt(index);
+        _items
+          ..clear()
+          ..addAll(next);
+        kept--;
+      }
+    }
+    _items.addLast(breadcrumb);
+  }
+
+  int get _queryCap =>
+      capacity >= kMaxBreadcrumbs ? kMaxQueryBreadcrumbs : (capacity < kMaxQueryBreadcrumbs ? capacity : kMaxQueryBreadcrumbs);
+
+  int get _otherCap {
+    final query = _queryCap;
+    final room = capacity - query;
+    if (room < 0) return 0;
+    return room < kMaxOtherBreadcrumbs ? room : kMaxOtherBreadcrumbs;
   }
 
   List<Breadcrumb> snapshot() => List<Breadcrumb>.unmodifiable(_items);

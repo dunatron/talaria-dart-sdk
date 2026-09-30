@@ -534,4 +534,16 @@ class _ThrowingAnalyticsTransport implements Transport {
 
   @override
   Future<void> reportDiscards(List<DiscardRow> discards) async {}
+
+  @override
+  Future<Map<String, Object?>> evaluateFlags(
+    Map<String, Object?> input,
+  ) async =>
+      const {};
+
+  @override
+  Future<Map<String, Object?>> downloadFlagDefinitions(
+    Map<String, Object?> input,
+  ) async =>
+      const {};
 }
