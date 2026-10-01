@@ -2,16 +2,26 @@ import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Environment', () {
-    test('aliases', () {
-      expect(Environment.fromMixed('prod'), Environment.production);
-      expect(Environment.fromMixed('live'), Environment.production);
-      expect(Environment.fromMixed('uat'), Environment.staging);
-      expect(Environment.fromMixed('test'), Environment.staging);
-      expect(Environment.fromMixed('dev'), Environment.development);
-      expect(Environment.fromMixed('local'), Environment.development);
-      expect(Environment.fromMixed('production').wireValue, 'production');
-    });
+  test('README init omits environment', () {
+    final options = TalariaOptions(
+      dsn: 'https://ingest.newtalaria.com',
+      apiKey: 'tal_live_readme_sample',
+      release: '1.4.2',
+      minLevel: SeverityLevel.warning,
+    );
+    expect(options.baseUrl, 'https://ingest.newtalaria.com');
+    expect(options.apiKey, 'tal_live_readme_sample');
+    expect(options.release, '1.4.2');
+    expect(options.minLevel, SeverityLevel.warning);
+  });
+
+  test('a 0.3.6 environment argument is accepted and not stored', () {
+    final options = TalariaOptions(
+      dsn: 'https://ingest.newtalaria.com',
+      apiKey: 'tal_live_readme_sample',
+      environment: 'production',
+    );
+    expect(options.apiKey, 'tal_live_readme_sample');
   });
 
   group('SeverityLevel', () {

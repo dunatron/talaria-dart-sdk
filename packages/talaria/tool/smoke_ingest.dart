@@ -34,7 +34,6 @@ Future<void> main(List<String> args) async {
     TalariaOptions(
       dsn: dsn,
       apiKey: apiKey ?? 'tal_live_smoke_test_placeholder_key_xxxxxx',
-      environment: 'development',
       release: '0.1.0+smoke',
       defaultIntegrations: false,
       flushIntervalMs: 0,

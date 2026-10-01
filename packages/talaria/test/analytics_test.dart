@@ -20,7 +20,6 @@ void main() {
     final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       platform: platform,
       storage: storage,
       defaultIntegrations: false,
@@ -195,7 +194,6 @@ void main() {
     final opts = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -286,7 +284,6 @@ void main() {
     final options = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       platform: 'flutter',
       defaultIntegrations: false,
       flushIntervalMs: 0,
@@ -317,7 +314,6 @@ void main() {
     final options = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({

@@ -158,7 +158,6 @@ class ScreenHeatmapSession {
     required String sessionId,
     required String? userId,
     required String? release,
-    required String environment,
     required String? osName,
     required String deviceClass,
     required String orientation,
@@ -196,7 +195,6 @@ class ScreenHeatmapSession {
       'orientation': orientation,
       'keyboard': keyboard,
       'osName': osName,
-      'environment': environment,
       'release': release,
       'platform': 'flutter',
       'taps': [

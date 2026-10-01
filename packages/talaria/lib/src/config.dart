@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'capture_context.dart';
-import 'environment.dart';
 import 'identity/storage.dart';
 import 'severity.dart';
 
@@ -12,11 +11,13 @@ typedef BeforeSendCallback = BeforeSendEvent? Function(
 
 /// Immutable SDK configuration.
 class TalariaOptions {
+  /// [environment] is accepted so call sites built against 0.3.6 still compile.
+  /// The API key decides the environment, so the value is not stored or sent.
   TalariaOptions({
     String? dsn,
     String? baseUrl,
     required this.apiKey,
-    required Object environment,
+    String? environment,
     this.release,
     this.commitSha,
     double sampleRate = 1.0,
@@ -35,7 +36,6 @@ class TalariaOptions {
     this.platform = 'dart',
     this.storage,
   })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
-        environment = Environment.fromMixed(environment),
         sampleRate = sampleRate.clamp(0.0, 1.0),
         maxBatchSize = max(1, maxBatchSize),
         flushIntervalMs = max(0, flushIntervalMs),
@@ -60,7 +60,6 @@ class TalariaOptions {
 
   final String baseUrl;
   final String apiKey;
-  final Environment environment;
   final String? release;
   final String? commitSha;
   double sampleRate;
@@ -186,7 +185,6 @@ class TalariaOptions {
     String? dsn,
     String? baseUrl,
     String? apiKey,
-    Object? environment,
     String? release,
     String? commitSha,
     double? sampleRate,
@@ -209,7 +207,6 @@ class TalariaOptions {
       dsn: dsn,
       baseUrl: baseUrl ?? this.baseUrl,
       apiKey: apiKey ?? this.apiKey,
-      environment: environment ?? this.environment,
       release: release ?? this.release,
       commitSha: commitSha ?? this.commitSha,
       sampleRate: sampleRate ?? this.sampleRate,

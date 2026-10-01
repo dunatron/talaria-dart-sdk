@@ -19,7 +19,7 @@ Events:
   "input": {
     "__className__": "IngestEventBatchInput",
     "events": [
-      { "__className__": "IngestEventInput", "message": "...", "environment": "production" }
+      { "__className__": "IngestEventInput", "message": "...", "level": "error" }
     ]
   }
 }

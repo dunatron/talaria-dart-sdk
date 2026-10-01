@@ -17,7 +17,6 @@ void main() {
     return TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       minLevel: minLevel,
       enforceDefaultLevel: enforce,
       loggers: loggers,
@@ -140,7 +139,6 @@ void main() {
       () => TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'wrong',
-        environment: 'production',
       ),
       throwsArgumentError,
     );

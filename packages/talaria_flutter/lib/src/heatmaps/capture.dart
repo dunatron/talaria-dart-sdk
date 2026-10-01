@@ -403,7 +403,6 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       sessionId: client.sessionId,
       userId: client.userId,
       release: client.options.release,
-      environment: client.options.environment.wireValue,
       osName: null,
       deviceClass: _deviceClassName,
       orientation: _orientationName,

@@ -18,14 +18,12 @@ void main() {
 
       queue.enqueue(Event(
         message: 'one',
-        environment: Environment.development,
         level: SeverityLevel.info,
       ));
       expect(transport.batches, isEmpty);
 
       queue.enqueue(Event(
         message: 'two',
-        environment: Environment.development,
         level: SeverityLevel.info,
       ));
 
@@ -56,7 +54,6 @@ void main() {
       await transport.sendBatch([
         Event(
           message: 'hello',
-          environment: Environment.production,
           level: SeverityLevel.warning,
           platform: 'dart',
         ),
@@ -68,7 +65,6 @@ void main() {
       expect(events.length, 1);
       expect(events.first['__className__'], 'IngestEventInput');
       expect(events.first['message'], 'hello');
-      expect(events.first['environment'], 'production');
     });
 
     test('attaches className and retry from error body', () async {
@@ -89,7 +85,6 @@ void main() {
         await transport.sendBatch([
           Event(
             message: 'hello',
-            environment: Environment.production,
             level: SeverityLevel.error,
           ),
         ]);

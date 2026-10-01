@@ -1,11 +1,9 @@
-import 'environment.dart';
 import 'severity.dart';
 
 /// In-memory event ready to serialize as `IngestEventInput`.
 class Event {
   Event({
     required this.message,
-    required this.environment,
     required this.level,
     this.eventType,
     this.title,
@@ -33,7 +31,6 @@ class Event {
   }
 
   final String message;
-  final Environment environment;
   final SeverityLevel level;
   final String? eventType;
   final String? title;
@@ -59,7 +56,6 @@ class Event {
     final wire = <String, Object?>{
       '__className__': 'IngestEventInput',
       'message': message,
-      'environment': environment.wireValue,
       'level': level.wireValue,
       'eventType': eventType ?? level.toEventType(),
     };

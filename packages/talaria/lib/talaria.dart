@@ -15,7 +15,6 @@ export 'src/capture_context.dart';
 export 'src/client.dart';
 export 'src/config.dart';
 export 'src/context/runtime_context.dart';
-export 'src/environment.dart';
 export 'src/event.dart';
 export 'src/flags/flag_definition.dart'
     show

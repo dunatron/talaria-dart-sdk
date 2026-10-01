@@ -13,10 +13,12 @@ Flutter apps should use [`talaria_flutter`](https://www.newtalaria.com/docs/sdk/
 
 ```yaml
 dependencies:
-  talaria: ^0.3.5
+  talaria: ^0.3.7
 ```
 
 ## Initialize
+
+The API key decides the environment.
 
 ```dart
 import 'package:talaria/talaria.dart';
@@ -24,7 +26,6 @@ import 'package:talaria/talaria.dart';
 await Talaria.init(TalariaOptions(
   dsn: 'https://ingest.newtalaria.com',
   apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
-  environment: 'production',
   release: '1.4.2',
   minLevel: SeverityLevel.warning,
 ));

@@ -21,7 +21,6 @@ void main() {
     final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       platform: 'dart',
       storage: storage,
       defaultIntegrations: false,
@@ -197,7 +196,6 @@ void main() {
     final opts = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
     );
     opts.applySdkDocument({
@@ -217,7 +215,6 @@ void main() {
     final opts = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
     )..enableFlags = true;
     final copied = opts.copyWith(platform: 'flutter');

@@ -19,7 +19,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -52,7 +51,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -76,7 +74,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -100,7 +97,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -138,7 +134,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -160,7 +155,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -185,7 +179,6 @@ void main() {
       TalariaOptions(
         dsn: 'https://api.example.com',
         apiKey: 'tal_live_test_key_for_unit_tests',
-        environment: 'development',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),

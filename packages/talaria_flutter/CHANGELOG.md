@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.2.6
 
+- Depends on `talaria` 0.3.7.
+- Removed `environment` from init and from screen heatmap payloads. The API key decides the environment.
 - Lifecycle analytics: `Application Opened` on cold start and every foreground return, `Application Backgrounded` when the app leaves the foreground. Names are exported as `TalariaLifecycleEvents`. Gated by analytics consent like any other analytics call; pass `trackLifecycleEvents: false` to `TalariaFlutter.init` for tags only.
 
 - Screen heatmaps no longer take continuous or mid-scroll screenshots. Capture is taps and scroll depth on the hot path; one idle fold PNG plus a structural tree uploads when the server requests a snapshot.

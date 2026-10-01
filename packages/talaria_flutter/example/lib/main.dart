@@ -14,10 +14,6 @@ Future<void> main() async {
         'TALARIA_API_KEY',
         defaultValue: 'tal_live_replace_me',
       ),
-      environment: const String.fromEnvironment(
-        'APP_ENV',
-        defaultValue: 'development',
-      ),
       release: const String.fromEnvironment(
         'APP_RELEASE',
         defaultValue: '0.1.0+example',

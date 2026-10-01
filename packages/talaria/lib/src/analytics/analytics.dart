@@ -23,7 +23,6 @@ class TalariaAnalytics {
     required bool Function() isClosed,
     required bool Function() isFlutter,
     required String Function() platform,
-    required String Function() environment,
     required String? Function() release,
     required String? Function() userId,
     required void Function(String? userId) setUser,
@@ -39,7 +38,6 @@ class TalariaAnalytics {
         _isClosed = isClosed,
         _isFlutter = isFlutter,
         _platform = platform,
-        _environment = environment,
         _release = release,
         _userId = userId,
         _setUser = setUser,
@@ -55,7 +53,6 @@ class TalariaAnalytics {
   final bool Function() _isClosed;
   final bool Function() _isFlutter;
   final String Function() _platform;
-  final String Function() _environment;
   final String? Function() _release;
   final String? Function() _userId;
   final void Function(String? userId) _setUser;
@@ -285,7 +282,6 @@ class TalariaAnalytics {
         spanId: spanId,
         requestId: _requestId(),
         platform: _platform(),
-        environment: _environment(),
         release: _release(),
         url: resolvedUrl,
         path: _nonEmpty(path) ?? page?.path,

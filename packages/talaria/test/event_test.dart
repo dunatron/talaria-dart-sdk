@@ -5,7 +5,6 @@ void main() {
   test('Event.toWire includes className and required fields', () {
     final event = Event(
       message: 'boom',
-      environment: Environment.production,
       level: SeverityLevel.error,
       title: 'StateError',
       platform: 'dart',
@@ -21,7 +20,6 @@ void main() {
     final wire = event.toWire();
     expect(wire['__className__'], 'IngestEventInput');
     expect(wire['message'], 'boom');
-    expect(wire['environment'], 'production');
     expect(wire['level'], 'error');
     expect(wire['eventType'], 'error');
     expect(wire['platform'], 'dart');
@@ -35,7 +33,6 @@ void main() {
   test('Event.toWire includes traceId spanId breadcrumbs', () {
     final event = Event(
       message: 'boom',
-      environment: Environment.production,
       level: SeverityLevel.error,
       traceId: '0af7651916cd43dd8448eb211c80319c',
       spanId: 'b7ad6b7169203331',
@@ -56,7 +53,6 @@ void main() {
   test('Event.toWire includes anonymousId', () {
     final event = Event(
       message: 'boom',
-      environment: Environment.production,
       level: SeverityLevel.error,
       anonymousId: 'anon-1',
       sessionId: 'sess-1',
@@ -70,7 +66,6 @@ void main() {
     expect(
       () => Event(
         message: '  ',
-        environment: Environment.development,
         level: SeverityLevel.info,
       ),
       throwsArgumentError,

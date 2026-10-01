@@ -11,10 +11,12 @@ Flutter bindings for [Talaria](https://www.newtalaria.com). Re-exports [`talaria
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.2.4
+  talaria_flutter: ^0.2.6
 ```
 
 ## Bootstrap
+
+The API key decides the environment.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -25,7 +27,6 @@ Future<void> main() async {
     TalariaOptions(
       dsn: 'https://ingest.newtalaria.com',
       apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
-      environment: 'production',
       minLevel: SeverityLevel.warning,
     ),
     const MyApp(),

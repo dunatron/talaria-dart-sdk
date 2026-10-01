@@ -37,7 +37,7 @@ Serverpod: `TalariaServerpod.init`, `TalariaServerpod.attach`, `TalariaServerpod
 
 ## Init options
 
-- Required: `dsn` or `baseUrl`, `apiKey`, `environment`
+- Required: `dsn` or `baseUrl`, `apiKey`. The API key decides the environment.
 - Optional: `release`, `commitSha`, `sampleRate`, `minLevel` (default `debug`), `enforceDefaultLevel` (default `false`), `loggers`, `beforeSend`, `maxBatchSize`, `flushIntervalMs`, `defaultIntegrations`, `userId`, `tags`, `httpTimeoutSeconds`, `platform`, `enableTracing` (default `false`), `tracesSampleRate` (default 0.10 once tracing is on; setting `> 0` enables tracing), `enableAnalytics` (default `false`), `storage`
 
 ## Capture rules

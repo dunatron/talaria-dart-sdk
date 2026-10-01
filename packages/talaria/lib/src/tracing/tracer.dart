@@ -3,7 +3,6 @@ import 'dart:math';
 
 import '../config.dart';
 import '../context/runtime_context.dart';
-import '../environment.dart';
 import 'span.dart';
 import 'span_scope.dart';
 import 'trace_context.dart';
@@ -11,7 +10,6 @@ import 'trace_context.dart';
 /// Snapshot of client fields copied onto finished spans.
 class SpanEnrichment {
   const SpanEnrichment({
-    required this.environment,
     this.release,
     this.userId,
     this.anonymousId,
@@ -20,7 +18,6 @@ class SpanEnrichment {
     this.resource = const {},
   });
 
-  final Environment environment;
   final String? release;
   final String? userId;
   final String? anonymousId;
@@ -488,7 +485,6 @@ class _RecordingSpan implements Span {
       resource: Map<String, String>.from(enrichment.resource),
       events: List<SpanEvent>.from(_events),
       links: List<SpanLink>.from(_links),
-      environment: enrichment.environment,
       release: enrichment.release,
       userId: enrichment.userId ??
           _attributes['enduser.id'] ??

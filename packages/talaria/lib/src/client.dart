@@ -6,7 +6,6 @@ import 'capture_context.dart';
 import 'config.dart';
 import 'event_filters.dart';
 import 'context/runtime_context.dart';
-import 'environment.dart';
 import 'event.dart';
 import 'flags/flags_client.dart';
 import 'identity/identity.dart';
@@ -127,7 +126,6 @@ class TalariaClient {
       isFlutter: () =>
           platformOverride == 'flutter' || _options.platform == 'flutter',
       platform: () => platformOverride ?? _options.platform,
-      environment: () => _options.environment.wireValue,
       release: () => _options.release,
       userId: () => _globalUserId,
       setUser: setUser,
@@ -960,7 +958,6 @@ class TalariaClient {
     _identity.touch();
     final event = Event(
       message: outMessage,
-      environment: Environment.fromMixed(_options.environment),
       level: outLevel,
       eventType: outLevel.toEventType(),
       title: outTitle,
@@ -993,7 +990,6 @@ class TalariaClient {
             : 'dart');
     _identity.touch();
     return SpanEnrichment(
-      environment: _options.environment,
       release: _options.release,
       userId: _globalUserId ?? userIdFromSpan(tracer.currentSpan),
       anonymousId: _identity.anonymousId,
@@ -1003,7 +999,6 @@ class TalariaClient {
         'service.name': service,
         if (_options.release != null && _options.release!.isNotEmpty)
           'service.version': _options.release!,
-        'deployment.environment': _options.environment.wireValue,
         ...flags.stampTags(),
       },
     );

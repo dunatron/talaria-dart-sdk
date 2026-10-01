@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.7
 
+- Event, span, and analytics payloads no longer include `environment`. The API key decides it. `init` still accepts the argument so code built against 0.3.6 compiles; the value is not sent.
 - `sdk/getConfig` waits 5 seconds. A slower policy response still enables heatmaps and analytics.
 - Identical SQL under one parent is one span with `db.query.count` and `db.query.duration_sum_ms`. The span stays the slowest execution. Queries of 200ms or more, and failed queries, stay their own spans.
 - A trace stores at most 200 spans and keeps 32 slots for non-SQL spans. The root records `dropped_span_count` when a span is dropped.

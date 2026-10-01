@@ -19,7 +19,6 @@ void main() {
     final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -126,7 +125,6 @@ void main() {
         kind: SpanKind.client,
         startTime: DateTime.utc(2026, 1, 1, 0, 0, 0),
         endTime: DateTime.utc(2026, 1, 1, 0, 0, 1),
-        environment: Environment.production,
         attributes: {'http.request.method': 'GET'},
       ),
     ]);

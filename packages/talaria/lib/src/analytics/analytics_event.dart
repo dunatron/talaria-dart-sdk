@@ -33,7 +33,6 @@ class AnalyticsEvent {
     this.spanId,
     this.requestId,
     this.platform,
-    this.environment,
     this.release,
     this.url,
     this.path,
@@ -74,7 +73,6 @@ class AnalyticsEvent {
   final String? spanId;
   final String? requestId;
   final String? platform;
-  final String? environment;
   final String? release;
   final String? url;
   final String? path;
@@ -129,7 +127,6 @@ class AnalyticsEvent {
     put('spanId', spanId);
     put('requestId', requestId);
     put('platform', platform);
-    put('environment', environment);
     put('release', release);
     put('url', url);
     put('path', path);

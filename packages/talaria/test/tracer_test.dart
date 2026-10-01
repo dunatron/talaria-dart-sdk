@@ -26,7 +26,6 @@ void main() {
     final created = TalariaOptions(
       dsn: 'https://api.example.com',
       apiKey: 'tal_live_test_key_for_unit_tests',
-      environment: 'development',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -55,7 +54,7 @@ void main() {
     final tracer = Tracer(
       options: options(),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
 
     final span = tracer.startTransaction('GET /x');
@@ -69,7 +68,7 @@ void main() {
     final tracer = Tracer(
       options: options(enableTracing: true, tracesSampleRate: 0.10),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
       random: _FixedRandom(0.99),
     );
 
@@ -85,7 +84,7 @@ void main() {
     final tracer = Tracer(
       options: options(enableTracing: true, tracesSampleRate: 0.10),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
       random: _FixedRandom(0.99),
     );
 
@@ -102,7 +101,7 @@ void main() {
     final tracer = Tracer(
       options: options(tracesSampleRate: 1.0),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
 
     final root = tracer.startTransaction('root');
@@ -121,7 +120,7 @@ void main() {
     final tracer = Tracer(
       options: options(enableTracing: true, tracesSampleRate: 0.0),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
 
     final root = tracer.startTransaction('root');
@@ -138,7 +137,7 @@ void main() {
     final tracer = Tracer(
       options: options(tracesSampleRate: 1.0),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
     final root = tracer.startTransaction('sync');
     final import = tracer.startSpan('shopify.import_products');
@@ -175,7 +174,7 @@ void main() {
     final tracer = Tracer(
       options: options(tracesSampleRate: 1.0),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
     final root = tracer.startTransaction('sync');
     for (var i = 0; i < Tracer.maxSqlSpans + 1; i++) {
@@ -204,7 +203,7 @@ void main() {
     final tracer = Tracer(
       options: options(tracesSampleRate: 1.0),
       enqueue: finished.add,
-      enrichment: () => SpanEnrichment(environment: Environment.development),
+      enrichment: () => const SpanEnrichment(),
     );
     final root = tracer.startTransaction('task');
     expect(

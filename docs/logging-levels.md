@@ -36,7 +36,6 @@ if client.enforceDefaultLevel:
 await Talaria.init(TalariaOptions(
   dsn: 'https://api.newtalaria.com',
   apiKey: 'tal_live_…',
-  environment: 'production',
   minLevel: SeverityLevel.warning,
   enforceDefaultLevel: false,
   loggers: {

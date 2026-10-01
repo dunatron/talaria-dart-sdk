@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Depends on `talaria` 0.3.7.
+- Removed `environment` from init. The API key decides the environment.
+
 ## 0.2.3
 
 - Depends on `talaria` 0.3.6. Mid-request flag helper via `TalariaServerpodFlags`.

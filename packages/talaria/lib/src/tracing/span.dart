@@ -1,5 +1,4 @@
 import '../context/runtime_context.dart';
-import '../environment.dart';
 import 'trace_context.dart';
 
 /// OTel SpanKind wire values (`SpanKindWire`).
@@ -105,7 +104,6 @@ class FinishedSpan {
     Map<String, String>? resource,
     List<SpanEvent>? events,
     List<SpanLink>? links,
-    required this.environment,
     this.release,
     this.userId,
     this.anonymousId,
@@ -129,7 +127,6 @@ class FinishedSpan {
   final Map<String, String> resource;
   final List<SpanEvent> events;
   final List<SpanLink> links;
-  final Environment environment;
   final String? release;
   final String? userId;
   final String? anonymousId;
@@ -178,7 +175,6 @@ class FinishedSpan {
       'links',
       links.isEmpty ? null : [for (final l in links) l.toWire()],
     );
-    put('environment', environment.wireValue);
     put('release', release);
     put('userId', userId);
     put('anonymousId', anonymousId);
@@ -221,7 +217,6 @@ class FinishedSpan {
       resource: resource,
       events: events,
       links: links,
-      environment: environment,
       release: release,
       userId: userId,
       anonymousId: anonymousId,
