@@ -70,7 +70,7 @@ Middleware talariaRelicMiddleware(TalariaClient client) {
           );
         },
         buffer: crumbs,
-      ).whenComplete(RuntimeContext.clearCurrent);
+      );
     };
   };
 }

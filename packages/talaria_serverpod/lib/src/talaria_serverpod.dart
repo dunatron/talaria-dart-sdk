@@ -12,6 +12,8 @@ class TalariaServerpod {
   TalariaServerpod._();
 
   static bool _attached = false;
+  static final Map<String, String> _sessionUsers = {};
+  static final Set<String> _userCloseHook = {};
 
   /// Initialize the shared [Talaria] client for a Serverpod process.
   static Future<TalariaClient> init(
@@ -79,25 +81,45 @@ class TalariaServerpod {
       return;
     }
 
-    final sessionId =
-        context is OperationEventContext ? context.sessionId?.toString() : null;
-    final bound = sessionId == null ? null : SpanScope.forSession(sessionId);
-    if (bound != null && bound.isRecording) {
-      bound.markError(message: event.exception.toString());
-    }
+    final sessionId = context is OperationEventContext
+        ? context.sessionId?.toString()
+        : null;
+    final resolvedSessionId =
+        (sessionId != null && sessionId.isNotEmpty) ? sessionId : null;
     final uri = context is ClientCallOpContext ? context.uri.toString() : null;
     final userId = context is OperationEventContext
         ? context.userAuthInfo?.userIdentifier.trim()
         : null;
-    final resolvedUserId =
-        (userId != null && userId.isNotEmpty) ? userId : null;
+    final fromSession = resolvedSessionId == null
+        ? null
+        : _sessionUsers[resolvedSessionId];
+    final resolvedUserId = _firstUser(userId, fromSession);
 
-    if (sessionId != null && sessionId.isNotEmpty) {
-      final zoneCrumbs = BreadcrumbScope.zoneBuffer();
-      if (zoneCrumbs != null) {
-        BreadcrumbScope.bindSession(sessionId, zoneCrumbs);
+    final sameRequest = uri != null &&
+        uri.isNotEmpty &&
+        RuntimeContext.zoneUrl == uri;
+
+    if (resolvedSessionId != null &&
+        SpanScope.forSession(resolvedSessionId) == null &&
+        sameRequest) {
+      final current = client.tracer.currentSpan;
+      if (current != null && current.isRecording) {
+        SpanScope.bindSession(resolvedSessionId, current);
       }
     }
+
+    final attached = resolvedSessionId == null
+        ? null
+        : SpanScope.forSession(resolvedSessionId);
+    if (attached != null && attached.isRecording) {
+      SessionTransaction.applyUser(attached, resolvedUserId);
+      attached.markError(message: event.exception.toString());
+    }
+
+    final crumbs = _crumbsForDiagnostic(
+      sessionId: resolvedSessionId,
+      sameRequest: sameRequest,
+    );
 
     Future<void> capture() {
       return client.captureException(
@@ -114,27 +136,111 @@ class TalariaServerpod {
       );
     }
 
+    Future<void> scopedCapture() {
+      return BreadcrumbScope.runWithAsync(capture, buffer: crumbs);
+    }
+
     // ignore: discarded_futures
     RuntimeContext.runWithAsync(
       () async {
-        if (sessionId != null && sessionId.isNotEmpty) {
+        if (resolvedSessionId != null) {
           await SpanScope.runAsync(
-            capture,
-            sessionId: sessionId,
+            scopedCapture,
+            sessionId: resolvedSessionId,
           );
-        } else {
-          await capture();
+          return;
         }
+        if (sameRequest) {
+          await scopedCapture();
+          return;
+        }
+        await SpanScope.runAsync(scopedCapture);
       },
       url: uri,
-      requestId: sessionId,
+      requestId: resolvedSessionId,
       userId: resolvedUserId,
+      blankUnset: true,
     );
+  }
+
+  /// Crumbs from the throwing session. A foreign Zone's buffer is ignored.
+  static BreadcrumbBuffer _crumbsForDiagnostic({
+    required String? sessionId,
+    required bool sameRequest,
+  }) {
+    if (sessionId != null) {
+      final bound = BreadcrumbScope.forSession(sessionId);
+      if (bound != null) {
+        return bound;
+      }
+    }
+    if (sameRequest) {
+      final zoneCrumbs = BreadcrumbScope.zoneBuffer();
+      if (zoneCrumbs != null) {
+        if (sessionId != null) {
+          BreadcrumbScope.bindSession(sessionId, zoneCrumbs);
+        }
+        return zoneCrumbs;
+      }
+    }
+    return BreadcrumbBuffer();
+  }
+
+  /// Remember the dashboard user for this Serverpod session only.
+  ///
+  /// Diagnostic capture reads this map. It does not call [TalariaClient.setUser],
+  /// which is process-wide and would leak across concurrent requests.
+  static void bindRequestUser(Session session, String userId) {
+    final sessionId = SessionSpans.sessionIdOf(session);
+    bindSessionUser(sessionId, userId);
+    if (sessionId.isEmpty || !_userCloseHook.add(sessionId)) {
+      return;
+    }
+    session.addWillCloseListener((_) {
+      _userCloseHook.remove(sessionId);
+      unbindSessionUser(sessionId);
+    });
+  }
+
+  /// Test and internal entry. [userId] is trimmed; empty values are ignored.
+  static void bindSessionUser(String sessionId, String userId) {
+    final id = sessionId.trim();
+    final user = userId.trim();
+    if (id.isEmpty || user.isEmpty) {
+      return;
+    }
+    _sessionUsers[id] = user;
+    final span = SpanScope.forSession(id);
+    if (span != null && span.isRecording) {
+      SessionTransaction.applyUser(span, user);
+    }
+  }
+
+  static void unbindSessionUser(String sessionId) {
+    _sessionUsers.remove(sessionId.trim());
+  }
+
+  static void clearSessionUsersForTest() {
+    _sessionUsers.clear();
+    _userCloseHook.clear();
+  }
+
+  static String? _firstUser(String? primary, String? fallback) {
+    final first = primary?.trim();
+    if (first != null && first.isNotEmpty) {
+      return first;
+    }
+    final second = fallback?.trim();
+    if (second != null && second.isNotEmpty) {
+      return second;
+    }
+    return null;
   }
 
   /// Reset attach flag between tests.
   static void resetAttachForTest() {
     _attached = false;
+    clearSessionUsersForTest();
   }
 
   static void _ensureSessionTransaction(
@@ -162,6 +268,7 @@ class TalariaServerpod {
       SessionTransaction.finish(SpanScope.forSession(sessionId));
       SpanScope.unbindSession(sessionId);
       BreadcrumbScope.unbindSession(sessionId);
+      unbindSessionUser(sessionId);
     });
   }
 

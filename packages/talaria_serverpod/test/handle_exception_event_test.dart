@@ -6,6 +6,10 @@ import 'package:test/test.dart';
 void main() {
   tearDown(() async {
     await Talaria.reset();
+    SpanScope.clearSessions();
+    BreadcrumbScope.clearSessions();
+    RuntimeContext.clearCurrent();
+    TalariaServerpod.clearSessionUsersForTest();
   });
 
   Future<void> drain() async {
@@ -222,6 +226,194 @@ void main() {
       isNot(contains('GET /two')),
     );
   });
+
+  test('title uses the exception message instead of a generated class', () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _BoomImpl(),
+        StackTrace.current,
+        message: '_BoomImpl',
+      ),
+    );
+    await drain();
+    final events = transport.batches.expand((b) => b).toList();
+    expect(events.single.title, 'Invalid API key');
+  });
+
+  test('diagnostic capture ignores another request URL, crumbs, and span',
+      () async {
+    final transport = FakeTransport();
+    final options = TalariaOptions(
+      dsn: 'https://api.example.com',
+      apiKey: 'tal_live_test_key_for_unit_tests',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    );
+    options.enableTracing = true;
+    options.tracesSampleRate = 1;
+    final client = await TalariaServerpod.init(options, transport: transport);
+
+    const sessionId = '550e8400-e29b-41d4-a716-446655440000';
+    final foreign = client.startTransaction(
+      'GET /replays/start',
+      kind: SpanKind.server,
+    );
+    final sessionSpan = client.startTransaction(
+      'POST /events/ingestBatch',
+      kind: SpanKind.server,
+    );
+    SpanScope.bindSession(sessionId, sessionSpan);
+    final sessionCrumbs = BreadcrumbBuffer();
+    sessionCrumbs.add(
+      Breadcrumb(type: 'http', category: 'http', message: 'POST /events'),
+    );
+    BreadcrumbScope.bindSession(sessionId, sessionCrumbs);
+    client.addBreadcrumb(
+      Breadcrumb(type: 'http', category: 'http', message: 'GET /replays/start'),
+    );
+    RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
+    RuntimeContext.setUserId('other-user');
+
+    await RuntimeContext.runWithAsync(
+      () async {
+        await BreadcrumbScope.runWithAsync(
+          () async {
+            client.addBreadcrumb(
+              Breadcrumb(
+                type: 'http',
+                category: 'http',
+                message: 'GET /replays/start zone',
+              ),
+            );
+            TalariaServerpod.handleExceptionEvent(
+              ExceptionEvent(StateError('ingest'), StackTrace.current),
+              context: MethodCallOpContext(
+                serverName: 'api',
+                serverId: 'srv',
+                serverRunMode: 'test',
+                sessionId: UuidValue.fromString(sessionId),
+                uri: Uri.parse(
+                  'https://api.newtalaria.com/events/ingestBatch',
+                ),
+                endpoint: 'events',
+                methodName: 'ingestBatch',
+              ),
+            );
+            await drain();
+          },
+          buffer: BreadcrumbBuffer(),
+        );
+      },
+      url: 'https://api.newtalaria.com/replays/start',
+      userId: 'other-user',
+    );
+
+    final events = transport.batches.expand((b) => b).toList();
+    expect(events, hasLength(1));
+    final event = events.single;
+    expect(event.url, 'https://api.newtalaria.com/events/ingestBatch');
+    expect(event.userId, isNot('other-user'));
+    expect(event.traceId, sessionSpan.traceId);
+    expect(event.traceId, isNot(foreign.traceId));
+    final messages = event.breadcrumbs?.map((c) => c['message']).toList();
+    expect(messages, ['POST /events']);
+  });
+
+  test('diagnostic event uses the session user, not another request', () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+
+    const sessionId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+    TalariaServerpod.bindSessionUser(
+      '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
+      'other-user',
+    );
+    TalariaServerpod.bindSessionUser(sessionId, 'user-123');
+    RuntimeContext.setUserId('isolate-user');
+
+    await RuntimeContext.runWithAsync(
+      () async {
+        TalariaServerpod.handleExceptionEvent(
+          ExceptionEvent(StateError('denied'), StackTrace.current),
+          context: MethodCallOpContext(
+            serverName: 'api',
+            serverId: 'srv',
+            serverRunMode: 'test',
+            sessionId: UuidValue.fromString(sessionId),
+            uri: Uri.parse('https://api.example.com/project/get'),
+            endpoint: 'project',
+            methodName: 'get',
+          ),
+        );
+        await drain();
+      },
+      url: 'https://api.example.com/replays/start',
+      userId: 'zone-user',
+    );
+
+    final event = transport.batches.expand((b) => b).single;
+    expect(event.userId, 'user-123');
+    expect(event.url, 'https://api.example.com/project/get');
+  });
+
+  test('diagnostic without a request URL does not inherit the isolate URL',
+      () async {
+    final transport = FakeTransport();
+    final options = TalariaOptions(
+      dsn: 'https://api.example.com',
+      apiKey: 'tal_live_test_key_for_unit_tests',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    );
+    options.enableTracing = true;
+    options.tracesSampleRate = 1;
+    final client = await TalariaServerpod.init(options, transport: transport);
+
+    client.startTransaction('GET /replays/start', kind: SpanKind.server);
+    client.addBreadcrumb(
+      Breadcrumb(type: 'http', category: 'http', message: 'GET /replays/start'),
+    );
+    RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
+
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(StateError('orphan'), StackTrace.current),
+      context: const DiagnosticEventContext(
+        serverName: 'api',
+        serverId: 'srv',
+        serverRunMode: 'test',
+      ),
+    );
+    await drain();
+
+    final event = transport.batches.expand((b) => b).single;
+    expect(event.url, isNull);
+    expect(event.traceId, isNull);
+    expect(event.breadcrumbs, isNull);
+  });
+}
+
+class _BoomImpl implements Exception {
+  @override
+  String toString() => 'Invalid API key';
 }
 
 class _ApiUnauthorizedException implements Exception {}

@@ -56,7 +56,60 @@ class ExceptionPayloadBuilder {
     return name;
   }
 
-  static String shortName(Object error) => typeName(error);
+  static final _uuid = RegExp(
+    r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+    caseSensitive: false,
+  );
+
+  /// Human title: the exception message, not a generated class name.
+  ///
+  /// `_ApiUnauthorizedExceptionImpl` whose `toString` is `Invalid API key`
+  /// becomes `Invalid API key`. A bare type (`TypeError`, `Instance of …`)
+  /// stays the sanitized type name. Stream connection ids become `<id>`.
+  static String shortName(Object error) {
+    final type = typeName(error);
+    final human = _humanMessage(messageOf(error), error);
+    if (human == null) {
+      return type;
+    }
+    return human;
+  }
+
+  static String? _humanMessage(String raw, Object error) {
+    var message = raw.trim();
+    if (message.isEmpty) {
+      return null;
+    }
+    message = message.replaceFirst(RegExp(r'^Exception:\s+'), '');
+    final type = typeName(error);
+    final rawType = error.runtimeType.toString();
+    for (final head in {type, rawType, sanitizeTypeName(rawType)}) {
+      final prefix = '$head: ';
+      if (head.isNotEmpty && message.startsWith(prefix)) {
+        message = message.substring(prefix.length).trim();
+        break;
+      }
+    }
+    message = message.replaceAll(_uuid, '<id>').trim();
+    if (message.isEmpty || _isTypeDump(message, error)) {
+      return null;
+    }
+    return message;
+  }
+
+  static bool _isTypeDump(String message, Object error) {
+    if (message.startsWith('Instance of ')) {
+      return true;
+    }
+    final raw = error.runtimeType.toString();
+    if (message == raw || message == typeName(error)) {
+      return true;
+    }
+    if (message.startsWith('_') && message.endsWith('Impl')) {
+      return true;
+    }
+    return false;
+  }
 
   static String messageOf(Object error) {
     if (error is Error) {

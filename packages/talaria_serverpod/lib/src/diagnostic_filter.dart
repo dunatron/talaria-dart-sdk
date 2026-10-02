@@ -48,16 +48,32 @@ class DiagnosticFilter {
     return false;
   }
 
-  /// Issue title without stream connection ids.
+  /// Issue title without stream connection ids or generated class names.
   static String? titleOf(ExceptionEvent event) {
+    final fromException = ExceptionPayloadBuilder.shortName(event.exception);
     final raw = event.message?.trim();
     if (raw == null || raw.isEmpty) {
-      return ExceptionPayloadBuilder.shortName(event.exception);
+      return fromException;
     }
-    final stripped = raw.replaceAll(_uuidInTitle, '<id>').trim();
-    if (stripped.isEmpty) {
-      return ExceptionPayloadBuilder.shortName(event.exception);
+    final stripped = raw
+        .replaceAll(_uuidInTitle, '<id>')
+        .replaceFirst(RegExp(r'^Exception:\s+'), '')
+        .trim();
+    if (stripped.isEmpty || _isGeneratedClassTitle(stripped, event.exception)) {
+      return fromException;
     }
     return stripped;
+  }
+
+  static bool _isGeneratedClassTitle(String value, Object error) {
+    if (value.startsWith('Instance of ')) {
+      return true;
+    }
+    // Stable names such as StateError stay. Generated `_FooImpl` does not.
+    if (value.startsWith('_') || value.endsWith('Impl')) {
+      return true;
+    }
+    final raw = error.runtimeType.toString();
+    return value == raw && (raw.startsWith('_') || raw.endsWith('Impl'));
   }
 }

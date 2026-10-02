@@ -73,4 +73,40 @@ void main() {
     expect(
         ExceptionPayloadBuilder.sanitizeTypeName('StateError'), 'StateError');
   });
+
+  test('shortName prefers the exception message over a generated class', () {
+    expect(
+      ExceptionPayloadBuilder.shortName(_InvalidKeyException()),
+      'Invalid API key',
+    );
+    expect(
+      ExceptionPayloadBuilder.shortName(
+        _StreamClosed('550e8400-e29b-41d4-a716-446655440000'),
+      ),
+      'Connection <id> closed',
+    );
+    expect(
+      ExceptionPayloadBuilder.shortName(StateError('uncaught')),
+      'Bad state: uncaught',
+    );
+    expect(ExceptionPayloadBuilder.shortName(TypeError()), 'TypeError');
+    expect(
+      ExceptionPayloadBuilder.shortName(FormatException('bad')),
+      'bad',
+    );
+  });
+}
+
+class _InvalidKeyException implements Exception {
+  @override
+  String toString() => 'Invalid API key';
+}
+
+class _StreamClosed implements Exception {
+  _StreamClosed(this.cid);
+
+  final String cid;
+
+  @override
+  String toString() => 'Connection $cid closed';
 }

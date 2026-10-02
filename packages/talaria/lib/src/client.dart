@@ -536,6 +536,17 @@ class TalariaClient {
         return bound;
       }
     }
+    final zone = SpanScope.zoneStack();
+    if (zone != null) {
+      for (var i = zone.length - 1; i >= 0; i--) {
+        final span = zone[i];
+        if (span.isRecording) {
+          return span;
+        }
+      }
+      // A server Zone must not borrow the process-wide span stack.
+      return null;
+    }
     return tracer.currentSpan;
   }
 
@@ -949,7 +960,7 @@ class TalariaClient {
         traceId = span.traceId;
         spanId = span.spanId;
       }
-      final trail = (BreadcrumbScope.current() ?? _breadcrumbs).snapshot();
+      final trail = _breadcrumbsForCapture();
       if (trail.isNotEmpty) {
         breadcrumbs = [for (final b in trail) b.toWire()];
       }
@@ -981,6 +992,19 @@ class TalariaClient {
     );
 
     _queue.enqueue(event);
+  }
+
+  List<Breadcrumb> _breadcrumbsForCapture() {
+    final scoped = BreadcrumbScope.current();
+    if (scoped != null) {
+      return scoped.snapshot();
+    }
+    // Server request Zones and session bindings must not attach crumbs
+    // collected on the process-wide buffer.
+    if (SpanScope.zoneStack() != null || SpanScope.currentSessionId != null) {
+      return const [];
+    }
+    return _breadcrumbs.snapshot();
   }
 
   SpanEnrichment _spanEnrichment() {

@@ -16,6 +16,13 @@ class RuntimeContext {
   static const Object sessionIdZoneKey = #talariaRuntimeSessionId;
   static const Object replayIdZoneKey = #talariaRuntimeReplayId;
 
+  /// Zone value meaning "this field is intentionally unset".
+  ///
+  /// Getters then return null instead of a parent Zone value or the isolate
+  /// fallback. Diagnostic capture uses this so one request cannot inherit
+  /// another's URL or user id.
+  static const Object unset = #talariaRuntimeUnset;
+
   static String? _url;
   static String? _requestId;
   static String? _userAgent;
@@ -33,22 +40,13 @@ class RuntimeContext {
   static String? _replayId;
 
   /// Isolate-wide current URL (Flutter route, Dart request URL, …).
-  static String? get url {
-    final fromZone = Zone.current[urlZoneKey];
-    if (fromZone is String && fromZone.isNotEmpty) {
-      return fromZone;
-    }
-    return _url;
-  }
+  static String? get url => _zoneOrIsolate(urlZoneKey, _url);
+
+  /// URL bound on this Zone only. Ignores the isolate fallback.
+  static String? get zoneUrl => _zoneOnly(urlZoneKey);
 
   /// Isolate-wide current request id (inbound `X-Request-Id`, span id, …).
-  static String? get requestId {
-    final fromZone = Zone.current[requestIdZoneKey];
-    if (fromZone is String && fromZone.isNotEmpty) {
-      return fromZone;
-    }
-    return _requestId;
-  }
+  static String? get requestId => _zoneOrIsolate(requestIdZoneKey, _requestId);
 
   static void setUrl(String? url) {
     final trimmed = url?.trim();
@@ -80,13 +78,7 @@ class RuntimeContext {
   static String? get browserEngine => _browserEngine;
 
   /// Zone-local user id (JWT / session), then isolate fallback.
-  static String? get userId {
-    final fromZone = Zone.current[userIdZoneKey];
-    if (fromZone is String && fromZone.isNotEmpty) {
-      return fromZone;
-    }
-    return _userId;
-  }
+  static String? get userId => _zoneOrIsolate(userIdZoneKey, _userId);
 
   static void setUserAgent(String? userAgent) {
     final trimmed = userAgent?.trim();
@@ -138,38 +130,73 @@ class RuntimeContext {
   }
 
   /// Zone-local then isolate fallback. Used by server Dart per request.
-  static String? get anonymousId {
-    final fromZone = Zone.current[anonymousIdZoneKey];
-    if (fromZone is String && fromZone.isNotEmpty) {
-      return fromZone;
-    }
-    return _anonymousId;
-  }
+  static String? get anonymousId =>
+      _zoneOrIsolate(anonymousIdZoneKey, _anonymousId);
 
   static void setAnonymousId(String? anonymousId) {
     final trimmed = anonymousId?.trim();
     _anonymousId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  static String? get sessionId {
-    final fromZone = Zone.current[sessionIdZoneKey];
-    if (fromZone is String && fromZone.isNotEmpty) {
-      return fromZone;
-    }
-    return _sessionId;
-  }
+  static String? get sessionId => _zoneOrIsolate(sessionIdZoneKey, _sessionId);
 
   static void setSessionId(String? sessionId) {
     final trimmed = sessionId?.trim();
     _sessionId = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  static String? get replayId {
-    final fromZone = Zone.current[replayIdZoneKey];
+  static String? get replayId => _zoneOrIsolate(replayIdZoneKey, _replayId);
+
+  static String? _zoneOnly(Object key) {
+    final fromZone = Zone.current[key];
+    if (identical(fromZone, unset)) {
+      return null;
+    }
     if (fromZone is String && fromZone.isNotEmpty) {
       return fromZone;
     }
-    return _replayId;
+    return null;
+  }
+
+  static String? _zoneOrIsolate(Object key, String? isolate) {
+    final fromZone = Zone.current[key];
+    if (identical(fromZone, unset)) {
+      return null;
+    }
+    if (fromZone is String && fromZone.isNotEmpty) {
+      return fromZone;
+    }
+    return isolate;
+  }
+
+  static Map<Object?, Object?> _zoneValues({
+    String? url,
+    String? requestId,
+    String? userId,
+    String? anonymousId,
+    String? sessionId,
+    String? replayId,
+    bool blankUnset = false,
+  }) {
+    final values = <Object?, Object?>{};
+    void put(Object key, String? value) {
+      final trimmed = value?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        values[key] = trimmed;
+        return;
+      }
+      if (blankUnset) {
+        values[key] = unset;
+      }
+    }
+
+    put(urlZoneKey, url);
+    put(requestIdZoneKey, requestId);
+    put(userIdZoneKey, userId);
+    put(anonymousIdZoneKey, anonymousId);
+    put(sessionIdZoneKey, sessionId);
+    put(replayIdZoneKey, replayId);
+    return values;
   }
 
   static void setReplayId(String? replayId) {
@@ -232,21 +259,25 @@ class RuntimeContext {
     String? anonymousId,
     String? sessionId,
     String? replayId,
+    bool blankUnset = false,
   }) {
-    return Zone.current.fork(zoneValues: {
-      if (url != null && url.isNotEmpty) urlZoneKey: url,
-      if (requestId != null && requestId.isNotEmpty)
-        requestIdZoneKey: requestId,
-      if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
-      if (anonymousId != null && anonymousId.isNotEmpty)
-        anonymousIdZoneKey: anonymousId,
-      if (sessionId != null && sessionId.isNotEmpty)
-        sessionIdZoneKey: sessionId,
-      if (replayId != null && replayId.isNotEmpty) replayIdZoneKey: replayId,
-    }).run(body);
+    return Zone.current.fork(
+      zoneValues: _zoneValues(
+        url: url,
+        requestId: requestId,
+        userId: userId,
+        anonymousId: anonymousId,
+        sessionId: sessionId,
+        replayId: replayId,
+        blankUnset: blankUnset,
+      ),
+    ).run(body);
   }
 
   /// Async variant of [runWith].
+  ///
+  /// When [blankUnset] is true, omitted request fields are explicitly empty
+  /// and do not inherit a parent Zone or the isolate fallback.
   static Future<T> runWithAsync<T>(
     Future<T> Function() body, {
     String? url,
@@ -255,18 +286,19 @@ class RuntimeContext {
     String? anonymousId,
     String? sessionId,
     String? replayId,
+    bool blankUnset = false,
   }) {
-    return Zone.current.fork(zoneValues: {
-      if (url != null && url.isNotEmpty) urlZoneKey: url,
-      if (requestId != null && requestId.isNotEmpty)
-        requestIdZoneKey: requestId,
-      if (userId != null && userId.isNotEmpty) userIdZoneKey: userId,
-      if (anonymousId != null && anonymousId.isNotEmpty)
-        anonymousIdZoneKey: anonymousId,
-      if (sessionId != null && sessionId.isNotEmpty)
-        sessionIdZoneKey: sessionId,
-      if (replayId != null && replayId.isNotEmpty) replayIdZoneKey: replayId,
-    }).run(body);
+    return Zone.current.fork(
+      zoneValues: _zoneValues(
+        url: url,
+        requestId: requestId,
+        userId: userId,
+        anonymousId: anonymousId,
+        sessionId: sessionId,
+        replayId: replayId,
+        blankUnset: blankUnset,
+      ),
+    ).run(body);
   }
 
   static Map<String, Object?> collect({String runtime = 'dart'}) {
