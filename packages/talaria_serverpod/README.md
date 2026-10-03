@@ -71,13 +71,15 @@ On shutdown: `await Talaria.flush(); await Talaria.close();`.
 | Streaming methods | SERVER for the stream lifetime (not per chunk) |
 | Uncaught diagnostics | One event per throw, isolated per session |
 | Authenticated session | `enduser.id` / `user.id` on the session span |
-| Outbound HTTP | Use `Talaria.wrapHttpClient` (skip ingest URLs) |
+| Outbound HTTP | `HttpClient` after init continues the active trace. `package:http` still uses `Talaria.wrapHttpClient` |
 
 Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
 
 ORM spans send a `db.query.text` stand-in (`SELECT Product`) when raw SQL is unavailable. Bind values are never sent. Repeated identical queries are each sent so N+1 stays visible.
 
 ## Outbound HTTP
+
+`dart:io` `HttpClient` created after `TalariaServerpod.init` sends `traceparent` and records a client span while a request span is open. Ingest URLs are skipped. For `package:http`:
 
 ```dart
 final httpClient = Talaria.wrapHttpClient(http.Client());

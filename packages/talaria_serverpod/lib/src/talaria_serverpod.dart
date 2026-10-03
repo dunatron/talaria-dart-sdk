@@ -2,6 +2,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:talaria/talaria.dart';
 
 import 'diagnostic_filter.dart';
+import 'io_http.dart';
 import 'relic_middleware.dart';
 import 'session_spans.dart';
 import 'session_transaction.dart';
@@ -30,7 +31,7 @@ class TalariaServerpod {
         defaultIntegrations: false,
       ),
       transport: transport,
-    );
+    ).whenComplete(installServerpodOutboundHttp);
   }
 
   /// Pass to `Serverpod(..., databaseInterceptor: TalariaServerpod.interceptDatabase)`.
