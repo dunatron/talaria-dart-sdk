@@ -180,8 +180,12 @@ class TalariaFlutter {
   }
 
   /// Short INTERNAL screen span + breadcrumb for IndexedStack / tab hosts.
-  static void setScreen(String name, {TalariaClient? client}) {
-    ScreenSpanController.instance.start(name, client: client);
+  static void setScreen(
+    String name, {
+    TalariaClient? client,
+    String? title,
+  }) {
+    ScreenSpanController.instance.start(name, client: client, title: title);
     ScreenHeatmapController.instance.setManualScreen(name);
   }
 

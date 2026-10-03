@@ -40,13 +40,15 @@ class TalariaNavigatorObserver extends NavigatorObserver {
   }
 
   void _update(Route<dynamic> route) {
-    final name = route.settings.name;
-    final label =
-        (name != null && name.isNotEmpty) ? name : route.runtimeType.toString();
-    _currentRoute = label;
-    _screens.start(label, client: _client ?? Talaria.getClient());
-    if (name != null && name.isNotEmpty) {
-      ScreenHeatmapController.instance.notifyObservedRoute(name);
+    final name = route.settings.name?.trim();
+    // Unnamed routes have no stable identity. Release web minifies
+    // `runtimeType` into names like `minified:a6c<dynamic>`, which then sit
+    // between every real screen in the paths table.
+    if (name == null || name.isEmpty) {
+      return;
     }
+    _currentRoute = name;
+    _screens.start(name, client: _client ?? Talaria.getClient());
+    ScreenHeatmapController.instance.notifyObservedRoute(name);
   }
 }

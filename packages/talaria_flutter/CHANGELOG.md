@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7
+
+- Automatic screen views use the route name. Unnamed routes are skipped.
+- `TalariaFlutter.setScreen` accepts an optional title.
+- On web, `$pageview` is sent when the browser path changes.
+
 ## 0.2.6
 
 - Depends on `talaria` 0.3.7.

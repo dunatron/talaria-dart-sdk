@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talaria/src/transport/fake_transport.dart';
+import 'package:talaria_flutter/src/screen_span.dart';
 import 'package:talaria_flutter/talaria_flutter.dart';
 
 void main() {
@@ -22,10 +23,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -63,10 +64,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -107,10 +108,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -139,10 +140,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -171,10 +172,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -234,10 +235,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -261,10 +262,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -283,6 +284,164 @@ void main() {
     expect(transport.batches.first.single.platform, 'flutter');
   });
 
+  testWidgets('unnamed routes do not emit a screen', (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        storage: MemoryTalariaStorage(),
+      )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    final observer = TalariaNavigatorObserver();
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        navigatorObservers: [observer],
+        home: const Scaffold(body: Text('home')),
+      ),
+    );
+    await tester.pump();
+
+    navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('sheet')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await Talaria.flush();
+
+    final screens = transport.analyticsBatches
+        .expand((b) => b)
+        .where((event) => event.kind == AnalyticsEventKind.screen)
+        .toList();
+    expect(screens.map((event) => event.path), ['/']);
+    expect(observer.currentRoute, '/');
+    expect(
+      screens.any((event) => (event.path ?? '').contains('Route')),
+      isFalse,
+    );
+  });
+
+  testWidgets('a named route emits that name once', (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        storage: MemoryTalariaStorage(),
+      )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        navigatorObservers: [TalariaNavigatorObserver()],
+        routes: {
+          '/': (_) => const Scaffold(body: Text('home')),
+          '/checkout': (_) => const Scaffold(body: Text('checkout')),
+        },
+      ),
+    );
+    navigatorKey.currentState!.pushNamed('/checkout');
+    await tester.pumpAndSettle();
+    await Talaria.flush();
+
+    final screens = transport.analyticsBatches
+        .expand((b) => b)
+        .where((event) => event.kind == AnalyticsEventKind.screen)
+        .map((event) => event.path)
+        .toList();
+    expect(screens.where((path) => path == '/checkout'), hasLength(1));
+  });
+
+  testWidgets('setScreen keeps the route path and a separate title',
+      (tester) async {
+    final transport = FakeTransport();
+    await TalariaFlutter.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+        storage: MemoryTalariaStorage(),
+      )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
+      transport: transport,
+      observeLifecycle: false,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    TalariaFlutter.setScreen(
+      '/projects/:projectId/analytics/paths',
+      title: 'Paths',
+    );
+    await Talaria.flush();
+
+    final screen = transport.analyticsBatches
+        .expand((b) => b)
+        .firstWhere((event) => event.kind == AnalyticsEventKind.screen);
+    expect(screen.path, '/projects/:projectId/analytics/paths');
+    expect(screen.title, 'Paths');
+  });
+
+  test('web pageviews follow browser path changes only', () {
+    expect(
+      shouldEmitWebPageView(
+        isWeb: false,
+        browserPath: '/a',
+        previousBrowserPath: null,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldEmitWebPageView(
+        isWeb: true,
+        browserPath: '/projects/1',
+        previousBrowserPath: null,
+      ),
+      isTrue,
+    );
+    expect(
+      shouldEmitWebPageView(
+        isWeb: true,
+        browserPath: '/projects/1',
+        previousBrowserPath: '/projects/1',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldEmitWebPageView(
+        isWeb: true,
+        browserPath: '/projects/1/analytics/paths',
+        previousBrowserPath: '/projects/1',
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('navigator observer emits \$screen when analytics is on',
       (tester) async {
     final transport = FakeTransport();
@@ -294,10 +453,10 @@ void main() {
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
