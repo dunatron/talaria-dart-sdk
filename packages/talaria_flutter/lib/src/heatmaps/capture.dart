@@ -46,6 +46,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   Timer? _flush;
   Timer? _settle;
   Timer? _scrollRest;
+  RouteInformationProvider? _routeProvider;
   var _flushing = false;
   var _capturing = false;
   var _snapshotPending = false;
@@ -82,23 +83,20 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     _session.onInterestingTap = (_) {
       unawaited(_captureMicroFrames());
     };
-    _flush = Timer.periodic(const Duration(seconds: 5), (_) {
-      unawaited(_tick());
-    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = Router.maybeOf(context)?.routeInformationProvider;
-    provider?.removeListener(_onRoute);
-    provider?.addListener(_onRoute);
+    if (!ScreenHeatmapController.instance.captureEnabled) return;
+    _attachRoute();
     unawaited(_syncRoute());
   }
 
   @override
   void dispose() {
-    Router.maybeOf(context)?.routeInformationProvider?.removeListener(_onRoute);
+    _routeProvider?.removeListener(_onRoute);
+    _routeProvider = null;
     WidgetsBinding.instance.removeObserver(this);
     _flush?.cancel();
     _settle?.cancel();
@@ -149,6 +147,35 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 
   void _onRoute() {
     unawaited(_syncRoute());
+  }
+
+  /// Subscribes with the provider we already hold so [dispose] never looks up
+  /// a deactivated ancestor.
+  void _attachRoute() {
+    if (!mounted) return;
+    final provider = Router.maybeOf(context)?.routeInformationProvider;
+    if (identical(provider, _routeProvider)) return;
+    _routeProvider?.removeListener(_onRoute);
+    _routeProvider = provider;
+    _routeProvider?.addListener(_onRoute);
+  }
+
+  void _stopCaptureWork() {
+    _flush?.cancel();
+    _flush = null;
+    _settle?.cancel();
+    _settle = null;
+    _scrollRest?.cancel();
+    _scrollRest = null;
+    _routeProvider?.removeListener(_onRoute);
+    _routeProvider = null;
+  }
+
+  void _armFlush() {
+    if (_flush != null) return;
+    _flush = Timer.periodic(const Duration(seconds: 5), (_) {
+      unawaited(_tick());
+    });
   }
 
   /// Opens a screen view once policy allows it.
@@ -221,8 +248,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final root = _boundaryKey.currentContext as Element?;
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     if (root == null || boundary is! RenderBox || !boundary.hasSize) return;
-    final hit =
-        collectHeatmapTree(root, boundary, includeText: false).hit(event.position);
+    final hit = collectHeatmapTree(root, boundary, includeText: false)
+        .hit(event.position);
     if (hit == null) return;
     final local = boundary.globalToLocal(event.position);
     final metrics = _session.scroll.state;
@@ -306,12 +333,10 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       viewportDimension: notification.metrics.viewportDimension,
       vertical: vertical,
     );
-    final scrollable = notification.context
-        ?.findAncestorStateOfType<ScrollableState>();
+    final scrollable =
+        notification.context?.findAncestorStateOfType<ScrollableState>();
     final boundary = _boundaryKey.currentContext?.findRenderObject();
-    if (scrollable != null &&
-        boundary is RenderBox &&
-        boundary.hasSize) {
+    if (scrollable != null && boundary is RenderBox && boundary.hasSize) {
       _scrollport = _scrollportOf(boundary, scrollable);
     }
     final settled = notification is ScrollEndNotification ||
@@ -366,7 +391,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
             DateTime.now().millisecondsSinceEpoch - _session.startedAtMs,
           );
         }
-        if (i < 2) await Future<void>.delayed(const Duration(milliseconds: 120));
+        if (i < 2)
+          await Future<void>.delayed(const Duration(milliseconds: 120));
       }
     } finally {
       _microFraming = false;
@@ -448,9 +474,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   void _armSettle() {
     _settle?.cancel();
     final elapsed = DateTime.now().difference(_lastInteraction);
-    final wait = elapsed >= _settleDelay
-        ? Duration.zero
-        : _settleDelay - elapsed;
+    final wait =
+        elapsed >= _settleDelay ? Duration.zero : _settleDelay - elapsed;
     _settle = Timer(wait, () {
       unawaited(_uploadIdleSnapshot());
     });
@@ -728,6 +753,28 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
 
   @override
   Widget build(BuildContext context) {
+    final client = Talaria.getClient();
+    if (client != null) {
+      ScreenHeatmapController.instance.client = client;
+    }
+    if (!ScreenHeatmapController.instance.captureEnabled) {
+      _stopCaptureWork();
+      return widget.child;
+    }
+    if (!_flushHooked && client != null) {
+      client.addBeforeFlush(_onClientFlush);
+      _flushHooked = true;
+    }
+    _armFlush();
+    _attachRoute();
+    if (!_session.isOpen && !_openScheduled) {
+      _openScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openScheduled = false;
+        if (mounted) unawaited(_syncRoute());
+      });
+    }
+
     final size = MediaQuery.sizeOf(context);
     _orientationName = size.width > size.height ? 'landscape' : 'portrait';
     _keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 100;
@@ -737,21 +784,6 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         : shortSide >= 600
             ? 'tablet'
             : 'mobile';
-    final client = Talaria.getClient();
-    if (client != null) {
-      ScreenHeatmapController.instance.client = client;
-      if (!_flushHooked) {
-        client.addBeforeFlush(_onClientFlush);
-        _flushHooked = true;
-      }
-      if (!_session.isOpen && !_openScheduled) {
-        _openScheduled = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _openScheduled = false;
-          if (mounted) unawaited(_syncRoute());
-        });
-      }
-    }
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: Listener(

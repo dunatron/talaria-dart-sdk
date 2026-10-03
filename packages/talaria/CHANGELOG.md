@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.8
+
+- `RuntimeContext.zoneUrl` reads the URL bound on this Zone only. It ignores the isolate-wide fallback.
+- `RuntimeContext.runWithAsync` takes `blankUnset`. When it is true, omitted request fields stay empty instead of inheriting a parent zone or the isolate, so one request cannot keep another's URL or user id.
+
 ## 0.3.7
 
 - Event, span, and analytics payloads no longer include `environment`. The API key decides it. `init` still accepts the argument so code built against 0.3.6 compiles; the value is not sent.

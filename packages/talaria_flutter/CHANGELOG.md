@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8
+
+- `TalariaScreenCapture` stays idle until a client exists and screen capture is enabled. It does not start a flush timer before that, and disposing it does not look up a deactivated `Router`.
+
 ## 0.2.7
 
 - Automatic screen views use the route name. Unnamed routes are skipped.

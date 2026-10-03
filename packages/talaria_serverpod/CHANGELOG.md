@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6
+
+- Depends on `talaria` 0.3.8. Request handling uses `RuntimeContext.zoneUrl` and `runWithAsync(blankUnset: true)`. Those members are not in the published `talaria` 0.3.7, so 0.2.5 does not compile against it.
+
 ## 0.2.5
 
 - `HttpClient` created after `TalariaServerpod.init` continues the active request trace and sends `traceparent`. Ingest URLs stay unwrapped. Requests that already have `traceparent` are left alone. `Talaria.wrapHttpClient` still covers `package:http`.

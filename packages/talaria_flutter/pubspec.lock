@@ -315,7 +315,7 @@ packages:
       path: "../talaria"
       relative: true
     source: path
-    version: "0.3.7"
+    version: "0.3.8"
   term_glyph:
     dependency: transitive
     description:
