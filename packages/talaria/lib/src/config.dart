@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'capture_context.dart';
 import 'identity/storage.dart';
+import 'release_identity.dart';
 import 'severity.dart';
 
 typedef BeforeSendCallback = BeforeSendEvent? Function(
@@ -18,8 +19,8 @@ class TalariaOptions {
     String? baseUrl,
     required this.apiKey,
     String? environment,
-    this.release,
-    this.commitSha,
+    String? release,
+    String? commitSha,
     double sampleRate = 1.0,
     int maxBatchSize = 50,
     int flushIntervalMs = 2000,
@@ -36,6 +37,18 @@ class TalariaOptions {
     this.platform = 'dart',
     this.storage,
   })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
+        release = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).release,
+        commitSha = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).commitSha,
+        releaseRefKind = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).releaseRefKind,
         sampleRate = sampleRate.clamp(0.0, 1.0),
         maxBatchSize = max(1, maxBatchSize),
         flushIntervalMs = max(0, flushIntervalMs),
@@ -62,6 +75,9 @@ class TalariaOptions {
   final String apiKey;
   final String? release;
   final String? commitSha;
+
+  /// `branch` or `tag` when CI supplied the release.
+  final String? releaseRefKind;
   double sampleRate;
   final int maxBatchSize;
   final int flushIntervalMs;

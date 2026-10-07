@@ -10,6 +10,7 @@ class Event {
     this.stackTrace,
     this.release,
     this.commitSha,
+    this.releaseRefKind,
     this.userId,
     this.anonymousId,
     this.sessionId,
@@ -37,6 +38,7 @@ class Event {
   final String? stackTrace;
   final String? release;
   final String? commitSha;
+  final String? releaseRefKind;
   final String? userId;
   final String? anonymousId;
   final String? sessionId;
@@ -79,6 +81,7 @@ class Event {
     put('platform', platform);
     put('release', release);
     put('commitSha', commitSha);
+    put('releaseRefKind', releaseRefKind);
     put('userId', userId);
     put('anonymousId', anonymousId);
     put('sessionId', sessionId);

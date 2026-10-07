@@ -975,6 +975,7 @@ class TalariaClient {
       stackTrace: stackTrace,
       release: _options.release,
       commitSha: _options.commitSha,
+      releaseRefKind: _options.releaseRefKind,
       userId: outUserId,
       anonymousId: _identity.anonymousId,
       sessionId: _identity.sessionId,
