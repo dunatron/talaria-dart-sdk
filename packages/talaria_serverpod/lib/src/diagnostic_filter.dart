@@ -24,9 +24,6 @@ class DiagnosticFilter {
       return true;
     }
     final type = error.runtimeType.toString();
-    if (type.contains('ApiUnauthorizedException')) {
-      return true;
-    }
     if (type.contains('QuotaExceeded')) {
       return true;
     }
@@ -34,6 +31,13 @@ class DiagnosticFilter {
       return true;
     }
     final combined = '${message ?? ''} ${error.toString()}'.toLowerCase();
+    // Known client-credential noise. Unexpected unauthorized messages
+    // (for example "Ingest requires an API key" on a dashboard RPC) stay.
+    if (type.contains('ApiUnauthorizedException')) {
+      return combined.contains('invalid api key') ||
+          combined.contains('api key expired') ||
+          combined.contains('project access denied');
+    }
     if (combined.contains('rate limit exceeded') ||
         combined.contains('spending cap reached') ||
         combined.contains('project not found')) {

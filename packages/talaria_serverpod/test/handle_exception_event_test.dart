@@ -49,7 +49,8 @@ void main() {
     expect(events.single.title, 'StateError');
   });
 
-  test('handleExceptionEvent drops ApiUnauthorizedException', () async {
+  test('handleExceptionEvent drops known ApiUnauthorizedException noise',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -61,16 +62,51 @@ void main() {
       transport: transport,
     );
 
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        _ApiUnauthorizedException(),
-        StackTrace.current,
-        message: 'Invalid API key',
-      ),
-    );
+    for (final message in [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+    ]) {
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiUnauthorizedException(),
+          StackTrace.current,
+          message: message,
+        ),
+      );
+    }
     await drain();
     expect(transport.batches, isEmpty);
   });
+
+  test(
+    'handleExceptionEvent reports unexpected ApiUnauthorizedException',
+    () async {
+      final transport = FakeTransport();
+      await TalariaServerpod.init(
+        TalariaOptions(
+          dsn: 'https://api.example.com',
+          apiKey: 'tal_live_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        transport: transport,
+      );
+
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiUnauthorizedException(),
+          StackTrace.current,
+          message: 'Ingest requires an API key',
+        ),
+      );
+      await drain();
+
+      final events = transport.batches.expand((b) => b).toList();
+      expect(events, hasLength(1));
+      expect(events.single.title, 'Ingest requires an API key');
+    },
+  );
 
   test('handleExceptionEvent drops WebSocketConnectionClosed', () async {
     final transport = FakeTransport();
@@ -95,7 +131,8 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
-  test('handleExceptionEvent drops quota and rate-limit control flow', () async {
+  test('handleExceptionEvent drops quota and rate-limit control flow',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -227,7 +264,8 @@ void main() {
     );
   });
 
-  test('title uses the exception message instead of a generated class', () async {
+  test('title uses the exception message instead of a generated class',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
