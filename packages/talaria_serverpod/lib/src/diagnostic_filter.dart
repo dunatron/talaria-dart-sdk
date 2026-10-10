@@ -7,6 +7,10 @@ import 'session_transaction.dart';
 class DiagnosticFilter {
   DiagnosticFilter._();
 
+  /// When set, rejected API calls are captured. Socket disconnects and the
+  /// generic handler wrapper are still dropped.
+  static bool captureRejectedRequests = false;
+
   static final _uuidInTitle = RegExp(
     r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
     caseSensitive: false,
@@ -15,6 +19,12 @@ class DiagnosticFilter {
   static bool shouldDrop(ExceptionEvent event) {
     if (SessionTransaction.isGenericDiagnosticMessage(event.message)) {
       return true;
+    }
+    if (_isTransportNoise(event.exception, message: event.message)) {
+      return true;
+    }
+    if (captureRejectedRequests) {
+      return false;
     }
     return isExpectedException(event.exception, message: event.message);
   }
@@ -30,6 +40,9 @@ class DiagnosticFilter {
     if (type.contains('WebSocketConnectionClosed')) {
       return true;
     }
+    if (_isTransportNoise(error, message: message)) {
+      return true;
+    }
     final combined = '${message ?? ''} ${error.toString()}'.toLowerCase();
     // Known client-credential noise. Unexpected unauthorized messages
     // (for example "Ingest requires an API key" on a dashboard RPC) stay.
@@ -43,13 +56,18 @@ class DiagnosticFilter {
         combined.contains('project not found')) {
       return true;
     }
-    if (combined.contains('websocketconnectionclosed')) {
-      return true;
-    }
-    if (combined.contains('cr: done') || combined.contains('cr:done')) {
-      return true;
-    }
     return false;
+  }
+
+  static bool _isTransportNoise(Object error, {String? message}) {
+    final type = error.runtimeType.toString();
+    if (type.contains('WebSocketConnectionClosed')) {
+      return true;
+    }
+    final combined = '${message ?? ''} ${error.toString()}'.toLowerCase();
+    return combined.contains('websocketconnectionclosed') ||
+        combined.contains('cr: done') ||
+        combined.contains('cr:done');
   }
 
   /// Issue title without stream connection ids or generated class names.

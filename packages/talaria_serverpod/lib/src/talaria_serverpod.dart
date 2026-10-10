@@ -13,8 +13,23 @@ class TalariaServerpod {
   TalariaServerpod._();
 
   static bool _attached = false;
+
+  /// Record rejected API calls (bad key, expired key, quota, rate limit,
+  /// missing project access) instead of treating them as expected noise.
+  ///
+  /// The Talaria server turns this on for its own dogfood project. Other
+  /// Serverpod apps keep the quieter default. Socket disconnects and the
+  /// generic handler wrapper stay dropped either way.
+  static bool get captureRejectedRequests =>
+      DiagnosticFilter.captureRejectedRequests;
+
+  static set captureRejectedRequests(bool value) {
+    DiagnosticFilter.captureRejectedRequests = value;
+  }
   static final Map<String, String> _sessionUsers = {};
   static final Set<String> _userCloseHook = {};
+  static final Map<String, Map<String, String>> _sessionTags = {};
+  static final Set<String> _tagCloseHook = {};
 
   /// Initialize the shared [Talaria] client for a Serverpod process.
   static Future<TalariaClient> init(
@@ -109,11 +124,23 @@ class TalariaServerpod {
       }
     }
 
+    final callerTags = resolvedSessionId == null
+        ? null
+        : _sessionTags[resolvedSessionId];
+    final tags = callerTags == null || callerTags.isEmpty
+        ? null
+        : Map<String, String>.from(callerTags);
+
     final attached = resolvedSessionId == null
         ? null
         : SpanScope.forSession(resolvedSessionId);
     if (attached != null && attached.isRecording) {
       SessionTransaction.applyUser(attached, resolvedUserId);
+      if (tags != null) {
+        for (final entry in tags.entries) {
+          attached.setAttribute(entry.key, entry.value);
+        }
+      }
       attached.markError(message: event.exception.toString());
     }
 
@@ -133,6 +160,7 @@ class TalariaServerpod {
           ),
           title: DiagnosticFilter.titleOf(event),
           userId: resolvedUserId,
+          tags: tags,
         ),
       );
     }
@@ -187,6 +215,41 @@ class TalariaServerpod {
     return BreadcrumbBuffer();
   }
 
+  /// Remember caller identity for this Serverpod session only.
+  ///
+  /// Diagnostic capture copies these tags onto the event. They do not go
+  /// through [TalariaClient.setUser], which is process-wide.
+  static void bindRequestTags(Session session, Map<String, String> tags) {
+    final sessionId = SessionSpans.sessionIdOf(session);
+    bindSessionTags(sessionId, tags);
+    if (sessionId.isEmpty || !_tagCloseHook.add(sessionId)) {
+      return;
+    }
+    session.addWillCloseListener((_) {
+      _tagCloseHook.remove(sessionId);
+      _sessionTags.remove(sessionId);
+    });
+  }
+
+  /// Test and internal entry. Empty keys and values are ignored. Later calls
+  /// merge into tags already stored for the session.
+  static void bindSessionTags(String sessionId, Map<String, String> tags) {
+    final id = sessionId.trim();
+    if (id.isEmpty || tags.isEmpty) {
+      return;
+    }
+    final current = _sessionTags.putIfAbsent(id, () => {});
+    for (final entry in tags.entries) {
+      final key = entry.key.trim();
+      final value = entry.value.trim();
+      if (key.isEmpty || value.isEmpty) continue;
+      current[key] = value;
+    }
+    if (current.isEmpty) {
+      _sessionTags.remove(id);
+    }
+  }
+
   /// Remember the dashboard user for this Serverpod session only.
   ///
   /// Diagnostic capture reads this map. It does not call [TalariaClient.setUser],
@@ -224,6 +287,9 @@ class TalariaServerpod {
   static void clearSessionUsersForTest() {
     _sessionUsers.clear();
     _userCloseHook.clear();
+    _sessionTags.clear();
+    _tagCloseHook.clear();
+    captureRejectedRequests = false;
   }
 
   static String? _firstUser(String? primary, String? fallback) {

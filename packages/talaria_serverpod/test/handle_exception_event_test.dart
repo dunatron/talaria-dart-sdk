@@ -49,6 +49,59 @@ void main() {
     expect(events.single.title, 'StateError');
   });
 
+  test('dogfood capture keeps rejected API calls and drops socket noise',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+    TalariaServerpod.captureRejectedRequests = true;
+
+    for (final message in [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+      'Project not found',
+      'Ingest rate limit exceeded (100/min)',
+      'Transaction spending cap reached',
+    ]) {
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiUnauthorizedException(),
+          StackTrace.current,
+          message: message,
+        ),
+      );
+    }
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _WebSocketConnectionClosed(),
+        StackTrace.current,
+        message: 'WebSocketConnectionClosed: Connection closed. cr: done',
+      ),
+    );
+    await drain();
+
+    final titles = transport.batches
+        .expand((b) => b)
+        .map((event) => event.title)
+        .toList();
+    expect(titles, [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+      'Project not found',
+      'Ingest rate limit exceeded (100/min)',
+      'Transaction spending cap reached',
+    ]);
+  });
+
   test('handleExceptionEvent drops known ApiUnauthorizedException noise',
       () async {
     final transport = FakeTransport();
@@ -446,6 +499,49 @@ void main() {
     expect(event.url, isNull);
     expect(event.traceId, isNull);
     expect(event.breadcrumbs, isNull);
+  });
+
+  test('handleExceptionEvent copies caller org and project tags', () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        dsn: 'https://api.example.com',
+        apiKey: 'tal_live_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+    const sessionId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    TalariaServerpod.bindSessionTags(sessionId, {
+      'caller.organization_name': 'Ngai Tahu',
+      'caller.project_name': 'Silverstripe',
+      'caller.api_key_prefix': 'tal_live_abc',
+      'caller.api_key_secret': '',
+    });
+
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        StateError('API key lacks required scope: monitors:write'),
+        StackTrace.current,
+      ),
+      context: MethodCallOpContext(
+        serverName: 'api',
+        serverId: 'srv',
+        serverRunMode: 'production',
+        sessionId: UuidValue.fromString(sessionId),
+        uri: Uri.parse('https://ingest.newtalaria.com/monitors/checkIn'),
+        endpoint: 'monitors',
+        methodName: 'checkIn',
+      ),
+    );
+    await drain();
+
+    final event = transport.batches.expand((b) => b).single;
+    expect(event.tags?['caller.organization_name'], 'Ngai Tahu');
+    expect(event.tags?['caller.project_name'], 'Silverstripe');
+    expect(event.tags?['caller.api_key_prefix'], 'tal_live_abc');
+    expect(event.tags?.containsKey('caller.api_key_secret'), isFalse);
   });
 }
 

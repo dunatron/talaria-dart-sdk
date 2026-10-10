@@ -28,7 +28,9 @@ class RelicSpanFinish {
       return 429;
     }
     if (type.contains('Conflict')) return 409;
-    if (type.contains('BadRequest')) return 400;
+    if (type.contains('BadRequest') || type.contains('Validation')) {
+      return 400;
+    }
     final message = error.toString().toLowerCase();
     if (message.contains('no method name specified') ||
         message.contains('endpoint dispatch error')) {

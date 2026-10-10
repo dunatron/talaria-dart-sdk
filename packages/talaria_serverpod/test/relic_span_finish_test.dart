@@ -40,6 +40,17 @@ void main() {
     span.finish();
   });
 
+  test('onThrow treats validation exceptions as HTTP 400', () {
+    final span = client.startTransaction('POST /monitors/checkIn');
+    RelicSpanFinish.onThrow(
+      span,
+      _ApiValidationException('Monitor slug must start with a letter'),
+    );
+    expect(span.getAttribute('http.response.status_code'), '400');
+    expect(span.status, SpanStatus.ok);
+    span.finish();
+  });
+
   test('onThrow sets HTTP 500 and error status', () {
     final span = client.startTransaction('POST /lab/uncaughtThrow');
     RelicSpanFinish.onThrow(span, StateError('boom'));
@@ -71,4 +82,12 @@ class _ApiNotFoundException implements Exception {
 
   @override
   String toString() => 'ApiNotFoundException($message)';
+}
+
+class _ApiValidationException implements Exception {
+  _ApiValidationException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'ApiValidationException($message)';
 }
