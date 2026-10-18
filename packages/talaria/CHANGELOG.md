@@ -14,6 +14,7 @@
 - `sdk/reportDiscards` has its own backoff and never reports on itself: a failed or rate-limited report is retried later, and makes no `onTransportError` call, no event, no span and no discard row.
 - A rate-limited `sdk/getConfig` waits for `Retry-After` (at least 60 s) before refreshing.
 - `TransportException` gains `retryAfter`, `resetAt`, `meter`, `isRateLimited`, `isQuotaExceeded` and `isTransient`. Rate limits are recognised by HTTP 429 or `ApiRateLimitedException`; the old 400 `ApiConflictException` `retry: true` shape is now just a transient error.
+- `TalariaHttpClient.isTalariaIngestUrl` matches every SDK ingest and control call (`TalariaHttpClient.sdkEndpointMethods`): events `ingest`/`ingestBatch`, spans and analytics `ingestBatch`, `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, the heatmap and screen-heatmap uploads, and `flags/evaluate` / `flags/downloadDefinitions`. It matches `/<endpoint>/<method>` path segments, so a DSN with a path prefix still matches, and lookalike paths no longer do.
 
 ## 0.3.8
 

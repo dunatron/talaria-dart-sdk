@@ -69,16 +69,23 @@ class TalariaServerpod {
 
   /// Relic middleware on the API and web servers. Idempotent.
   ///
+  /// [skip] leaves more requests untraced, on top of
+  /// [TalariaServerpodPaths.isNoisy] (probes and Talaria SDK calls).
+  ///
   /// Also registers a Serverpod shutdown task that flushes the client, so
   /// spans still waiting for their batch are sent before the process exits.
-  static void attach(Serverpod pod, {TalariaClient? client}) {
+  static void attach(
+    Serverpod pod, {
+    TalariaClient? client,
+    bool Function(Uri url)? skip,
+  }) {
     final resolved = client ?? Talaria.getClient();
     if (resolved == null || _attached) {
       return;
     }
     _attached = true;
 
-    final middleware = talariaRelicMiddleware(resolved);
+    final middleware = talariaRelicMiddleware(resolved, skip: skip);
     pod.server.addMiddleware(middleware);
     try {
       pod.webServer.addMiddleware(middleware, '/');

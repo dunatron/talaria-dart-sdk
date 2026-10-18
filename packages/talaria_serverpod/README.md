@@ -73,7 +73,9 @@ Spans are sent in batches (see the `talaria` package's Span batching options), n
 | Authenticated session | `enduser.id` / `user.id` on the session span |
 | Outbound HTTP | `HttpClient` after init continues the active trace. `package:http` still uses `Talaria.wrapHttpClient` |
 
-Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
+Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`. Talaria SDK calls are skipped too (`TalariaServerpodPaths.sdkEndpointMethods`): `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, the heatmap and screen-heatmap uploads, and `flags/evaluate` / `flags/downloadDefinitions`. Other methods on those endpoints stay traced.
+
+Skip more with `TalariaServerpod.attach(pod, skip: (url) => url.path.startsWith('/internal/'))`. To mount the middleware yourself, use `talariaRelicMiddleware(client, skip: ...)`.
 
 ORM spans send a `db.query.text` stand-in (`SELECT Product`) when raw SQL is unavailable. Bind values are never sent. Repeated identical queries are each sent so N+1 stays visible.
 

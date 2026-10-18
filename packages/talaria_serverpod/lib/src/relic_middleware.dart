@@ -6,9 +6,14 @@ import 'relic_span_finish.dart';
 
 /// Relic middleware: request Zone (URL / breadcrumbs) + optional SERVER span.
 ///
-/// Finished spans are queued and exported in batches by the client; the
-/// request does not wait for an export.
-Middleware talariaRelicMiddleware(TalariaClient client) {
+/// `TalariaServerpod.attach` installs this. Use it directly to mount it
+/// yourself. Requests matching [TalariaServerpodPaths.isNoisy] or [skip] get
+/// no span. Finished spans are queued and exported in batches by the client;
+/// the request does not wait for an export.
+Middleware talariaRelicMiddleware(
+  TalariaClient client, {
+  bool Function(Uri url)? skip,
+}) {
   return (Handler innerHandler) {
     return (Request req) async {
       final url = req.url.toString();
@@ -23,7 +28,8 @@ Middleware talariaRelicMiddleware(TalariaClient client) {
           return RuntimeContext.runWithAsync(
             () async {
               if (!client.tracer.isEnabled ||
-                  TalariaServerpodPaths.isNoisy(req.url)) {
+                  TalariaServerpodPaths.isNoisy(req.url) ||
+                  (skip?.call(req.url) ?? false)) {
                 return innerHandler(req);
               }
 
