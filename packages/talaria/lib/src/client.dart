@@ -87,8 +87,12 @@ class TalariaClient {
 
     _spanQueue = SpanQueue(
       transport: resolvedTransport,
-      maxBatchSize: options.maxBatchSize,
-      flushIntervalMs: options.flushIntervalMs,
+      maxBatchSize: options.spanBatchSize,
+      maxBufferSize: options.maxSpanQueueSize,
+      flushIntervalMs: options.spanFlushIntervalMs,
+      maxExportsPerMinute: options.maxSpanExportsPerMinute,
+      // flushIntervalMs: 0 means no SDK timers at all, spans included.
+      timers: options.flushIntervalMs > 0,
       onError: (e) {
         _handleTransportError(e, IngestSignal.spans);
         onTransportError?.call(e);
@@ -168,7 +172,7 @@ class TalariaClient {
         Duration(milliseconds: options.flushIntervalMs),
         (_) {
           // ignore: discarded_futures
-          flush();
+          _timedFlush();
         },
       );
     }
@@ -503,15 +507,34 @@ class TalariaClient {
     _beforeFlush.remove(hook);
   }
 
+  /// Sends everything buffered now: events, spans, analytics and discard
+  /// counts. Spans also go out on their own in batches (see
+  /// [TalariaOptions.spanBatchSize] and [TalariaOptions.spanFlushIntervalMs]),
+  /// so long-running servers don't need to call this per request.
   Future<void> flush() async {
-    for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
-      await hook();
-    }
+    await _runBeforeFlush();
     await _queue.flush();
     await _spanQueue.flush();
     await _analyticsQueue.flush();
     await _flushDiscards();
   }
+
+  /// The periodic tick. Spans are left to their own batch schedule.
+  Future<void> _timedFlush() async {
+    await _runBeforeFlush();
+    await _queue.flush();
+    await _analyticsQueue.flush();
+    await _flushDiscards();
+  }
+
+  Future<void> _runBeforeFlush() async {
+    for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
+      await hook();
+    }
+  }
+
+  /// Finished spans waiting to export.
+  int spanQueueSize() => _spanQueue.count;
 
   Future<void> close() async {
     _flushTimer?.cancel();
@@ -521,6 +544,8 @@ class TalariaClient {
     flags.close();
     tracer.finishAll();
     await flush();
+    // No timer left armed, and no export after the HTTP client is closed.
+    await _spanQueue.close();
     _closed = true;
     _zoneIntegration?.unregister();
     _ownedHttp?.close();

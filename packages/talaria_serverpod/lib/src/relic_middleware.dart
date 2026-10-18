@@ -5,6 +5,9 @@ import 'paths.dart';
 import 'relic_span_finish.dart';
 
 /// Relic middleware: request Zone (URL / breadcrumbs) + optional SERVER span.
+///
+/// Finished spans are queued and exported in batches by the client; the
+/// request does not wait for an export.
 Middleware talariaRelicMiddleware(TalariaClient client) {
   return (Handler innerHandler) {
     return (Request req) async {
@@ -60,8 +63,11 @@ Middleware talariaRelicMiddleware(TalariaClient client) {
                   RelicSpanFinish.onThrow(span, e);
                   rethrow;
                 } finally {
+                  // No flush here: one export per request hit the per-key
+                  // rate limit at about 100 traced requests a minute. The
+                  // client sends spans in batches, and attach() flushes on
+                  // shutdown.
                   span.finish();
-                  await client.flush();
                 }
               });
             },
