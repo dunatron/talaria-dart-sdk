@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../tracing/span.dart';
+import 'ingest_backoff.dart';
 import 'transport.dart';
 
 /// In-memory span queue that drains via `spans/ingestBatch`.
@@ -15,7 +16,9 @@ import 'transport.dart';
 /// per signal). Spans beyond [maxBufferSize] are dropped and reported as
 /// `queue_overflow`.
 ///
-/// [flush] and [close] still drain everything at once.
+/// [flush] and [close] still drain everything at once, except while the
+/// [IngestBackoff] has spans paused (429, 402 or transient errors): then
+/// nothing is sent, and the timer re-arms for the end of the pause.
 class SpanQueue {
   SpanQueue({
     required Transport transport,
@@ -27,9 +30,11 @@ class SpanQueue {
     void Function(TransportException error)? onError,
     void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
+    IngestBackoff? backoff,
   })  : assert(maxBatchSize > 0),
         assert(maxExportsPerMinute > 0),
         _transport = transport,
+        _backoff = backoff,
         _onError = onError,
         _onDiscard = onDiscard,
         _clock = clock ?? DateTime.now;
@@ -52,6 +57,7 @@ class SpanQueue {
   final void Function(TransportException error)? _onError;
   final void Function(int count, String reason)? _onDiscard;
   final DateTime Function() _clock;
+  final IngestBackoff? _backoff;
 
   final List<_QueuedSpan> _buffer = [];
   Future<void>? _inflight;
@@ -73,8 +79,13 @@ class SpanQueue {
     if (_closed) {
       return;
     }
+    final refused = _backoff?.refuseReason;
+    if (refused != null) {
+      _onDiscard?.call(1, refused);
+      return;
+    }
     if (_buffer.length >= maxBufferSize) {
-      _onDiscard?.call(1, 'queue_overflow');
+      _onDiscard?.call(1, _backoff?.overflowReason ?? 'queue_overflow');
       return;
     }
     _buffer.add(_QueuedSpan(span: span, enqueuedAt: _clock()));
@@ -82,6 +93,7 @@ class SpanQueue {
   }
 
   /// Sends every buffered span now, waiting for an export already in flight.
+  /// Sends nothing while the backoff has spans paused.
   Future<void> flush() async {
     _cancelTimer();
     while (true) {
@@ -93,6 +105,11 @@ class SpanQueue {
       if (_buffer.isEmpty) {
         return;
       }
+      if (_paused) {
+        // Held for the end of the pause.
+        _schedule();
+        return;
+      }
       await _exportBatch();
     }
   }
@@ -100,8 +117,16 @@ class SpanQueue {
   Future<void> close() async {
     _cancelTimer();
     await flush();
+    _cancelTimer();
+    if (_buffer.isNotEmpty) {
+      // Still paused: nothing more will be sent.
+      _onDiscard?.call(_buffer.length, _backoff?.closeReason ?? 'network');
+      _buffer.clear();
+    }
     _closed = true;
   }
+
+  bool get _paused => _backoff?.isPaused ?? false;
 
   /// Arms the timer for the next automatic export, if one is due.
   void _schedule() {
@@ -109,7 +134,7 @@ class SpanQueue {
       return;
     }
     final now = _clock();
-    final Duration wait;
+    Duration wait;
     if (_buffer.length >= maxBatchSize) {
       wait = _spacingRemaining(now);
     } else if (flushIntervalMs > 0) {
@@ -119,6 +144,11 @@ class SpanQueue {
       wait = untilDue > spacing ? untilDue : spacing;
     } else {
       return;
+    }
+    // A backoff pause pushes the export back to the end of the pause.
+    final pause = _backoff?.remaining;
+    if (pause != null && pause > wait) {
+      wait = pause;
     }
     if (wait <= Duration.zero) {
       _cancelTimer();
@@ -159,6 +189,12 @@ class SpanQueue {
     if (_inflight != null || _buffer.isEmpty) {
       return;
     }
+    if (_paused) {
+      if (timers) {
+        _schedule();
+      }
+      return;
+    }
     await _exportBatch();
     if (timers) {
       _schedule();
@@ -169,9 +205,8 @@ class SpanQueue {
     final take = _buffer.length < maxBatchSize ? _buffer.length : maxBatchSize;
     final slice = _buffer.sublist(0, take);
     _buffer.removeRange(0, take);
-    final spans = [for (final item in slice) item.span];
     _lastExportAt = _clock();
-    final future = _send(spans);
+    final future = _send(slice);
     _inflight = future;
     return future.whenComplete(() {
       if (identical(_inflight, future)) {
@@ -180,15 +215,35 @@ class SpanQueue {
     });
   }
 
-  Future<void> _send(List<FinishedSpan> spans) async {
+  Future<void> _send(List<_QueuedSpan> slice) async {
+    final spans = [for (final item in slice) item.span];
     try {
       await _transport.sendSpanBatch(spans);
+      _backoff?.onSuccess();
     } on TransportException catch (e) {
-      _onDiscard?.call(spans.length, 'network');
+      _failed(slice, e);
       _onError?.call(e);
     } catch (e) {
-      _onDiscard?.call(spans.length, 'network');
-      _onError?.call(TransportException('$e', cause: e));
+      final error = TransportException('$e', cause: e);
+      _failed(slice, error);
+      _onError?.call(error);
+    }
+  }
+
+  /// Rate-limited batches go back to the front, as far as the buffer allows;
+  /// everything else is dropped with the backoff's reason.
+  void _failed(List<_QueuedSpan> slice, TransportException error) {
+    final outcome =
+        _backoff?.onFailure(error) ?? const ExportFailure('network');
+    if (!outcome.requeue) {
+      _onDiscard?.call(slice.length, outcome.reason);
+      return;
+    }
+    final room = maxBufferSize - _buffer.length;
+    final keep = room <= 0 ? 0 : (room < slice.length ? room : slice.length);
+    _buffer.insertAll(0, slice.sublist(0, keep));
+    if (keep < slice.length) {
+      _onDiscard?.call(slice.length - keep, outcome.reason);
     }
   }
 

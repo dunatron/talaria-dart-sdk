@@ -44,7 +44,19 @@ Finished spans are sent in batches, not one request per traced call:
 | `maxSpanExportsPerMinute` | 30 | Ceiling on automatic span requests a minute. The server allows 100 a minute per key by default. |
 | `maxSpanQueueSize` | 2048 | Spans held while waiting. Beyond that they are dropped and reported as `queue_overflow`. |
 
-`Talaria.flush()` and `Talaria.close()` still send everything at once. With `flushIntervalMs: 0` (common in tests) the SDK starts no timers at all, so spans wait for a full or due batch at the next span, or for an explicit flush. Don't call `flush()` after every request on a long-running server; that is one export per request.
+`Talaria.flush()` and `Talaria.close()` still send everything at once, unless that signal is paused by a rate limit or quota (see below). With `flushIntervalMs: 0` (common in tests) the SDK starts no timers at all, so spans wait for a full or due batch at the next span, or for an explicit flush. Don't call `flush()` after every request on a long-running server; that is one export per request.
+
+## Rate limits and quotas
+
+Each signal (events, spans, analytics, discard reports) backs off on its own:
+
+| Server reply | What the SDK does | Discard reason |
+| --- | --- | --- |
+| 429 rate limited | Pauses for at least `Retry-After`, exponential on repeats (to 5 min), plus jitter. Keeps the batch and sends it after the pause. | `rate_limited` if the buffer overflows meanwhile |
+| 402 quota exhausted | Drops the batch, no retry. Stops sending that signal and the named meter until the reset time (re-checked hourly), or 10 minutes when the server gives none. | `quota` |
+| Network error, timeout, 408, 5xx | Drops the batch. Backs off from 1 s, doubling to 5 min, with jitter. | `network` |
+
+`flush()` doesn't override a pause. Failed discard reports never create events, spans, or `onTransportError` calls.
 
 ## License
 

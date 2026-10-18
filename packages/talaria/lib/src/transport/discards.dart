@@ -28,6 +28,16 @@ class DiscardReason {
   static const queueOverflow = 'queue_overflow';
   static const signalDisabled = 'signal_disabled';
   static const network = 'network';
+
+  /// Dropped or refused because the server rate-limited the key (HTTP 429).
+  static const rateLimited = 'rate_limited';
+
+  /// Dropped because a quota meter is exhausted (HTTP 402).
+  static const quota = 'quota';
+
+  /// Reasons every Talaria server accepts. A server that rejects the newer
+  /// ones gets only these.
+  static const legacy = {sampleRate, queueOverflow, signalDisabled, network};
 }
 
 /// Accumulates discard counts until the next report flush.

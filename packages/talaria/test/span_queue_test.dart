@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:talaria/src/transport/fake_transport.dart';
+import 'package:talaria/src/transport/ingest_backoff.dart';
 import 'package:talaria/src/transport/span_queue.dart';
 import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
@@ -24,6 +25,8 @@ int _spanCount(FakeTransport t) =>
     t.spanBatches.fold(0, (sum, b) => sum + b.length);
 
 void main() {
+  _backoffTests();
+
   test('a full batch is exported without waiting for the interval', () {
     fakeAsync((async) {
       final transport = FakeTransport();
@@ -306,6 +309,123 @@ void main() {
       expect(_spanCount(transport), 1);
     });
   });
+}
+
+/// Batching together with 429/402 backoff: a paused queue holds (or
+/// refuses) spans, and the batch timer re-arms for the end of the pause.
+void _backoffTests() {
+  group('with backoff', () {
+    TransportException rateLimited(int seconds) => TransportException(
+          'HTTP 429',
+          statusCode: 429,
+          className: 'ApiRateLimitedException',
+          retry: true,
+          retryAfter: Duration(seconds: seconds),
+        );
+
+    test('a 429 holds the batch; it is resent after the pause, not before', () {
+      fakeAsync((async) {
+        final transport = _FailingTransport()..failures.add(rateLimited(30));
+        final discards = <(int, String)>[];
+        DateTime clock() => _start.add(async.elapsed);
+        final queue = SpanQueue(
+          transport: transport,
+          maxBatchSize: 2,
+          flushIntervalMs: 5000,
+          clock: clock,
+          backoff: IngestBackoff(clock: clock),
+          onDiscard: (n, r) => discards.add((n, r)),
+        );
+        queue.enqueue(_span(1));
+        queue.enqueue(_span(2));
+        async.flushMicrotasks();
+        expect(transport.attempts, 1);
+        expect(queue.count, 2, reason: 'rate-limited batch is kept');
+        expect(queue.hasPendingExport, isTrue,
+            reason: 'timer armed for the end of the pause');
+
+        // An explicit flush doesn't override the pause.
+        // ignore: discarded_futures
+        queue.flush();
+        async.flushMicrotasks();
+        expect(transport.attempts, 1);
+        expect(queue.hasPendingExport, isTrue);
+
+        async.elapse(const Duration(seconds: 29));
+        expect(transport.attempts, 1);
+        // Retry-After 30 s plus at most 20% jitter.
+        async.elapse(const Duration(seconds: 8));
+        expect(transport.attempts, 2);
+        expect(_spanCount(transport), 2);
+        expect(queue.count, 0);
+        expect(discards, isEmpty);
+      });
+    });
+
+    test('a 402 drops the batch as quota and refuses new spans', () {
+      fakeAsync((async) {
+        final transport = _FailingTransport()
+          ..failures.add(TransportException(
+            'HTTP 402',
+            statusCode: 402,
+            className: 'ApiQuotaExceededException',
+            meter: 'spans',
+            retryAfter: const Duration(minutes: 2),
+          ));
+        final discards = <(int, String)>[];
+        DateTime clock() => _start.add(async.elapsed);
+        final queue = SpanQueue(
+          transport: transport,
+          maxBatchSize: 2,
+          clock: clock,
+          backoff: IngestBackoff(clock: clock),
+          onDiscard: (n, r) => discards.add((n, r)),
+        );
+        queue.enqueue(_span(1));
+        queue.enqueue(_span(2));
+        async.flushMicrotasks();
+        queue.enqueue(_span(3));
+        expect(discards, [(2, 'quota'), (1, 'quota')]);
+        expect(queue.count, 0);
+        async.elapse(const Duration(minutes: 3));
+        queue.enqueue(_span(4));
+        queue.enqueue(_span(5));
+        async.flushMicrotasks();
+        expect(_spanCount(transport), 2, reason: 'sends again after reset');
+      });
+    });
+
+    test('close while paused counts held spans as rate_limited', () async {
+      final transport = _FailingTransport()..failures.add(rateLimited(60));
+      final discards = <(int, String)>[];
+      final queue = SpanQueue(
+        transport: transport,
+        maxBatchSize: 1,
+        backoff: IngestBackoff(),
+        onDiscard: (n, r) => discards.add((n, r)),
+      );
+      queue.enqueue(_span(1));
+      await Future<void>.delayed(Duration.zero);
+      expect(queue.count, 1);
+      await queue.close();
+      expect(discards, [(1, 'rate_limited')]);
+      expect(queue.count, 0);
+      expect(queue.hasPendingExport, isFalse);
+    });
+  });
+}
+
+/// Fails span exports with [failures] in order, then succeeds.
+class _FailingTransport extends FakeTransport {
+  final failures = <TransportException>[];
+  var attempts = 0;
+
+  @override
+  Future<void> sendSpanBatch(List<FinishedSpan> spans) async {
+    attempts++;
+    if (failures.isNotEmpty) throw failures.removeAt(0);
+    await super.sendSpanBatch(spans);
+  }
 }
 
 /// Holds every span export until [release].
