@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.9
+
+- Spans are exported in batches: on a full batch (`spanBatchSize`, default 200) or after `spanFlushIntervalMs` (default 5 s), at most `maxSpanExportsPerMinute` (default 30) automatic exports a minute, from a buffer of `maxSpanQueueSize` (default 2048) spans. Spans used to share `maxBatchSize` (50) and went out on every 2 s flush tick.
+- The periodic flush no longer forces a span export. `flush()` and `close()` still send everything, and now wait for an export already in flight.
+- `close()` leaves no span timer armed. `spanQueueSize()` reports spans waiting to export.
+- With `flushIntervalMs: 0` the SDK still starts no timers, spans included: a due span batch goes out when the next span finishes, or on `flush()`/`close()`. Widget tests that set it to 0 keep passing the pending-timer check.
+
 ## 0.3.8
 
 - `RuntimeContext.zoneUrl` reads the URL bound on this Zone only. It ignores the isolate-wide fallback.
