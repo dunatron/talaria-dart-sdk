@@ -54,6 +54,9 @@ class TransportException implements Exception {
     this.className,
     this.retry,
     this.bodyMessage,
+    this.retryAfter,
+    this.resetAt,
+    this.meter,
   });
 
   final String message;
@@ -68,6 +71,37 @@ class TransportException implements Exception {
 
   /// Exception `message` field from the body, when present.
   final String? bodyMessage;
+
+  /// How long the server asked us to wait: the `Retry-After` header, or
+  /// `retryAfterSeconds` in the body.
+  final Duration? retryAfter;
+
+  /// When an exhausted quota period resets (HTTP 402), if the server said.
+  final DateTime? resetAt;
+
+  /// The quota meter that is exhausted (`events`, `spans`, `replays`).
+  final String? meter;
+
+  /// HTTP 429, or the typed `ApiRateLimitedException` body.
+  bool get isRateLimited =>
+      statusCode == 429 ||
+      (className ?? '').contains('ApiRateLimitedException');
+
+  /// HTTP 402, or the typed `ApiQuotaExceededException` body. Not retried:
+  /// the batch is dropped and the meter paused until [resetAt].
+  bool get isQuotaExceeded =>
+      statusCode == 402 ||
+      (className ?? '').contains('ApiQuotaExceededException');
+
+  /// Worth trying again later: network errors and timeouts (no status),
+  /// 408, 5xx, rate limits, or a body that says `retry: true`. A body that
+  /// says `retry: false` is never transient.
+  bool get isTransient {
+    if (isQuotaExceeded || retry == false) return false;
+    if (isRateLimited || retry == true) return true;
+    final status = statusCode;
+    return status == null || status == 408 || status >= 500;
+  }
 
   @override
   String toString() => 'TransportException: $message';

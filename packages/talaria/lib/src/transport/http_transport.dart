@@ -286,6 +286,51 @@ class HttpTransport implements Transport {
       className: parsed.className,
       retry: parsed.retry,
       bodyMessage: parsed.message,
+      retryAfter: retryAfterOf(response.headers['retry-after']) ??
+          (parsed.retryAfterSeconds == null
+              ? null
+              : Duration(seconds: parsed.retryAfterSeconds!)),
+      resetAt: parsed.resetAt,
+      meter: parsed.meter,
+    );
+  }
+
+  /// `Retry-After` as delay-seconds or an HTTP date. Null when absent or
+  /// unreadable; a date in the past is zero.
+  static Duration? retryAfterOf(String? header, {DateTime? now}) {
+    final value = header?.trim();
+    if (value == null || value.isEmpty) return null;
+    final seconds = int.tryParse(value);
+    if (seconds != null) {
+      return seconds < 0 ? null : Duration(seconds: seconds);
+    }
+    final at = _parseHttpDate(value);
+    if (at == null) return null;
+    final wait = at.difference((now ?? DateTime.now()).toUtc());
+    return wait.isNegative ? Duration.zero : wait;
+  }
+
+  static const _months = [
+    'jan', 'feb', 'mar', 'apr', 'may', 'jun', //
+    'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+  ];
+
+  /// IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`). No `dart:io`, so this
+  /// stays usable on the web.
+  static DateTime? _parseHttpDate(String value) {
+    final m = RegExp(
+      r'^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$',
+    ).firstMatch(value);
+    if (m == null) return null;
+    final month = _months.indexOf(m.group(2)!.toLowerCase()) + 1;
+    if (month == 0) return null;
+    return DateTime.utc(
+      int.parse(m.group(3)!),
+      month,
+      int.parse(m.group(1)!),
+      int.parse(m.group(4)!),
+      int.parse(m.group(5)!),
+      int.parse(m.group(6)!),
     );
   }
 

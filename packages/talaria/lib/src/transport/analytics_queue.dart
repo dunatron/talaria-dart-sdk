@@ -1,4 +1,5 @@
 import '../analytics/analytics_event.dart';
+import 'ingest_backoff.dart';
 import 'transport.dart';
 
 /// In-memory queue that drains via `analytics/ingestBatch`.
@@ -11,7 +12,9 @@ class AnalyticsQueue {
     void Function(TransportException error)? onError,
     void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
+    IngestBackoff? backoff,
   })  : _transport = transport,
+        _backoff = backoff,
         _onError = onError,
         _onDiscard = onDiscard,
         _clock = clock ?? DateTime.now;
@@ -23,6 +26,7 @@ class AnalyticsQueue {
   final void Function(TransportException error)? _onError;
   final void Function(int count, String reason)? _onDiscard;
   final DateTime Function() _clock;
+  final IngestBackoff? _backoff;
 
   final List<_QueuedAnalyticsEvent> _buffer = [];
   bool _draining = false;
@@ -32,8 +36,13 @@ class AnalyticsQueue {
     if (_closed) {
       return;
     }
+    final refused = _backoff?.refuseReason;
+    if (refused != null) {
+      _onDiscard?.call(1, refused);
+      return;
+    }
     if (_buffer.length >= maxBufferSize) {
-      _onDiscard?.call(1, 'queue_overflow');
+      _onDiscard?.call(1, _backoff?.overflowReason ?? 'queue_overflow');
       return;
     }
     _buffer.add(_QueuedAnalyticsEvent(event: event, enqueuedAt: _clock()));
@@ -44,12 +53,12 @@ class AnalyticsQueue {
   }
 
   Future<void> flush() async {
-    if (_draining || _buffer.isEmpty) {
+    if (_draining || _buffer.isEmpty || _paused) {
       return;
     }
     _draining = true;
     try {
-      while (_buffer.isNotEmpty) {
+      while (_buffer.isNotEmpty && !_paused) {
         final take =
             _buffer.length < maxBatchSize ? _buffer.length : maxBatchSize;
         final slice = _buffer.sublist(0, take);
@@ -57,12 +66,14 @@ class AnalyticsQueue {
         final events = [for (final item in slice) item.event];
         try {
           await _transport.sendAnalyticsBatch(events);
+          _backoff?.onSuccess();
         } on TransportException catch (e) {
-          _onDiscard?.call(events.length, 'network');
+          _failed(slice, e);
           _onError?.call(e);
         } catch (e) {
-          _onDiscard?.call(events.length, 'network');
-          _onError?.call(TransportException('$e', cause: e));
+          final error = TransportException('$e', cause: e);
+          _failed(slice, error);
+          _onError?.call(error);
         }
       }
     } finally {
@@ -74,7 +85,31 @@ class AnalyticsQueue {
 
   Future<void> close() async {
     await flush();
+    if (_buffer.isNotEmpty) {
+      // Still paused: nothing more will be sent.
+      _onDiscard?.call(_buffer.length, _backoff?.closeReason ?? 'network');
+      _buffer.clear();
+    }
     _closed = true;
+  }
+
+  bool get _paused => _backoff?.isPaused ?? false;
+
+  /// Rate-limited batches go back to the front, as far as the buffer allows;
+  /// everything else is dropped with the backoff's reason.
+  void _failed(List<_QueuedAnalyticsEvent> slice, TransportException error) {
+    final outcome =
+        _backoff?.onFailure(error) ?? const ExportFailure('network');
+    if (!outcome.requeue) {
+      _onDiscard?.call(slice.length, outcome.reason);
+      return;
+    }
+    final room = maxBufferSize - _buffer.length;
+    final keep = room <= 0 ? 0 : (room < slice.length ? room : slice.length);
+    _buffer.insertAll(0, slice.sublist(0, keep));
+    if (keep < slice.length) {
+      _onDiscard?.call(slice.length - keep, outcome.reason);
+    }
   }
 
   bool _shouldFlush() {

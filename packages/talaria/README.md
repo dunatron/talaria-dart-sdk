@@ -33,6 +33,18 @@ await Talaria.init(TalariaOptions(
 
 Tracing and analytics follow Project settings.
 
+## Rate limits and quotas
+
+Each signal (events, spans, analytics, discard reports) backs off on its own:
+
+| Server reply | What the SDK does | Discard reason |
+| --- | --- | --- |
+| 429 rate limited | Pauses for at least `Retry-After`, exponential on repeats (to 5 min), plus jitter. Keeps the batch and sends it after the pause. | `rate_limited` if the buffer overflows meanwhile |
+| 402 quota exhausted | Drops the batch, no retry. Stops sending that signal and the named meter until the reset time (re-checked hourly), or 10 minutes when the server gives none. | `quota` |
+| Network error, timeout, 408, 5xx | Drops the batch. Backs off from 1 s, doubling to 5 min, with jitter. | `network` |
+
+`flush()` doesn't override a pause. Failed discard reports never create events, spans, or `onTransportError` calls.
+
 ## License
 
 MIT

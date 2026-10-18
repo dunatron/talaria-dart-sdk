@@ -170,48 +170,59 @@ void main() {
     await client.close();
   });
 
-  test('quota does not disable ingest', () async {
+  test('quota (HTTP 402) pauses events but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 400',
-        statusCode: 400,
-        className: 'ApiConflictException',
-        retry: true,
+        'Talaria events/ingestBatch failed: HTTP 402',
+        statusCode: 402,
+        className: 'ApiQuotaExceededException',
         bodyMessage: 'quota exceeded',
+        meter: 'events',
       ),
     );
+    var now = DateTime.utc(2026, 10, 19);
     final client = TalariaClient(
       options(),
       transport: transport,
+      clock: () => now,
     );
 
     await client.captureMessage('first');
     await client.flush();
     await client.captureMessage('second');
     await client.flush();
+    expect(transport.sendCount, 1, reason: 'paused until the reset');
 
+    now = now.add(const Duration(minutes: 11));
+    await client.captureMessage('third');
+    await client.flush();
     expect(transport.sendCount, 2);
     expect(client.isEventsIngestDisabled, isFalse);
     await client.close();
   });
 
-  test('5xx does not disable ingest', () async {
+  test('5xx backs off but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
         'Talaria events/ingestBatch failed: HTTP 503',
         statusCode: 503,
       ),
     );
+    var now = DateTime.utc(2026, 10, 19);
     final client = TalariaClient(
       options(),
       transport: transport,
+      clock: () => now,
     );
 
     await client.captureMessage('first');
     await client.flush();
     await client.captureMessage('second');
     await client.flush();
+    expect(transport.sendCount, 1, reason: 'backing off');
 
+    now = now.add(const Duration(seconds: 2));
+    await client.flush();
     expect(transport.sendCount, 2);
     expect(client.isEventsIngestDisabled, isFalse);
     await client.close();
