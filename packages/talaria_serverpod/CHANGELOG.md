@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7
+
+- The request middleware no longer flushes after every traced request. That sent one `spans/ingestBatch` per request and hit the default 100/min per-key limit at about 100 traced requests a minute. Spans are sent by the client's batch schedule; with `talaria` 0.3.9 that is at most 30 span exports a minute by default.
+- `attach` registers a Serverpod shutdown task (`talaria.flush`) that flushes the client when the server stops. `registerShutdownFlush` does the same for apps that don't use `attach`.
+
 ## 0.2.6
 
 - Depends on `talaria` 0.3.8. Request handling uses `RuntimeContext.zoneUrl` and `runWithAsync(blankUnset: true)`. Those members are not in the published `talaria` 0.3.7, so 0.2.5 does not compile against it.

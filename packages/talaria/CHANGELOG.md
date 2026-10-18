@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.3.9
 
+- Spans are exported in batches: on a full batch (`spanBatchSize`, default 200) or after `spanFlushIntervalMs` (default 5 s), at most `maxSpanExportsPerMinute` (default 30) automatic exports a minute, from a buffer of `maxSpanQueueSize` (default 2048) spans. Spans used to share `maxBatchSize` (50) and went out on every 2 s flush tick.
+- The periodic flush no longer forces a span export. `flush()` and `close()` still send everything, and now wait for an export already in flight.
+- `close()` leaves no span timer armed. `spanQueueSize()` reports spans waiting to export.
+- With `flushIntervalMs: 0` the SDK still starts no timers, spans included: a due span batch goes out when the next span finishes, or on `flush()`/`close()`. Widget tests that set it to 0 keep passing the pending-timer check.
 - Rate limits (HTTP 429): exports for that signal pause for at least `Retry-After` (else `retryAfterSeconds` in the body), growing exponentially on repeats up to 5 minutes, plus up to 20% jitter. The batch is kept and sent again after the pause. Items that overflow the buffer meanwhile are counted as `rate_limited`.
 - Quota exhausted (HTTP 402 `ApiQuotaExceededException`): the batch is dropped as `quota`, not retried, and that signal (and the meter the body names) stops sending until the quota resets (body `resetAt`, else `Retry-After`, else 10 minutes). The SDK re-checks at most hourly, so a plan upgrade takes effect without a restart. New items are refused as `quota` while paused.
 - Network errors, timeouts, 408 and 5xx: the batch is still dropped as `network`, and exports now back off exponentially with jitter (1 s doubling to 5 minutes).

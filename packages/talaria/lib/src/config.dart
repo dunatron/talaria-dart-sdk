@@ -24,6 +24,10 @@ class TalariaOptions {
     double sampleRate = 1.0,
     int maxBatchSize = 50,
     int flushIntervalMs = 2000,
+    int spanBatchSize = 200,
+    int spanFlushIntervalMs = 5000,
+    int maxSpanExportsPerMinute = 30,
+    int maxSpanQueueSize = 2048,
     this.defaultIntegrations = true,
     this.userId,
     Map<String, String>? tags,
@@ -52,6 +56,13 @@ class TalariaOptions {
         sampleRate = sampleRate.clamp(0.0, 1.0),
         maxBatchSize = max(1, maxBatchSize),
         flushIntervalMs = max(0, flushIntervalMs),
+        spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
+        spanFlushIntervalMs = max(0, spanFlushIntervalMs),
+        maxSpanExportsPerMinute = maxSpanExportsPerMinute.clamp(1, 600),
+        maxSpanQueueSize = max(
+          spanBatchSize.clamp(1, maxSpanBatchSize),
+          maxSpanQueueSize,
+        ),
         tags = normalizeTags(tags ?? const {}),
         httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
         minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
@@ -81,6 +92,28 @@ class TalariaOptions {
   double sampleRate;
   final int maxBatchSize;
   final int flushIntervalMs;
+
+  /// Most spans in one `spans/ingestBatch` request (1 to [maxSpanBatchSize]).
+  /// A full batch is exported without waiting for [spanFlushIntervalMs].
+  final int spanBatchSize;
+
+  /// Longest a finished span waits before it is exported. 0 sends spans only
+  /// on a full batch or an explicit flush. With [flushIntervalMs] 0 the SDK
+  /// starts no timers, so spans are sent when a batch is due at the next
+  /// span, or on an explicit flush.
+  final int spanFlushIntervalMs;
+
+  /// Ceiling on automatic span exports a minute (1 to 600). The server's
+  /// default per-key limit is 100 span requests a minute. Explicit
+  /// `flush()` calls are not limited.
+  final int maxSpanExportsPerMinute;
+
+  /// Finished spans held while waiting to export. More are dropped and
+  /// reported as `queue_overflow`. At least [spanBatchSize].
+  final int maxSpanQueueSize;
+
+  /// The server rejects more than 200 spans of one trace in a batch.
+  static const maxSpanBatchSize = 200;
   final bool defaultIntegrations;
   final String? userId;
   final Map<String, String> tags;
@@ -206,6 +239,10 @@ class TalariaOptions {
     double? sampleRate,
     int? maxBatchSize,
     int? flushIntervalMs,
+    int? spanBatchSize,
+    int? spanFlushIntervalMs,
+    int? maxSpanExportsPerMinute,
+    int? maxSpanQueueSize,
     bool? defaultIntegrations,
     String? userId,
     Map<String, String>? tags,
@@ -228,6 +265,11 @@ class TalariaOptions {
       sampleRate: sampleRate ?? this.sampleRate,
       maxBatchSize: maxBatchSize ?? this.maxBatchSize,
       flushIntervalMs: flushIntervalMs ?? this.flushIntervalMs,
+      spanBatchSize: spanBatchSize ?? this.spanBatchSize,
+      spanFlushIntervalMs: spanFlushIntervalMs ?? this.spanFlushIntervalMs,
+      maxSpanExportsPerMinute:
+          maxSpanExportsPerMinute ?? this.maxSpanExportsPerMinute,
+      maxSpanQueueSize: maxSpanQueueSize ?? this.maxSpanQueueSize,
       defaultIntegrations: defaultIntegrations ?? this.defaultIntegrations,
       userId: userId ?? this.userId,
       tags: tags ?? this.tags,

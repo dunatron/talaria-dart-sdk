@@ -33,6 +33,19 @@ await Talaria.init(TalariaOptions(
 
 Tracing and analytics follow Project settings.
 
+## Span batching
+
+Finished spans are sent in batches, not one request per traced call:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `spanBatchSize` | 200 | Spans per `spans/ingestBatch` request (at most 200). A full batch goes out straight away. |
+| `spanFlushIntervalMs` | 5000 | Longest a span waits before a partial batch is sent. `0` sends only full batches and explicit flushes. |
+| `maxSpanExportsPerMinute` | 30 | Ceiling on automatic span requests a minute. The server allows 100 a minute per key by default. |
+| `maxSpanQueueSize` | 2048 | Spans held while waiting. Beyond that they are dropped and reported as `queue_overflow`. |
+
+`Talaria.flush()` and `Talaria.close()` still send everything at once, unless that signal is paused by a rate limit or quota (see below). With `flushIntervalMs: 0` (common in tests) the SDK starts no timers at all, so spans wait for a full or due batch at the next span, or for an explicit flush. Don't call `flush()` after every request on a long-running server; that is one export per request.
+
 ## Rate limits and quotas
 
 Each signal (events, spans, analytics, discard reports) backs off on its own:
