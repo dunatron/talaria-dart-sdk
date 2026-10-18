@@ -15,9 +15,49 @@ class TalariaServerpodPaths {
     '/sitemap.xml',
   };
 
+  /// Talaria SDK ingest and control calls, as Serverpod endpoint → methods.
+  ///
+  /// When an app reports to a Talaria server that is itself traced (Talaria
+  /// dogfooding), tracing these feeds back: a rejected span batch triggers
+  /// `sdk/reportDiscards`, which becomes a traced request, and so on.
+  /// `replays` matches any `ingestSegment*` method. Dashboard methods on the
+  /// same endpoints (flag management, heatmap viewing) stay traced, and so do
+  /// an app's own endpoints that happen to share these names.
+  static const sdkEndpointMethods = <String, Set<String>>{
+    'events': {'ingest', 'ingestBatch'},
+    'spans': {'ingestBatch'},
+    'analytics': {'ingestBatch'},
+    'heatmaps': {'ingestBatch', 'uploadSnapshot'},
+    'screenHeatmaps': {'ingestBatch', 'uploadSnapshot', 'uploadRecording'},
+    'replays': {'ingestSegment', 'ingestSegmentBatch'},
+    'sdk': {'getConfig', 'reportDiscards'},
+    'flags': {'evaluate', 'downloadDefinitions'},
+  };
+
+  /// True for a Talaria SDK ingest or control call ([sdkEndpointMethods]).
+  static bool isSdkCall({required String endpoint, String? method}) {
+    if (method == null || method.isEmpty) {
+      return false;
+    }
+    if (endpoint == 'replays' && method.startsWith('ingestSegment')) {
+      return true;
+    }
+    return sdkEndpointMethods[endpoint]?.contains(method) ?? false;
+  }
+
   static bool isNoisy(Uri url) {
     final path = url.path;
     if (_isIngest(path)) {
+      return true;
+    }
+    final segments = url.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isNotEmpty &&
+        isSdkCall(
+          endpoint: segments.first,
+          method: segments.length >= 2
+              ? segments[1]
+              : url.queryParameters['method'],
+        )) {
       return true;
     }
     final normalized = _normalize(path);
@@ -43,7 +83,7 @@ class TalariaServerpodPaths {
     if (_isIngest(endpoint) || _isIngest(method ?? '')) {
       return true;
     }
-    return false;
+    return isSdkCall(endpoint: endpoint, method: method);
   }
 
   /// Batch and single-call ingest (`ingestBatch` and `ingest`).

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `TalariaHttpClient.isTalariaIngestUrl` matches every SDK ingest and control call (`TalariaHttpClient.sdkEndpointMethods`): events `ingest`/`ingestBatch`, spans and analytics `ingestBatch`, `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, the heatmap and screen-heatmap uploads, and `flags/evaluate` / `flags/downloadDefinitions`. It matches `/<endpoint>/<method>` path segments, so a DSN with a path prefix still matches, and lookalike paths no longer do.
+
 ## 0.3.8
 
 - `RuntimeContext.zoneUrl` reads the URL bound on this Zone only. It ignores the isolate-wide fallback.

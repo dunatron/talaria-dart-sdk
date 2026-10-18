@@ -108,13 +108,34 @@ class TalariaHttpClient extends http.BaseClient {
   @override
   void close() => _inner.close();
 
-  /// True for Talaria event/span ingest endpoints (must not be instrumented).
+  /// Talaria SDK ingest and control calls, endpoint → methods. `replays`
+  /// also matches any `ingestSegment*` method.
+  static const sdkEndpointMethods = <String, Set<String>>{
+    'events': {'ingest', 'ingestBatch'},
+    'spans': {'ingestBatch'},
+    'analytics': {'ingestBatch'},
+    'heatmaps': {'ingestBatch', 'uploadSnapshot'},
+    'screenHeatmaps': {'ingestBatch', 'uploadSnapshot', 'uploadRecording'},
+    'replays': {'ingestSegment', 'ingestSegmentBatch'},
+    'sdk': {'getConfig', 'reportDiscards'},
+    'flags': {'evaluate', 'downloadDefinitions'},
+  };
+
+  /// True for Talaria SDK ingest and control endpoints, which must not be
+  /// instrumented. Matches an `/<endpoint>/<method>` pair anywhere in the
+  /// path, so a DSN with a path prefix still matches.
   static bool isTalariaIngestUrl(Uri uri) {
-    final path = uri.path;
-    return path.contains('/events/ingestBatch') ||
-        path.contains('/spans/ingestBatch') ||
-        path.contains('/analytics/ingestBatch') ||
-        path.contains('/sdk/getConfig') ||
-        path.contains('/sdk/reportDiscards');
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    for (var i = 0; i + 1 < segments.length; i++) {
+      final endpoint = segments[i];
+      final method = segments[i + 1];
+      if (endpoint == 'replays' && method.startsWith('ingestSegment')) {
+        return true;
+      }
+      if (sdkEndpointMethods[endpoint]?.contains(method) ?? false) {
+        return true;
+      }
+    }
+    return false;
   }
 }
