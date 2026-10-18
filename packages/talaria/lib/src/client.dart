@@ -22,6 +22,7 @@ import 'transport/analytics_queue.dart';
 import 'transport/discards.dart';
 import 'transport/event_queue.dart';
 import 'transport/http_transport.dart';
+import 'transport/ingest_backoff.dart';
 import 'transport/ingest_error.dart';
 import 'transport/span_queue.dart';
 import 'transport/transport.dart';
@@ -67,6 +68,10 @@ class TalariaClient {
     _ownedHttp = httpTransport;
     final resolvedTransport = transport ?? httpTransport!;
     _discardTransport = resolvedTransport;
+    _eventsBackoff = IngestBackoff(clock: clock);
+    _spansBackoff = IngestBackoff(clock: clock);
+    _analyticsBackoff = IngestBackoff(clock: clock);
+    _discardsBackoff = IngestBackoff(clock: clock);
 
     _queue = queue ??
         EventQueue(
@@ -83,12 +88,17 @@ class TalariaClient {
             reason,
             count,
           ),
+          backoff: _eventsBackoff,
         );
 
     _spanQueue = SpanQueue(
       transport: resolvedTransport,
-      maxBatchSize: options.maxBatchSize,
-      flushIntervalMs: options.flushIntervalMs,
+      maxBatchSize: options.spanBatchSize,
+      maxBufferSize: options.maxSpanQueueSize,
+      flushIntervalMs: options.spanFlushIntervalMs,
+      maxExportsPerMinute: options.maxSpanExportsPerMinute,
+      // flushIntervalMs: 0 means no SDK timers at all, spans included.
+      timers: options.flushIntervalMs > 0,
       onError: (e) {
         _handleTransportError(e, IngestSignal.spans);
         onTransportError?.call(e);
@@ -99,6 +109,7 @@ class TalariaClient {
         reason,
         count,
       ),
+      backoff: _spansBackoff,
     );
 
     _analyticsQueue = AnalyticsQueue(
@@ -115,6 +126,7 @@ class TalariaClient {
         reason,
         count,
       ),
+      backoff: _analyticsBackoff,
     );
 
     analytics = TalariaAnalytics(
@@ -168,7 +180,7 @@ class TalariaClient {
         Duration(milliseconds: options.flushIntervalMs),
         (_) {
           // ignore: discarded_futures
-          flush();
+          _timedFlush();
         },
       );
     }
@@ -215,6 +227,14 @@ class TalariaClient {
   Timer? _policyTimer;
   Transport? _discardTransport;
   final DiscardBuffer _discards = DiscardBuffer();
+  late final IngestBackoff _eventsBackoff;
+  late final IngestBackoff _spansBackoff;
+  late final IngestBackoff _analyticsBackoff;
+  late final IngestBackoff _discardsBackoff;
+
+  /// The server rejected `rate_limited` / `quota` discard reasons (it
+  /// predates them), so only the legacy reasons are reported.
+  bool _legacyDiscardReasons = false;
 
   /// Optional override for platform wire field (Flutter sets `flutter`).
   String? platformOverride;
@@ -503,15 +523,34 @@ class TalariaClient {
     _beforeFlush.remove(hook);
   }
 
+  /// Sends everything buffered now: events, spans, analytics and discard
+  /// counts. Spans also go out on their own in batches (see
+  /// [TalariaOptions.spanBatchSize] and [TalariaOptions.spanFlushIntervalMs]),
+  /// so long-running servers don't need to call this per request.
   Future<void> flush() async {
-    for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
-      await hook();
-    }
+    await _runBeforeFlush();
     await _queue.flush();
     await _spanQueue.flush();
     await _analyticsQueue.flush();
     await _flushDiscards();
   }
+
+  /// The periodic tick. Spans are left to their own batch schedule.
+  Future<void> _timedFlush() async {
+    await _runBeforeFlush();
+    await _queue.flush();
+    await _analyticsQueue.flush();
+    await _flushDiscards();
+  }
+
+  Future<void> _runBeforeFlush() async {
+    for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
+      await hook();
+    }
+  }
+
+  /// Finished spans waiting to export.
+  int spanQueueSize() => _spanQueue.count;
 
   Future<void> close() async {
     _flushTimer?.cancel();
@@ -521,6 +560,13 @@ class TalariaClient {
     flags.close();
     tracer.finishAll();
     await flush();
+    // Anything still held behind a backoff pause is dropped and counted.
+    // No span timer is left armed, and nothing exports after the HTTP
+    // client is closed.
+    await _queue.close();
+    await _spanQueue.close();
+    await _analyticsQueue.close();
+    await _flushDiscards();
     _closed = true;
     _zoneIntegration?.unregister();
     _ownedHttp?.close();
@@ -591,6 +637,12 @@ class TalariaClient {
       _applyPolicyDocument(document);
       _policyCache[key] = (fetchedAt: now, document: document);
       _schedulePolicyRefresh(transport, _ttlMs(document));
+    } on TransportException catch (e) {
+      // Honour Retry-After on a rate-limited getConfig; never under 60 s.
+      _schedulePolicyRefresh(
+        transport,
+        e.retryAfter?.inMilliseconds ?? 60 * 1000,
+      );
     } catch (_) {
       _schedulePolicyRefresh(transport, 60 * 1000);
     }
@@ -631,29 +683,86 @@ class TalariaClient {
     _discards.record(signal: signal, reason: reason, count: count);
   }
 
+  /// Discard telemetry is best effort and never reports on itself: a failed
+  /// or rate-limited report is kept for the next try (or dropped), with no
+  /// `onTransportError`, no event, no span and no discard row of its own.
   Future<void> _flushDiscards() async {
-    final rows = _discards.drain();
-    if (rows.isEmpty || isIngestDisabled) {
+    if (_discards.isEmpty || isIngestDisabled || _discardsBackoff.isPaused) {
       return;
     }
     final transport = _discardTransport;
     if (transport == null) {
       return;
     }
+    var rows = _sendableDiscards(_discards.drain());
+    if (rows.isEmpty) {
+      return;
+    }
     try {
       await transport.reportDiscards(rows);
-    } catch (_) {
-      for (final row in rows) {
-        _discards.record(
-          signal: row.signal,
-          reason: row.reason,
-          count: row.count,
+      _discardsBackoff.onSuccess();
+      return;
+    } on TransportException catch (e) {
+      if (!_legacyDiscardReasons && _rejectsNewReasons(e, rows)) {
+        _legacyDiscardReasons = true;
+        developer.log(
+          '[Talaria] server does not accept rate_limited/quota discard '
+          'reasons yet; reporting the others only',
+          name: 'talaria',
         );
+        rows = _sendableDiscards(rows);
+        if (rows.isEmpty) return;
+        try {
+          await transport.reportDiscards(rows);
+          _discardsBackoff.onSuccess();
+          return;
+        } on TransportException catch (retryError) {
+          _discardsBackoff.onFailure(retryError);
+        } catch (_) {
+          _discardsBackoff.onFailure(TransportException('discards failed'));
+        }
+      } else {
+        _discardsBackoff.onFailure(e);
       }
+    } catch (e) {
+      _discardsBackoff.onFailure(TransportException('$e', cause: e));
+    }
+    for (final row in rows) {
+      _discards.record(
+        signal: row.signal,
+        reason: row.reason,
+        count: row.count,
+      );
     }
   }
 
+  List<DiscardRow> _sendableDiscards(List<DiscardRow> rows) {
+    if (!_legacyDiscardReasons) return rows;
+    return [
+      for (final row in rows)
+        if (DiscardReason.legacy.contains(row.reason)) row,
+    ];
+  }
+
+  static bool _rejectsNewReasons(TransportException e, List<DiscardRow> rows) {
+    if (e.statusCode != 400) return false;
+    final validation = (e.className ?? '').contains('ApiValidationException') ||
+        (e.bodyMessage ?? '').contains('discard signal or reason');
+    return validation &&
+        rows.any((row) => !DiscardReason.legacy.contains(row.reason));
+  }
+
   void _handleTransportError(TransportException error, IngestSignal signal) {
+    if (error.isQuotaExceeded) {
+      // The refusing queue pauses itself; also pause the meter it names.
+      switch (error.meter) {
+        case 'events':
+          _eventsBackoff.pauseForQuota(error);
+        case 'spans':
+          _spansBackoff.pauseForQuota(error);
+      }
+      return;
+    }
     final parsed = IngestError(
       className: error.className,
       message: error.bodyMessage ?? error.message,

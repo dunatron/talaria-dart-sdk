@@ -6,11 +6,25 @@ class IngestError {
     this.className,
     this.message,
     this.retry,
+    this.retryAfterSeconds,
+    this.meter,
+    this.resetAt,
   });
 
   final String? className;
   final String? message;
   final bool? retry;
+
+  /// `retryAfterSeconds` on `ApiRateLimitedException`.
+  final int? retryAfterSeconds;
+
+  /// `meter` on `ApiQuotaExceededException`.
+  final String? meter;
+
+  /// Quota period reset on `ApiQuotaExceededException`: `resetAt` (also
+  /// `resetsAt`, `periodResetAt`, `periodEnd`), as ISO 8601 or epoch seconds
+  /// or milliseconds.
+  final DateTime? resetAt;
 
   /// Parse a Serverpod exception JSON body (`className` or `__className__`).
   static IngestError parse(String body) {
@@ -30,6 +44,11 @@ class IngestError {
         ),
         message: _stringOf(decoded['message'] ?? nestedMap['message']),
         retry: _boolOf(decoded['retry'] ?? nestedMap['retry']),
+        retryAfterSeconds: _intOf(
+          decoded['retryAfterSeconds'] ?? nestedMap['retryAfterSeconds'],
+        ),
+        meter: _stringOf(decoded['meter'] ?? nestedMap['meter']),
+        resetAt: _firstDate(decoded, nestedMap),
       );
     } catch (_) {
       return const IngestError();
@@ -92,6 +111,40 @@ class IngestError {
     if (value is String && value.trim().isNotEmpty) {
       return value.trim();
     }
+    return null;
+  }
+
+  static const _resetKeys = [
+    'resetAt',
+    'resetsAt',
+    'periodResetAt',
+    'periodEnd',
+  ];
+
+  static DateTime? _firstDate(
+      Map<Object?, Object?> a, Map<Object?, Object?> b) {
+    for (final key in _resetKeys) {
+      final value = dateOf(a[key] ?? b[key]);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  /// ISO 8601 string, or epoch seconds or milliseconds. UTC.
+  static DateTime? dateOf(Object? value) {
+    if (value is String) {
+      return DateTime.tryParse(value.trim())?.toUtc();
+    }
+    if (value is num && value > 0) {
+      final ms = value < 1e12 ? value * 1000 : value;
+      return DateTime.fromMillisecondsSinceEpoch(ms.round(), isUtc: true);
+    }
+    return null;
+  }
+
+  static int? _intOf(Object? value) {
+    if (value is num) return value.round();
+    if (value is String) return int.tryParse(value.trim());
     return null;
   }
 

@@ -8,7 +8,8 @@ import 'relic_span_finish.dart';
 ///
 /// `TalariaServerpod.attach` installs this. Use it directly to mount it
 /// yourself. Requests matching [TalariaServerpodPaths.isNoisy] or [skip] get
-/// no span.
+/// no span. Finished spans are queued and exported in batches by the client;
+/// the request does not wait for an export.
 Middleware talariaRelicMiddleware(
   TalariaClient client, {
   bool Function(Uri url)? skip,
@@ -68,8 +69,11 @@ Middleware talariaRelicMiddleware(
                   RelicSpanFinish.onThrow(span, e);
                   rethrow;
                 } finally {
+                  // No flush here: one export per request hit the per-key
+                  // rate limit at about 100 traced requests a minute. The
+                  // client sends spans in batches, and attach() flushes on
+                  // shutdown.
                   span.finish();
-                  await client.flush();
                 }
               });
             },

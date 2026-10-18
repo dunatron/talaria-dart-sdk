@@ -1,7 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.3.9
 
+- Spans are exported in batches: on a full batch (`spanBatchSize`, default 200) or after `spanFlushIntervalMs` (default 5 s), at most `maxSpanExportsPerMinute` (default 30) automatic exports a minute, from a buffer of `maxSpanQueueSize` (default 2048) spans. Spans used to share `maxBatchSize` (50) and went out on every 2 s flush tick.
+- The periodic flush no longer forces a span export. `flush()` and `close()` still send everything, and now wait for an export already in flight.
+- `close()` leaves no span timer armed. `spanQueueSize()` reports spans waiting to export.
+- With `flushIntervalMs: 0` the SDK still starts no timers, spans included: a due span batch goes out when the next span finishes, or on `flush()`/`close()`. Widget tests that set it to 0 keep passing the pending-timer check.
+- Rate limits (HTTP 429): exports for that signal pause for at least `Retry-After` (else `retryAfterSeconds` in the body), growing exponentially on repeats up to 5 minutes, plus up to 20% jitter. The batch is kept and sent again after the pause. Items that overflow the buffer meanwhile are counted as `rate_limited`.
+- Quota exhausted (HTTP 402 `ApiQuotaExceededException`): the batch is dropped as `quota`, not retried, and that signal (and the meter the body names) stops sending until the quota resets (body `resetAt`, else `Retry-After`, else 10 minutes). The SDK re-checks at most hourly, so a plan upgrade takes effect without a restart. New items are refused as `quota` while paused.
+- Network errors, timeouts, 408 and 5xx: the batch is still dropped as `network`, and exports now back off exponentially with jitter (1 s doubling to 5 minutes).
+- While a signal is paused, `flush()` sends nothing for it. `close()` counts anything still held as a discard.
+- New discard reasons `rate_limited` and `quota`. A server that rejects them (400 `ApiValidationException`) gets only the older reasons from then on.
+- `sdk/reportDiscards` has its own backoff and never reports on itself: a failed or rate-limited report is retried later, and makes no `onTransportError` call, no event, no span and no discard row.
+- A rate-limited `sdk/getConfig` waits for `Retry-After` (at least 60 s) before refreshing.
+- `TransportException` gains `retryAfter`, `resetAt`, `meter`, `isRateLimited`, `isQuotaExceeded` and `isTransient`. Rate limits are recognised by HTTP 429 or `ApiRateLimitedException`; the old 400 `ApiConflictException` `retry: true` shape is now just a transient error.
 - `TalariaHttpClient.isTalariaIngestUrl` matches every SDK ingest and control call (`TalariaHttpClient.sdkEndpointMethods`): events `ingest`/`ingestBatch`, spans and analytics `ingestBatch`, `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, the heatmap and screen-heatmap uploads, and `flags/evaluate` / `flags/downloadDefinitions`. It matches `/<endpoint>/<method>` path segments, so a DSN with a path prefix still matches, and lookalike paths no longer do.
 
 ## 0.3.8

@@ -71,6 +71,9 @@ class TalariaServerpod {
   ///
   /// [skip] leaves more requests untraced, on top of
   /// [TalariaServerpodPaths.isNoisy] (probes and Talaria SDK calls).
+  ///
+  /// Also registers a Serverpod shutdown task that flushes the client, so
+  /// spans still waiting for their batch are sent before the process exits.
   static void attach(
     Serverpod pod, {
     TalariaClient? client,
@@ -88,6 +91,24 @@ class TalariaServerpod {
       pod.webServer.addMiddleware(middleware, '/');
     } catch (_) {
       // Web server is optional in some Serverpod configs.
+    }
+    registerShutdownFlush(pod, resolved);
+  }
+
+  /// Shutdown task id used by [attach].
+  static const shutdownTaskId = 'talaria.flush';
+
+  /// Flush [client] when [pod] shuts down. Runs after the API and web
+  /// servers stop taking requests. Safe to call more than once.
+  static void registerShutdownFlush(Serverpod pod, TalariaClient client) {
+    try {
+      pod.experimental.shutdownTasks.addTask(shutdownTaskId, () async {
+        if (!client.isClosed) {
+          await client.flush();
+        }
+      });
+    } catch (_) {
+      // Already registered, or the experimental API isn't available.
     }
   }
 

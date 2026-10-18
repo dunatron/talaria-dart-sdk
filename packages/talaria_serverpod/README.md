@@ -59,7 +59,7 @@ void run(List<String> args) async {
 }
 ```
 
-On shutdown: `await Talaria.flush(); await Talaria.close();`.
+Spans are sent in batches (see the `talaria` package's Span batching options), not after each request. `attach` registers a Serverpod shutdown task that flushes them when the server stops. If you shut down another way: `await Talaria.flush(); await Talaria.close();`.
 
 ## What is instrumented
 
