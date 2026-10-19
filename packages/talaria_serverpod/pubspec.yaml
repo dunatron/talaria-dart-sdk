@@ -18,7 +18,7 @@ environment:
 
 dependencies:
   serverpod: ^4.0.0
-  talaria: ^0.3.8
+  talaria: ^0.3.9
 
 dev_dependencies:
   lints: ^5.0.0
