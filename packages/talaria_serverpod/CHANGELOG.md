@@ -2,6 +2,7 @@
 
 ## 0.2.7
 
+- Depends on `talaria` 0.3.9: request spans rely on its batched span export, and the shutdown flush on its `flush()` waiting for an export in flight. With 0.3.8, which has no span batching, the middleware's spans would only go out on the 2 s flush tick, 50 at a time.
 - The request middleware no longer flushes after every traced request. That sent one `spans/ingestBatch` per request and hit the default 100/min per-key limit at about 100 traced requests a minute. Spans are sent by the client's batch schedule; with `talaria` 0.3.9 that is at most 30 span exports a minute by default.
 - `attach` registers a Serverpod shutdown task (`talaria.flush`) that flushes the client when the server stops. `registerShutdownFlush` does the same for apps that don't use `attach`.
 - Talaria SDK ingest and control calls are never traced: `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, `heatmaps/ingestBatch` and `uploadSnapshot`, `screenHeatmaps/ingestBatch`, `uploadSnapshot` and `uploadRecording`, and `flags/evaluate` and `downloadDefinitions` (plus the existing `ingest`/`ingestBatch`). The list is `TalariaServerpodPaths.sdkEndpointMethods`, and `TalariaServerpodPaths.isSdkCall` checks it. Dashboard methods on those endpoints, and an app's own endpoints with the same names, stay traced.
