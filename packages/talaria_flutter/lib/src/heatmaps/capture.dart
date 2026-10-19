@@ -471,11 +471,14 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     } catch (_) {}
   }
 
-  void _armSettle() {
+  /// [atLeast]: heatmap uploads are paused (429/402) for that long, so don't
+  /// capture again before then.
+  void _armSettle({Duration? atLeast}) {
     _settle?.cancel();
     final elapsed = DateTime.now().difference(_lastInteraction);
-    final wait =
+    var wait =
         elapsed >= _settleDelay ? Duration.zero : _settleDelay - elapsed;
+    if (atLeast != null && atLeast > wait) wait = atLeast;
     _settle = Timer(wait, () {
       unawaited(_uploadIdleSnapshot());
     });
@@ -496,6 +499,12 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final client =
         ScreenHeatmapController.instance.client ?? Talaria.getClient();
     if (client == null) return;
+    final paused = client.heatmapsPausedFor;
+    if (paused != null) {
+      // Backing off: capturing the fold now would be wasted work.
+      _armSettle(atLeast: paused);
+      return;
+    }
     await _nextFrame();
     if (!mounted || _session.screenViewId != id) return;
     final manifest = _manifestJson();
@@ -512,8 +521,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       _snapshotSent.add(id);
       _snapshotPending = false;
     } catch (_) {
-      // Retry on next settle if still pending.
-      _armSettle();
+      // Retry on next settle if still pending, after any backoff pause.
+      _armSettle(atLeast: client.heatmapsPausedFor);
     }
   }
 

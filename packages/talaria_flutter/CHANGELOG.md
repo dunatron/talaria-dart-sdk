@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.9
+
+- Depends on `talaria` 0.3.9. While heatmap uploads are paused after a 429 or 402 (`TalariaClient.heatmapsPausedFor`), `TalariaScreenCapture` doesn't capture the fold snapshot. It tries again when the pause ends, not on every settle.
+
 ## 0.2.8
 
 - `TalariaScreenCapture` stays idle until a client exists and screen capture is enabled. It does not start a flush timer before that, and disposing it does not look up a deactivated `Router`.

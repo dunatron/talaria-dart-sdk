@@ -6,6 +6,7 @@ import 'io_http.dart';
 import 'relic_middleware.dart';
 import 'session_spans.dart';
 import 'session_transaction.dart';
+import 'shutdown_flush.dart';
 import 'tracing_database.dart';
 
 /// Serverpod adapter: Relic SERVER spans, Postgres CLIENT spans, FutureCalls.
@@ -96,19 +97,15 @@ class TalariaServerpod {
   }
 
   /// Shutdown task id used by [attach].
-  static const shutdownTaskId = 'talaria.flush';
+  static const shutdownTaskId = talariaShutdownTaskId;
 
   /// Flush [client] when [pod] shuts down. Runs after the API and web
   /// servers stop taking requests. Safe to call more than once.
   static void registerShutdownFlush(Serverpod pod, TalariaClient client) {
     try {
-      pod.experimental.shutdownTasks.addTask(shutdownTaskId, () async {
-        if (!client.isClosed) {
-          await client.flush();
-        }
-      });
+      addShutdownFlushTask(pod.experimental.shutdownTasks.addTask, client);
     } catch (_) {
-      // Already registered, or the experimental API isn't available.
+      // The experimental API isn't available.
     }
   }
 

@@ -15,6 +15,9 @@
 - A rate-limited `sdk/getConfig` waits for `Retry-After` (at least 60 s) before refreshing.
 - `TransportException` gains `retryAfter`, `resetAt`, `meter`, `isRateLimited`, `isQuotaExceeded` and `isTransient`. Rate limits are recognised by HTTP 429 or `ApiRateLimitedException`; the old 400 `ApiConflictException` `retry: true` shape is now just a transient error.
 - `TalariaHttpClient.isTalariaIngestUrl` matches every SDK ingest and control call (`TalariaHttpClient.sdkEndpointMethods`): events `ingest`/`ingestBatch`, spans and analytics `ingestBatch`, `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, the heatmap and screen-heatmap uploads, and `flags/evaluate` / `flags/downloadDefinitions`. It matches `/<endpoint>/<method>` path segments, so a DSN with a path prefix still matches, and lookalike paths no longer do.
+- Screen heatmap uploads (`sendScreenHeatmapBatch`, `uploadScreenHeatmapSnapshot`, `uploadScreenHeatmapRecording`) and flag reads (`flags/evaluate`, `flags/downloadDefinitions`) back off the same way, one pause for heatmaps and one for flags. After a 429 they wait for `Retry-After` plus jitter, growing up to 5 minutes. After a 402 they wait until `resetAt` (at most 1 hour, or 10 minutes when no reset is given). While paused they throw `IngestPausedException` (a `TransportException` whose `retryAfter` is the time left) without sending. `heatmapsPausedFor` and `flagsPausedFor` report the time left.
+- A 402 on a heatmap upload counts as a `heatmaps`/`quota` discard (`DiscardSignal.heatmaps`). Rate-limited heatmap data stays with the caller, so it isn't counted. Flags report no discards. While paused they keep their last evaluations and log nothing.
+- A 402 that names the `transactions` meter (the server's name for spans) or `analytics` now pauses that queue too. Before, only `events` and `spans` were matched.
 
 ## 0.3.8
 
