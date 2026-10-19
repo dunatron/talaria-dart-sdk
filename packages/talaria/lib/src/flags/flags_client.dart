@@ -10,6 +10,7 @@ import '../identity/storage.dart';
 import 'flag_definition.dart';
 import 'flag_evaluation.dart';
 import 'local_flag_evaluator.dart';
+import '../transport/ingest_backoff.dart';
 
 /// Feature-flag client (`POST /flags/evaluate` or local definitions).
 ///
@@ -282,6 +283,8 @@ class TalariaFlags {
       } else {
         await _refreshRemote();
       }
+    } on IngestPausedException {
+      // Backing off after a 429/402: keep the last evaluations, no log spam.
     } catch (e, st) {
       developer.log(
         '[Talaria] flags refresh failed: $e',
@@ -323,6 +326,8 @@ class TalariaFlags {
           _definitions = defs;
           await _persistDefinitionsCache();
         }
+      } on IngestPausedException {
+        // Backing off: evaluate locally with the definitions we have.
       } catch (e, st) {
         developer.log(
           '[Talaria] flags definition refresh failed: $e',

@@ -3,6 +3,21 @@ import 'dart:math';
 import 'discards.dart';
 import 'transport.dart';
 
+/// Thrown instead of sending while [IngestBackoff] has a signal paused, for
+/// calls that aren't queued (heatmap uploads, flag reads). Nothing was sent.
+/// [retryAfter] is the time left on the pause; [reason] is `rate_limited`,
+/// `quota` or `network`.
+class IngestPausedException extends TransportException {
+  IngestPausedException(this.reason, Duration remaining, {String? label})
+      : super(
+          'Talaria ${label ?? 'request'} paused ($reason) for '
+          '${remaining.inSeconds}s',
+          retryAfter: remaining,
+        );
+
+  final String reason;
+}
+
 /// What a queue does with a batch that failed to export.
 class ExportFailure {
   const ExportFailure(this.reason, {this.requeue = false});

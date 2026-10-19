@@ -7,6 +7,7 @@
 - Talaria SDK ingest and control calls are never traced: `sdk/getConfig`, `sdk/reportDiscards`, `replays/ingestSegment*`, `heatmaps/ingestBatch` and `uploadSnapshot`, `screenHeatmaps/ingestBatch`, `uploadSnapshot` and `uploadRecording`, and `flags/evaluate` and `downloadDefinitions` (plus the existing `ingest`/`ingestBatch`). The list is `TalariaServerpodPaths.sdkEndpointMethods`, and `TalariaServerpodPaths.isSdkCall` checks it. Dashboard methods on those endpoints, and an app's own endpoints with the same names, stay traced.
 - `TalariaServerpod.attach` takes `skip: bool Function(Uri url)` for more untraced requests.
 - `talariaRelicMiddleware(client, {skip})` is exported from `package:talaria_serverpod/talaria_serverpod.dart`, so there's no need to import `src/relic_middleware.dart`.
+- `registerShutdownFlush` registers its task through `addShutdownFlushTask` (in `src/shutdown_flush.dart`). Unit tests cover it: the shutdown task flushes spans still waiting for their batch, a second registration is ignored, and a client that's already closed is left alone.
 
 ## 0.2.6
 

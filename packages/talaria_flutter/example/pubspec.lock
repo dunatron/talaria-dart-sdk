@@ -246,14 +246,14 @@ packages:
       path: "../../talaria"
       relative: true
     source: path
-    version: "0.3.8"
+    version: "0.3.9"
   talaria_flutter:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.2.8"
+    version: "0.2.9"
   term_glyph:
     dependency: transitive
     description:

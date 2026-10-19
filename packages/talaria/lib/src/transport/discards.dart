@@ -18,6 +18,9 @@ class DiscardSignal {
   static const events = 'events';
   static const spans = 'spans';
   static const analytics = 'analytics';
+
+  /// Flutter screen heatmaps (views, fold snapshots, recordings).
+  static const heatmaps = 'heatmaps';
 }
 
 /// Allowed [DiscardRow.reason] values.

@@ -72,6 +72,8 @@ class TalariaClient {
     _spansBackoff = IngestBackoff(clock: clock);
     _analyticsBackoff = IngestBackoff(clock: clock);
     _discardsBackoff = IngestBackoff(clock: clock);
+    _heatmapsBackoff = IngestBackoff(clock: clock);
+    _flagsBackoff = IngestBackoff(clock: clock);
 
     _queue = queue ??
         EventQueue(
@@ -153,8 +155,16 @@ class TalariaClient {
       options: options,
       identity: _identity,
       storage: storage ?? options.storage ?? MemoryTalariaStorage(),
-      evaluate: resolvedTransport.evaluateFlags,
-      downloadDefinitions: resolvedTransport.downloadFlagDefinitions,
+      evaluate: (input) => _guarded(
+        _flagsBackoff,
+        'flags/evaluate',
+        () => resolvedTransport.evaluateFlags(input),
+      ),
+      downloadDefinitions: (input) => _guarded(
+        _flagsBackoff,
+        'flags/downloadDefinitions',
+        () => resolvedTransport.downloadFlagDefinitions(input),
+      ),
       userId: () => _globalUserId,
       analytics: analytics,
     );
@@ -231,6 +241,8 @@ class TalariaClient {
   late final IngestBackoff _spansBackoff;
   late final IngestBackoff _analyticsBackoff;
   late final IngestBackoff _discardsBackoff;
+  late final IngestBackoff _heatmapsBackoff;
+  late final IngestBackoff _flagsBackoff;
 
   /// The server rejected `rate_limited` / `quota` discard reasons (it
   /// predates them), so only the legacy reasons are reported.
@@ -492,24 +504,90 @@ class TalariaClient {
   }
 
   /// Flutter screen heatmap ingest. No-op until a transport implements it.
+  ///
+  /// Heatmap calls share one backoff: after a 429 or 402 (or a network
+  /// error) they throw [IngestPausedException] without sending until the
+  /// pause ends (see [heatmapsPausedFor]). The caller keeps its data and
+  /// tries again later. A 402 is counted as a `heatmaps`/`quota` discard.
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
   ) {
     final transport = _screenTransport;
     if (transport == null || screenViews.isEmpty) return Future.value(const {});
-    return transport.sendScreenHeatmapBatch(screenViews);
+    return _guarded(
+      _heatmapsBackoff,
+      'screenHeatmaps/ingestBatch',
+      () => transport.sendScreenHeatmapBatch(screenViews),
+      discardSignal: DiscardSignal.heatmaps,
+      discardCount: screenViews.length,
+    );
   }
 
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) {
     final transport = _screenTransport;
     if (transport == null) return Future.value();
-    return transport.uploadScreenHeatmapSnapshot(input);
+    return _guarded(
+      _heatmapsBackoff,
+      'screenHeatmaps/uploadSnapshot',
+      () => transport.uploadScreenHeatmapSnapshot(input),
+      discardSignal: DiscardSignal.heatmaps,
+    );
   }
 
   Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) {
     final transport = _screenTransport;
     if (transport == null) return Future.value();
-    return transport.uploadScreenHeatmapRecording(input);
+    return _guarded(
+      _heatmapsBackoff,
+      'screenHeatmaps/uploadRecording',
+      () => transport.uploadScreenHeatmapRecording(input),
+      discardSignal: DiscardSignal.heatmaps,
+    );
+  }
+
+  /// Time left before heatmap uploads may send again, or null when they can
+  /// send now. Lets screen capture skip work it couldn't upload.
+  Duration? get heatmapsPausedFor => _heatmapsBackoff.remaining;
+
+  /// Time left before flag reads may hit the network again, or null.
+  Duration? get flagsPausedFor => _flagsBackoff.remaining;
+
+  /// One unqueued request under [backoff]: refused with
+  /// [IngestPausedException] while paused; 429/402/transient failures pause
+  /// it (Retry-After plus jitter up to 5 min; 402 until the reset, at most
+  /// 1 h, else 10 min). Errors are rethrown so callers keep their data.
+  Future<T> _guarded<T>(
+    IngestBackoff backoff,
+    String label,
+    Future<T> Function() send, {
+    String? discardSignal,
+    int discardCount = 1,
+  }) async {
+    final remaining = backoff.remaining;
+    if (remaining != null) {
+      throw IngestPausedException(
+        backoff.pauseReason ?? DiscardReason.network,
+        remaining,
+        label: label,
+      );
+    }
+    try {
+      final result = await send();
+      backoff.onSuccess();
+      return result;
+    } on TransportException catch (e) {
+      backoff.onFailure(e);
+      if (e.isQuotaExceeded) {
+        _pauseNamedMeter(e);
+        if (discardSignal != null) {
+          _recordDiscard(discardSignal, DiscardReason.quota, discardCount);
+        }
+      }
+      rethrow;
+    } catch (e) {
+      backoff.onFailure(TransportException('$e', cause: e));
+      rethrow;
+    }
   }
 
   final List<Future<void> Function()> _beforeFlush = [];
@@ -752,15 +830,23 @@ class TalariaClient {
         rows.any((row) => !DiscardReason.legacy.contains(row.reason));
   }
 
+  /// A 402 names the exhausted meter; pause the signals it covers. The
+  /// server calls the span meter `transactions`.
+  void _pauseNamedMeter(TransportException error) {
+    switch (error.meter) {
+      case 'events':
+        _eventsBackoff.pauseForQuota(error);
+      case 'spans' || 'transactions':
+        _spansBackoff.pauseForQuota(error);
+      case 'analytics':
+        _analyticsBackoff.pauseForQuota(error);
+    }
+  }
+
   void _handleTransportError(TransportException error, IngestSignal signal) {
     if (error.isQuotaExceeded) {
       // The refusing queue pauses itself; also pause the meter it names.
-      switch (error.meter) {
-        case 'events':
-          _eventsBackoff.pauseForQuota(error);
-        case 'spans':
-          _spansBackoff.pauseForQuota(error);
-      }
+      _pauseNamedMeter(error);
       return;
     }
     final parsed = IngestError(
