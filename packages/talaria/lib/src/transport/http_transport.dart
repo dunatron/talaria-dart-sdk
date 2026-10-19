@@ -7,6 +7,7 @@ import '../event.dart';
 import '../sdk_info.dart';
 import '../tracing/span.dart';
 import 'discards.dart';
+import 'gzip_stub.dart' if (dart.library.io) 'gzip_io.dart';
 import 'ingest_error.dart';
 import 'transport.dart';
 
@@ -47,6 +48,45 @@ class HttpTransport implements Transport {
   final http.Client? _spanHttp;
 
   http.Client get _spansClient => _spanHttp ?? _http;
+
+  /// Smallest JSON body worth compressing. Below this, gzip's header and
+  /// CPU cost more than they save.
+  static const gzipMinBytes = 1024;
+
+  /// Set from `sdk.getConfig` `capabilities.gzipRequests`. Off until the
+  /// server says it accepts `Content-Encoding: gzip`, so older servers never
+  /// see a compressed body.
+  bool get gzipRequests => _gzipRequests;
+  bool _gzipRequests = false;
+
+  /// True once [beginFinalFlush] ran: the last sends before shutdown go
+  /// uncompressed (no CPU spent while the process or page is going away).
+  bool get finalFlush => _finalFlush;
+  bool _finalFlush = false;
+
+  /// Reads the `capabilities` object of a getConfig response (full or
+  /// `unchanged`). A missing object means an older server: no gzip.
+  ///
+  /// `capabilities.binaryUploads` (raw gzip replay segments and heatmap
+  /// snapshots) is not used here: this SDK sends neither web replays nor web
+  /// heatmap snapshots.
+  void applyCapabilities(Object? capabilities) {
+    _gzipRequests = capabilities is Map && capabilities['gzipRequests'] == true;
+  }
+
+  /// Called by `TalariaClient.close` before its last flush.
+  void beginFinalFlush() => _finalFlush = true;
+
+  /// The body to send and whether it is gzipped.
+  (List<int>, bool) encodeBody(String json) {
+    final bytes = utf8.encode(json);
+    if (!_gzipRequests || _finalFlush || bytes.length < gzipMinBytes) {
+      return (bytes, false);
+    }
+    final gz = gzipEncodeOrNull(bytes);
+    if (gz == null || gz.length >= bytes.length) return (bytes, false);
+    return (gz, true);
+  }
 
   @override
   Future<void> sendBatch(List<Event> events) async {
@@ -248,18 +288,28 @@ class HttpTransport implements Transport {
   }) async {
     final uri = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}$path');
 
-    late final http.Response response;
+    final (body, gzipped) = encodeBody(jsonEncode(payload));
+    late http.Response response;
     try {
-      response = await client
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json; charset=utf-8',
-              'X-API-Key': apiKey,
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(timeout ?? this.timeout);
+      response = await _send(
+        client,
+        uri,
+        body,
+        gzipped: gzipped,
+        timeout: timeout,
+      );
+      if (gzipped && response.statusCode == 415) {
+        // The server stopped accepting gzip (rollback): stop compressing
+        // and resend this body plain, once.
+        _gzipRequests = false;
+        response = await _send(
+          client,
+          uri,
+          utf8.encode(jsonEncode(payload)),
+          gzipped: false,
+          timeout: timeout,
+        );
+      }
     } catch (e) {
       throw TransportException(
         'Talaria $label failed: $e',
@@ -293,6 +343,26 @@ class HttpTransport implements Transport {
       resetAt: parsed.resetAt,
       meter: parsed.meter,
     );
+  }
+
+  Future<http.Response> _send(
+    http.Client client,
+    Uri uri,
+    List<int> body, {
+    required bool gzipped,
+    Duration? timeout,
+  }) {
+    return client
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-API-Key': apiKey,
+            if (gzipped) 'Content-Encoding': 'gzip',
+          },
+          body: body,
+        )
+        .timeout(timeout ?? this.timeout);
   }
 
   /// `Retry-After` as delay-seconds or an HTTP date. Null when absent or

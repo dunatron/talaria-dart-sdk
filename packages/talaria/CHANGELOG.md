@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Ingest and control calls send `Content-Encoding: gzip` JSON bodies (1 KB and up) once `sdk/getConfig` returns `capabilities.gzipRequests: true`. Older servers never advertise it, so they keep getting plain JSON. Web builds have no gzip codec and stay plain.
+- The sends made by `close()` are never gzipped.
+- If a server answers 415 to a gzipped body, the SDK resends that body plain and stops compressing until `getConfig` advertises gzip again.
+- `capabilities.binaryUploads` is ignored: this SDK uploads no web replays or web heatmap snapshots. Screen heatmap PNGs still go base64 inside (now gzipped) JSON.
+
 ## 0.3.9
 
 - Spans are exported in batches: on a full batch (`spanBatchSize`, default 200) or after `spanFlushIntervalMs` (default 5 s), at most `maxSpanExportsPerMinute` (default 30) automatic exports a minute, from a buffer of `maxSpanQueueSize` (default 2048) spans. Spans used to share `maxBatchSize` (50) and went out on every 2 s flush tick.

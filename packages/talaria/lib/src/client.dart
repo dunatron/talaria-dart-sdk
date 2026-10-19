@@ -637,6 +637,8 @@ class TalariaClient {
     _policyTimer = null;
     flags.close();
     tracer.finishAll();
+    // Shutdown sends go uncompressed (no gzip while the app is closing).
+    _ownedHttp?.beginFinalFlush();
     await flush();
     // Anything still held behind a backoff pause is dropped and counted.
     // No span timer is left armed, and nothing exports after the HTTP
@@ -686,6 +688,7 @@ class TalariaClient {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (cached != null) {
       _applyPolicyDocument(cached.document);
+      transport.applyCapabilities(cached.document['capabilities']);
       final ttlMs = _ttlMs(cached.document);
       if (now - cached.fetchedAt < ttlMs) {
         _schedulePolicyRefresh(transport, ttlMs - (now - cached.fetchedAt));
@@ -707,6 +710,7 @@ class TalariaClient {
         platform: platformOverride ?? _options.platform,
       );
       final now = DateTime.now().millisecondsSinceEpoch;
+      transport.applyCapabilities(document['capabilities']);
       if (document['unchanged'] == true && cached != null) {
         _policyCache[key] = (fetchedAt: now, document: cached.document);
         _schedulePolicyRefresh(transport, _ttlMs(cached.document));
