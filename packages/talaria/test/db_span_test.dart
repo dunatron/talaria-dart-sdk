@@ -9,17 +9,16 @@ void main() {
 
   test('records a client db span and breadcrumb', () async {
     final transport = FakeTransport();
-    final options =
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        });
+    final options = TalariaOptions(
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      });
     final client = TalariaClient(options, transport: transport);
 
     final root = client.startTransaction('POST /items');

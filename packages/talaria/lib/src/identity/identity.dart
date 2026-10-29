@@ -10,8 +10,8 @@ class Identity {
     TalariaStorage? storage,
     DateTime Function()? clock,
     String? seedAnonymousId,
-  }) : _storage = storage ?? MemoryTalariaStorage(),
-       _clock = clock ?? DateTime.now {
+  })  : _storage = storage ?? MemoryTalariaStorage(),
+        _clock = clock ?? DateTime.now {
     final existing = _storage.read(anonymousIdKey);
     if (existing != null && existing.isNotEmpty) {
       _anonymousId = existing;

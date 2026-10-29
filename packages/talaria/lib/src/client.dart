@@ -12,6 +12,7 @@ import 'identity/identity.dart';
 import 'identity/storage.dart';
 import 'logger.dart';
 import 'protocol/exception_payload_builder.dart';
+import 'release_identity.dart';
 import 'severity.dart';
 import 'tracing/breadcrumbs.dart';
 import 'tracing/span.dart';
@@ -42,25 +43,25 @@ class TalariaClient {
     void Function(Object error, [StackTrace? stack])? onTransportError,
     DateTime Function()? clock,
     TalariaStorage? storage,
-  }) : _options = options,
-       _identity = Identity(storage: storage ?? options.storage, clock: clock),
-       _globalTags = Map<String, String>.from(options.tags),
-       _globalUserId = options.userId,
-       _minLevel = options.minLevel,
-       _enforceDefaultLevel = options.enforceDefaultLevel,
-       _loggers = Map<String, LoggerPreset>.from(options.loggers),
-       _beforeSend = options.beforeSend {
+  })  : _options = options,
+        _identity = Identity(storage: storage ?? options.storage, clock: clock),
+        _globalTags = Map<String, String>.from(options.tags),
+        _globalUserId = options.userId,
+        _minLevel = options.minLevel,
+        _enforceDefaultLevel = options.enforceDefaultLevel,
+        _loggers = Map<String, LoggerPreset>.from(options.loggers),
+        _beforeSend = options.beforeSend {
     final httpTransport = transport is HttpTransport
         ? transport
         : (transport == null
-              ? HttpTransport(
-                  url: options.url,
-                  apiKey: options.apiKey,
-                  timeout: Duration(
-                    milliseconds: (options.httpTimeoutSeconds * 1000).round(),
-                  ),
-                )
-              : null);
+            ? HttpTransport(
+                url: options.url,
+                apiKey: options.apiKey,
+                timeout: Duration(
+                  milliseconds: (options.httpTimeoutSeconds * 1000).round(),
+                ),
+              )
+            : null);
 
     _ownedHttp = httpTransport;
     final resolvedTransport = transport ?? httpTransport!;
@@ -72,8 +73,7 @@ class TalariaClient {
     _heatmapsBackoff = IngestBackoff(clock: clock);
     _flagsBackoff = IngestBackoff(clock: clock);
 
-    _queue =
-        queue ??
+    _queue = queue ??
         EventQueue(
           transport: resolvedTransport,
           maxBatchSize: options.maxBatchSize,
@@ -327,47 +327,51 @@ class TalariaClient {
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) => _captureExceptionInternal(
-    error,
-    stackTrace: stackTrace,
-    context: context,
-    respectMinLevel: true,
-  );
+  }) =>
+      _captureExceptionInternal(
+        error,
+        stackTrace: stackTrace,
+        context: context,
+        respectMinLevel: true,
+      );
 
   /// Logger-originated exception capture.
   Future<void> captureExceptionFromLogger(
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) => _captureExceptionInternal(
-    error,
-    stackTrace: stackTrace,
-    context: context,
-    respectMinLevel: _enforceDefaultLevel,
-  );
+  }) =>
+      _captureExceptionInternal(
+        error,
+        stackTrace: stackTrace,
+        context: context,
+        respectMinLevel: _enforceDefaultLevel,
+      );
 
   Future<void> captureMessage(
     String message, {
     Object level = SeverityLevel.info,
     CaptureContext? context,
-  }) => _captureMessageInternal(
-    message,
-    level: level,
-    context: context,
-    respectMinLevel: true,
-  );
+  }) =>
+      _captureMessageInternal(
+        message,
+        level: level,
+        context: context,
+        respectMinLevel: true,
+      );
 
   /// Logger-originated message capture.
   Future<void> captureMessageFromLogger(
     String message, {
     Object level = SeverityLevel.info,
     CaptureContext? context,
-  }) => _captureMessageInternal(
-    message,
-    level: level,
-    context: context,
-    respectMinLevel: _enforceDefaultLevel,
-  );
+  }) =>
+      _captureMessageInternal(
+        message,
+        level: level,
+        context: context,
+        respectMinLevel: _enforceDefaultLevel,
+      );
 
   void setTags(Map<String, String> tags) {
     _globalTags = {..._globalTags, ...TalariaOptions.normalizeTags(tags)};
@@ -652,7 +656,7 @@ class TalariaClient {
   }
 
   static final Map<String, ({int fetchedAt, Map<String, Object?> document})>
-  _policyCache = {};
+      _policyCache = {};
 
   /// Test-only. Policy cache is process-wide so tests do not share documents.
   static void clearPolicyCache() => _policyCache.clear();
@@ -808,8 +812,7 @@ class TalariaClient {
 
   static bool _rejectsNewReasons(TransportException e, List<DiscardRow> rows) {
     if (e.statusCode != 400) return false;
-    final validation =
-        (e.className ?? '').contains('ApiValidationException') ||
+    final validation = (e.className ?? '').contains('ApiValidationException') ||
         (e.bodyMessage ?? '').contains('discard signal or reason');
     return validation &&
         rows.any((row) => !DiscardReason.legacy.contains(row.reason));
@@ -1062,8 +1065,7 @@ class TalariaClient {
 
     var userId = context.userId;
     if (userId == null || userId.isEmpty) {
-      userId =
-          RuntimeContext.userId ??
+      userId = RuntimeContext.userId ??
           _globalUserId ??
           userIdFromSpan(_spanForCapture());
     }
@@ -1116,8 +1118,7 @@ class TalariaClient {
       }
     }
 
-    final isError =
-        outException != null ||
+    final isError = outException != null ||
         outLevel == SeverityLevel.error ||
         outLevel == SeverityLevel.fatal;
 
@@ -1180,8 +1181,8 @@ class TalariaClient {
   }
 
   SpanEnrichment _spanEnrichment() {
-    final service =
-        _globalTags['service'] ??
+    final service = _globalTags['service'] ??
+        ReleaseIdentity.resolveServiceName() ??
         (_options.platform == 'flutter' || platformOverride == 'flutter'
             ? 'flutter'
             : 'dart');

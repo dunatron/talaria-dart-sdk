@@ -36,9 +36,9 @@ class HttpTransport implements Transport {
     this.timeout = const Duration(seconds: 3),
     http.Client? httpClient,
     http.Client? spanHttpClient,
-  }) : _http = httpClient ?? http.Client(),
-       _ownsClient = httpClient == null,
-       _spanHttp = spanHttpClient;
+  })  : _http = httpClient ?? http.Client(),
+        _ownsClient = httpClient == null,
+        _spanHttp = spanHttpClient;
 
   final String url;
   final String apiKey;
@@ -331,8 +331,7 @@ class HttpTransport implements Transport {
       className: parsed.className,
       retry: parsed.retry,
       bodyMessage: parsed.message,
-      retryAfter:
-          retryAfterOf(response.headers['retry-after']) ??
+      retryAfter: retryAfterOf(response.headers['retry-after']) ??
           (parsed.retryAfterSeconds == null
               ? null
               : Duration(seconds: parsed.retryAfterSeconds!)),

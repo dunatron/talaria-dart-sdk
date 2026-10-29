@@ -22,20 +22,18 @@ class ReleaseIdentity {
     Map<String, String>? env,
   }) {
     final variables = env ?? releaseEnvironment();
-    final explicitRelease =
-        _nonEmpty(release) ??
+    final explicitRelease = _nonEmpty(release) ??
         _nonEmpty(definedRelease) ??
         _nonEmpty(variables['TALARIA_RELEASE']) ??
-        _nonEmpty(variables['OTEL_SERVICE_VERSION']);
-    final explicitSha =
-        _nonEmpty(commitSha) ??
+        _parseResourceAttribute(
+            variables['OTEL_RESOURCE_ATTRIBUTES'], 'service.version');
+    final explicitSha = _nonEmpty(commitSha) ??
         _nonEmpty(definedCommitSha) ??
         _nonEmpty(variables['TALARIA_COMMIT_SHA']);
     final ci = _fromCi(variables);
 
     if (explicitRelease != null || explicitSha != null) {
-      final matchesCi =
-          explicitRelease != null &&
+      final matchesCi = explicitRelease != null &&
           ci.release != null &&
           explicitRelease == ci.release;
       return ReleaseIdentity(
@@ -76,5 +74,28 @@ class ReleaseIdentity {
   static String? _nonEmpty(String? value) {
     final trimmed = value?.trim() ?? '';
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// Parse OTEL_RESOURCE_ATTRIBUTES for a specific key.
+  /// Format: key1=value1,key2=value2
+  static String? _parseResourceAttribute(String? attributes, String key) {
+    if (attributes == null || attributes.isEmpty) return null;
+
+    for (final pair in attributes.split(',')) {
+      final parts = pair.split('=');
+      if (parts.length == 2 && parts[0].trim() == key) {
+        return _nonEmpty(parts[1]);
+      }
+    }
+    return null;
+  }
+
+  /// Resolve service name from environment variables.
+  /// Precedence: OTEL_SERVICE_NAME > OTEL_RESOURCE_ATTRIBUTES (service.name).
+  static String? resolveServiceName({Map<String, String>? env}) {
+    final variables = env ?? releaseEnvironment();
+    return _nonEmpty(variables['OTEL_SERVICE_NAME']) ??
+        _parseResourceAttribute(
+            variables['OTEL_RESOURCE_ATTRIBUTES'], 'service.name');
   }
 }

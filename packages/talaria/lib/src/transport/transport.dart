@@ -16,7 +16,8 @@ abstract class Transport {
   /// Flutter screen heatmaps. Default is a no-op.
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
-  ) async => const {};
+  ) async =>
+      const {};
 
   /// Fold snapshot plus tiles. Default is a no-op.
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
@@ -30,12 +31,14 @@ abstract class Transport {
   /// Feature flag evaluate. Default is empty (no flags).
   Future<Map<String, Object?>> evaluateFlags(
     Map<String, Object?> input,
-  ) async => const {};
+  ) async =>
+      const {};
 
   /// Download flag definitions for local evaluation (`flags:definitions`).
   Future<Map<String, Object?>> downloadFlagDefinitions(
     Map<String, Object?> input,
-  ) async => const {};
+  ) async =>
+      const {};
 }
 
 /// Raised when ingest HTTP fails.

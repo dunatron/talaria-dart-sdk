@@ -4,18 +4,24 @@ import 'package:test/test.dart';
 void main() {
   const full = 'a8f31c2e4b6d8901234567890abcdef123456789';
 
-  test('OTEL_SERVICE_VERSION is read as release', () {
+  test('OTEL_RESOURCE_ATTRIBUTES service.version is read as release', () {
     final resolved = ReleaseIdentity.resolve(
-      env: const {'OTEL_SERVICE_VERSION': '1.5.0'},
+      env: const {
+        'OTEL_RESOURCE_ATTRIBUTES':
+            'service.name=api,service.version=1.5.0,deployment.environment.name=production'
+      },
     );
     expect(resolved.release, '1.5.0');
     expect(resolved.commitSha, isNull);
     expect(resolved.releaseRefKind, isNull);
   });
 
-  test('TALARIA_RELEASE takes precedence over OTEL_SERVICE_VERSION', () {
+  test('TALARIA_RELEASE takes precedence over OTEL_RESOURCE_ATTRIBUTES', () {
     final resolved = ReleaseIdentity.resolve(
-      env: const {'TALARIA_RELEASE': '1.4.2', 'OTEL_SERVICE_VERSION': '1.5.0'},
+      env: const {
+        'TALARIA_RELEASE': '1.4.2',
+        'OTEL_RESOURCE_ATTRIBUTES': 'service.version=1.5.0'
+      },
     );
     expect(resolved.release, '1.4.2');
   });

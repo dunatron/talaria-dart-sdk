@@ -11,12 +11,12 @@ import 'package:test/test.dart';
 /// that answers 415 gets the body again uncompressed.
 void main() {
   List<Event> bigBatch() => [
-    for (var i = 0; i < 40; i++)
-      Event(
-        message: 'TypeError: checkout failed for cart $i',
-        level: SeverityLevel.error,
-      ),
-  ];
+        for (var i = 0; i < 40; i++)
+          Event(
+            message: 'TypeError: checkout failed for cart $i',
+            level: SeverityLevel.error,
+          ),
+      ];
 
   ({HttpTransport transport, List<http.Request> seen}) setup({
     int Function(http.Request)? status,

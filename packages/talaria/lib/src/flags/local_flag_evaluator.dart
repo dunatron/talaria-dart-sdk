@@ -48,8 +48,7 @@ class LocalFlagEvaluator {
     String variationKey, {
     required String reason,
   }) {
-    final variation =
-        flag.variationByKey(variationKey) ??
+    final variation = flag.variationByKey(variationKey) ??
         flag.variationByKey(flag.offVariationKey) ??
         (flag.variations.isNotEmpty ? flag.variations.first : null);
     return FlagEvaluationResult(
@@ -58,8 +57,7 @@ class LocalFlagEvaluator {
       value: variation?.value,
       version: flag.version,
       reason: reason,
-      valueJson:
-          variation?.valueJson ??
+      valueJson: variation?.valueJson ??
           FlagEvaluationResult.encodeValueJson(variation?.value),
     );
   }

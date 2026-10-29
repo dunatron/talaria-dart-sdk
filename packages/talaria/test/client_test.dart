@@ -255,7 +255,8 @@ class _ThrowingTransport implements Transport {
   @override
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
-  ) async => const {};
+  ) async =>
+      const {};
 
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
@@ -269,10 +270,12 @@ class _ThrowingTransport implements Transport {
   @override
   Future<Map<String, Object?>> evaluateFlags(
     Map<String, Object?> input,
-  ) async => const {};
+  ) async =>
+      const {};
 
   @override
   Future<Map<String, Object?>> downloadFlagDefinitions(
     Map<String, Object?> input,
-  ) async => const {};
+  ) async =>
+      const {};
 }

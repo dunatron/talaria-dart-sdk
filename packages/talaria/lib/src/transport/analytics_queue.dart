@@ -13,11 +13,11 @@ class AnalyticsQueue {
     void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
     IngestBackoff? backoff,
-  }) : _transport = transport,
-       _backoff = backoff,
-       _onError = onError,
-       _onDiscard = onDiscard,
-       _clock = clock ?? DateTime.now;
+  })  : _transport = transport,
+        _backoff = backoff,
+        _onError = onError,
+        _onDiscard = onDiscard,
+        _clock = clock ?? DateTime.now;
 
   final Transport _transport;
   final int maxBatchSize;
@@ -59,9 +59,8 @@ class AnalyticsQueue {
     _draining = true;
     try {
       while (_buffer.isNotEmpty && !_paused) {
-        final take = _buffer.length < maxBatchSize
-            ? _buffer.length
-            : maxBatchSize;
+        final take =
+            _buffer.length < maxBatchSize ? _buffer.length : maxBatchSize;
         final slice = _buffer.sublist(0, take);
         _buffer.removeRange(0, take);
         final events = [for (final item in slice) item.event];

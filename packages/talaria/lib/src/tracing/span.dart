@@ -10,7 +10,7 @@ enum SpanStatus { unset, ok, error }
 /// Optional span event (`SpanEventDto`).
 class SpanEvent {
   SpanEvent({required this.name, DateTime? timestamp, this.attributes})
-    : timestamp = (timestamp ?? DateTime.now()).toUtc();
+      : timestamp = (timestamp ?? DateTime.now()).toUtc();
 
   final DateTime timestamp;
   final String name;
@@ -37,10 +37,10 @@ class SpanLink {
   final String spanId;
 
   Map<String, Object?> toWire() => {
-    '__className__': 'SpanLinkDto',
-    'traceId': traceId,
-    'spanId': spanId,
-  };
+        '__className__': 'SpanLinkDto',
+        'traceId': traceId,
+        'spanId': spanId,
+      };
 }
 
 /// Timed operation. No-op when tracing is disabled.
@@ -96,10 +96,10 @@ class FinishedSpan {
     this.anonymousId,
     this.sessionId,
     this.requestId,
-  }) : attributes = attributes ?? const {},
-       resource = resource ?? const {},
-       events = events ?? const [],
-       links = links ?? const [];
+  })  : attributes = attributes ?? const {},
+        resource = resource ?? const {},
+        events = events ?? const [],
+        links = links ?? const [];
 
   final String traceId;
   final String spanId;

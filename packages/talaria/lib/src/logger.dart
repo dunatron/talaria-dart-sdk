@@ -11,8 +11,8 @@ import 'severity.dart';
 ///   max(client.minLevel, assigned)
 class TalariaLogger {
   TalariaLogger(this._client, LoggerOptions options)
-    : _scopeTags = Map<String, String>.from(options.tags ?? const {}),
-      _scopeMinLevel = options.minLevel;
+      : _scopeTags = Map<String, String>.from(options.tags ?? const {}),
+        _scopeMinLevel = options.minLevel;
 
   final TalariaClient _client;
   final Map<String, String> _scopeTags;

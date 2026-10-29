@@ -39,39 +39,39 @@ class TalariaOptions {
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.storage,
-  }) : url = _resolveUrl(url: url),
-       release = ReleaseIdentity.resolve(
-         release: release,
-         commitSha: commitSha,
-       ).release,
-       commitSha = ReleaseIdentity.resolve(
-         release: release,
-         commitSha: commitSha,
-       ).commitSha,
-       releaseRefKind = ReleaseIdentity.resolve(
-         release: release,
-         commitSha: commitSha,
-       ).releaseRefKind,
-       sampleRate = sampleRate.clamp(0.0, 1.0),
-       maxBatchSize = max(1, maxBatchSize),
-       flushIntervalMs = max(0, flushIntervalMs),
-       spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
-       spanFlushIntervalMs = max(0, spanFlushIntervalMs),
-       maxSpanExportsPerMinute = maxSpanExportsPerMinute.clamp(1, 600),
-       maxSpanQueueSize = max(
-         spanBatchSize.clamp(1, maxSpanBatchSize),
-         maxSpanQueueSize,
-       ),
-       tags = normalizeTags(tags ?? const {}),
-       httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
-       minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
-       loggers = Map.unmodifiable(loggers ?? const {}),
-       ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
-       ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
-       enableTracing = false,
-       tracesSampleRate = null,
-       enableAnalytics = false,
-       enableFlags = false {
+  })  : url = _resolveUrl(url: url),
+        release = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).release,
+        commitSha = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).commitSha,
+        releaseRefKind = ReleaseIdentity.resolve(
+          release: release,
+          commitSha: commitSha,
+        ).releaseRefKind,
+        sampleRate = sampleRate.clamp(0.0, 1.0),
+        maxBatchSize = max(1, maxBatchSize),
+        flushIntervalMs = max(0, flushIntervalMs),
+        spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
+        spanFlushIntervalMs = max(0, spanFlushIntervalMs),
+        maxSpanExportsPerMinute = maxSpanExportsPerMinute.clamp(1, 600),
+        maxSpanQueueSize = max(
+          spanBatchSize.clamp(1, maxSpanBatchSize),
+          maxSpanQueueSize,
+        ),
+        tags = normalizeTags(tags ?? const {}),
+        httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
+        minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
+        loggers = Map.unmodifiable(loggers ?? const {}),
+        ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
+        ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
+        enableTracing = false,
+        tracesSampleRate = null,
+        enableAnalytics = false,
+        enableFlags = false {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw ArgumentError('Talaria init requires apiKey.');

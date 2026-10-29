@@ -31,19 +31,19 @@ R? runZonedTalaria<R>(TalariaClient client, R Function() body) {
     // ignore: discarded_futures
     client
         .captureException(
-          error,
-          stackTrace: stack,
-          context: const CaptureContext(
-            mechanism: ExceptionMechanism(type: 'zone', handled: false),
-          ),
-        )
+      error,
+      stackTrace: stack,
+      context: const CaptureContext(
+        mechanism: ExceptionMechanism(type: 'zone', handled: false),
+      ),
+    )
         .catchError((Object e, StackTrace st) {
-          developer.log(
-            '[Talaria] zone capture failed: $e',
-            name: 'talaria',
-            error: e,
-            stackTrace: st,
-          );
-        });
+      developer.log(
+        '[Talaria] zone capture failed: $e',
+        name: 'talaria',
+        error: e,
+        stackTrace: st,
+      );
+    });
   });
 }

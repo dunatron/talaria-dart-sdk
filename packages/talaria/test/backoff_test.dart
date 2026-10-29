@@ -15,12 +15,12 @@ import 'package:test/test.dart';
 final _t0 = DateTime.utc(2026, 10, 19, 1);
 
 TransportException _rateLimited([int? seconds]) => TransportException(
-  'HTTP 429',
-  statusCode: 429,
-  className: 'ApiRateLimitedException',
-  retry: true,
-  retryAfter: seconds == null ? null : Duration(seconds: seconds),
-);
+      'HTTP 429',
+      statusCode: 429,
+      className: 'ApiRateLimitedException',
+      retry: true,
+      retryAfter: seconds == null ? null : Duration(seconds: seconds),
+    );
 
 TransportException _quota({String? meter, DateTime? resetAt, int? after}) =>
     TransportException(
@@ -222,14 +222,14 @@ void main() {
     late IngestBackoff backoff;
 
     EventQueue queue({int maxBufferSize = 200}) => EventQueue(
-      transport: transport,
-      maxBatchSize: 10,
-      maxBufferSize: maxBufferSize,
-      flushIntervalMs: 0,
-      clock: () => now,
-      backoff: backoff,
-      onDiscard: (count, reason) => discards.add((count, reason)),
-    );
+          transport: transport,
+          maxBatchSize: 10,
+          maxBufferSize: maxBufferSize,
+          flushIntervalMs: 0,
+          clock: () => now,
+          backoff: backoff,
+          onDiscard: (count, reason) => discards.add((count, reason)),
+        );
 
     setUp(() {
       now = _t0;
@@ -314,17 +314,16 @@ void main() {
     late DateTime now;
     late _ScriptedTransport transport;
 
-    TalariaOptions options() =>
-        TalariaOptions(
+    TalariaOptions options() => TalariaOptions(
           url: 'https://api.example.com',
           apiKey: 'tal_prod_test_key_for_unit_tests',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 0.0},
-        });
+            'schemaVersion': 1,
+            'active': true,
+            'tracing': {'enabled': true, 'tracesSampleRate': 0.0},
+          });
 
     setUp(() {
       now = _t0;
@@ -485,19 +484,19 @@ void main() {
 }
 
 FinishedSpan _span() => FinishedSpan(
-  traceId: '0' * 31 + '1',
-  spanId: '0' * 15 + '2',
-  name: 'GET /x',
-  kind: SpanKind.server,
-  startTime: _t0,
-  endTime: _t0.add(const Duration(milliseconds: 1)),
-);
+      traceId: '0' * 31 + '1',
+      spanId: '0' * 15 + '2',
+      name: 'GET /x',
+      kind: SpanKind.server,
+      startTime: _t0,
+      endTime: _t0.add(const Duration(milliseconds: 1)),
+    );
 
 Event _event(String message) => Event(
-  message: message,
-  level: SeverityLevel.error,
-  timestamp: _t0.toIso8601String(),
-);
+      message: message,
+      level: SeverityLevel.error,
+      timestamp: _t0.toIso8601String(),
+    );
 
 /// Fails each call with the next scripted error, then succeeds.
 class _ScriptedTransport extends FakeTransport {

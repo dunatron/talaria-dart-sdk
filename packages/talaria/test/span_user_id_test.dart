@@ -10,17 +10,16 @@ void main() {
 
   test('span user.id is copied onto finished spans and error events', () async {
     final transport = FakeTransport();
-    final options =
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        });
+    final options = TalariaOptions(
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      });
     final client = TalariaClient(options, transport: transport);
 
     final span = client.startTransaction('POST /lab');
@@ -38,17 +37,16 @@ void main() {
   test('userAgent is copied onto events', () async {
     final transport = FakeTransport();
     RuntimeContext.setUserAgent('Mozilla/5.0 Test');
-    final options =
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        });
+    final options = TalariaOptions(
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
+      defaultIntegrations: false,
+      flushIntervalMs: 0,
+    )..applySdkDocument({
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      });
     final client = TalariaClient(options, transport: transport);
 
     await client.captureException(StateError('ua'));

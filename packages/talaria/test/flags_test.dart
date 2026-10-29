@@ -74,10 +74,10 @@ void main() {
   test('boolVariation uses evaluate result and stamps event tags', () async {
     final transport = FakeTransport();
     transport.onEvaluateFlags = (_) async => evaluateResponse(
-      key: 'demo-kill-switch',
-      variationKey: 'on',
-      value: true,
-    );
+          key: 'demo-kill-switch',
+          variationKey: 'on',
+          value: true,
+        );
 
     final client = TalariaClient(
       options(enableFlags: true),
@@ -100,21 +100,21 @@ void main() {
   test('string and json variations decode valueJson', () async {
     final transport = FakeTransport();
     transport.onEvaluateFlags = (_) async => {
-      'evaluations': [
-        {
-          'key': 'copy',
-          'variationKey': 'b',
-          'valueJson': jsonEncode('welcome'),
-          'version': 2,
-        },
-        {
-          'key': 'remote',
-          'variationKey': 'cfg',
-          'valueJson': jsonEncode({'theme': 'dark'}),
-          'version': 3,
-        },
-      ],
-    };
+          'evaluations': [
+            {
+              'key': 'copy',
+              'variationKey': 'b',
+              'valueJson': jsonEncode('welcome'),
+              'version': 2,
+            },
+            {
+              'key': 'remote',
+              'variationKey': 'cfg',
+              'valueJson': jsonEncode({'theme': 'dark'}),
+              'version': 3,
+            },
+          ],
+        };
 
     final client = TalariaClient(
       options(enableFlags: true),
@@ -153,8 +153,8 @@ void main() {
 
     final transport2 = FakeTransport();
     // Hang evaluate so we exercise the disk cache path, not a network overwrite.
-    transport2.onEvaluateFlags = (_) =>
-        Completer<Map<String, Object?>>().future;
+    transport2.onEvaluateFlags =
+        (_) => Completer<Map<String, Object?>>().future;
     final client2 = TalariaClient(
       options(enableFlags: true, storage: storage),
       transport: transport2,
@@ -291,10 +291,8 @@ void main() {
     await client.flags.boolVariation('demo', false);
     await client.flush();
 
-    final names = transport.analyticsBatches
-        .expand((b) => b)
-        .map((e) => e.name)
-        .toList();
+    final names =
+        transport.analyticsBatches.expand((b) => b).map((e) => e.name).toList();
     expect(names.where((n) => n == r'$feature_flag_called'), hasLength(1));
     await client.close();
   });

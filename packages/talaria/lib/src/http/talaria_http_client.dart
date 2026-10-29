@@ -13,8 +13,8 @@ import '../tracing/url_sanitizer.dart';
 /// Talaria ingest URLs are skipped even if wrapped by mistake.
 class TalariaHttpClient extends http.BaseClient {
   TalariaHttpClient(http.Client inner, {TalariaClient? client})
-    : _inner = inner,
-      _client = client;
+      : _inner = inner,
+        _client = client;
 
   final http.Client _inner;
   final TalariaClient? _client;
@@ -108,45 +108,31 @@ class TalariaHttpClient extends http.BaseClient {
   @override
   void close() => _inner.close();
 
-  /// Talaria SDK ingest and control calls, endpoint → methods. `replays`
-  /// also matches any `ingestSegment*` method. The new /v1/ paths use
-  /// the endpoint name as the path (e.g., /v1/events, /v1/spans).
-  static const sdkEndpointMethods = <String, Set<String>>{
-    'events': {'ingest', 'ingestBatch'},
-    'spans': {'ingestBatch'},
-    'analytics': {'ingestBatch'},
-    'heatmaps': {'ingestBatch', 'uploadSnapshot'},
-    'screenHeatmaps': {'ingestBatch', 'uploadSnapshot', 'uploadRecording'},
-    'replays': {'ingestSegment', 'ingestSegmentBatch'},
-    'sdk': {'getConfig', 'reportDiscards'},
-    'flags': {'evaluate', 'downloadDefinitions'},
+  /// Talaria SDK ingest and control endpoints. Only /v1/ paths are used.
+  static const sdkEndpoints = {
+    'events',
+    'spans',
+    'analytics',
+    'replays',
+    'heatmaps',
+    'screenHeatmaps',
+    'sdk',
+    'flags',
+    'monitors',
   };
 
   /// True for Talaria SDK ingest and control endpoints, which must not be
-  /// instrumented. Matches an `/<endpoint>/<method>` pair anywhere in the
-  /// path, so a DSN with a path prefix still matches. Also matches new
-  /// /v1/<endpoint> paths.
+  /// instrumented. Only matches /v1/&lt;endpoint&gt; paths (hard cut - no old paths).
   static bool isTalariaIngestUrl(Uri uri) {
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    
-    // Check for new /v1/ paths (e.g., /v1/events, /v1/spans)
+
+    // Only /v1/ paths (e.g., /v1/events, /v1/spans, /v1/monitors)
     for (var i = 0; i < segments.length - 1; i++) {
-      if (segments[i] == 'v1' && sdkEndpointMethods.containsKey(segments[i + 1])) {
+      if (segments[i] == 'v1' && sdkEndpoints.contains(segments[i + 1])) {
         return true;
       }
     }
-    
-    // Check for old Serverpod-style paths (e.g., /events/ingestBatch)
-    for (var i = 0; i + 1 < segments.length; i++) {
-      final endpoint = segments[i];
-      final method = segments[i + 1];
-      if (endpoint == 'replays' && method.startsWith('ingestSegment')) {
-        return true;
-      }
-      if (sdkEndpointMethods[endpoint]?.contains(method) ?? false) {
-        return true;
-      }
-    }
+
     return false;
   }
 }

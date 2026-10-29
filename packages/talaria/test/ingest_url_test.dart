@@ -4,26 +4,17 @@ import 'package:test/test.dart';
 /// `TalariaHttpClient` never instruments Talaria SDK calls, even when an app
 /// wraps the ingest client by mistake.
 void main() {
+  // Only /v1/ paths (hard cut - no old paths)
   const sdkCalls = [
-    'events/ingest',
-    'events/ingestBatch',
-    'spans/ingestBatch',
-    'analytics/ingestBatch',
-    'heatmaps/ingestBatch',
-    'heatmaps/uploadSnapshot',
-    'screenHeatmaps/ingestBatch',
-    'screenHeatmaps/uploadSnapshot',
-    'screenHeatmaps/uploadRecording',
-    'replays/ingestSegment',
-    'replays/ingestSegmentBatch',
-    'sdk/getConfig',
-    'sdk/reportDiscards',
-    'flags/evaluate',
-    'flags/downloadDefinitions',
-    // New /v1/ paths
     'v1/events',
     'v1/spans',
     'v1/analytics',
+    'v1/replays',
+    'v1/heatmaps',
+    'v1/screenHeatmaps',
+    'v1/sdk',
+    'v1/flags',
+    'v1/monitors',
   ];
 
   test('every SDK call is an ingest URL, also behind a path prefix', () {
@@ -41,7 +32,7 @@ void main() {
     }
   });
 
-  test('other calls, including dashboard methods, are not', () {
+  test('other calls, including dashboard methods and old paths, are not', () {
     for (final call in [
       'flags/list',
       'screenHeatmaps/getRecording',
@@ -50,6 +41,11 @@ void main() {
       'events',
       'ingestBatch',
       'api/eventsingestBatch',
+      // Old paths are NOT ingest URLs (hard cut)
+      'events/ingest',
+      'events/ingestBatch',
+      'spans/ingestBatch',
+      'analytics/ingestBatch',
     ]) {
       expect(
         TalariaHttpClient.isTalariaIngestUrl(

@@ -105,8 +105,7 @@ class BreadcrumbScope {
 
   static T runWith<T>(T Function() body, {BreadcrumbBuffer? buffer}) {
     return Zone.current
-        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()})
-        .run(body);
+        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()}).run(body);
   }
 
   static Future<T> runWithAsync<T>(
@@ -114,8 +113,7 @@ class BreadcrumbScope {
     BreadcrumbBuffer? buffer,
   }) {
     return Zone.current
-        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()})
-        .run(body);
+        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()}).run(body);
   }
 
   static void clearSessions() {

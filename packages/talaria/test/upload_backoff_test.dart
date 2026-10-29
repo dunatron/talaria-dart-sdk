@@ -10,12 +10,12 @@ import 'package:test/test.dart';
 final _t0 = DateTime.utc(2026, 10, 19, 1);
 
 TransportException _rateLimited(int seconds) => TransportException(
-  'HTTP 429',
-  statusCode: 429,
-  className: 'ApiRateLimitedException',
-  retry: true,
-  retryAfter: Duration(seconds: seconds),
-);
+      'HTTP 429',
+      statusCode: 429,
+      className: 'ApiRateLimitedException',
+      retry: true,
+      retryAfter: Duration(seconds: seconds),
+    );
 
 TransportException _quota({String? meter, DateTime? resetAt}) =>
     TransportException(
@@ -32,24 +32,23 @@ void main() {
   late DateTime now;
   late _UploadTransport transport;
 
-  TalariaOptions options({bool flags = false}) =>
-      TalariaOptions(
+  TalariaOptions options({bool flags = false}) => TalariaOptions(
         url: 'https://api.example.com',
         apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'flags': {'enabled': flags},
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
+          'schemaVersion': 1,
+          'active': true,
+          'flags': {'enabled': flags},
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
 
   TalariaClient client({bool flags = false}) => TalariaClient(
-    options(flags: flags),
-    transport: transport,
-    clock: () => now,
-  );
+        options(flags: flags),
+        transport: transport,
+        clock: () => now,
+      );
 
   setUp(() {
     now = _t0;
@@ -183,15 +182,15 @@ void main() {
 
   group('flags', () {
     Map<String, Object?> evaluation(String variation) => {
-      'evaluations': [
-        {
-          'key': 'demo',
-          'variationKey': variation,
-          'valueJson': jsonEncode(variation == 'on'),
-          'version': 1,
-        },
-      ],
-    };
+          'evaluations': [
+            {
+              'key': 'demo',
+              'variationKey': variation,
+              'valueJson': jsonEncode(variation == 'on'),
+              'version': 1,
+            },
+          ],
+        };
 
     test(
       'a 429 keeps the last evaluations and skips the network until it ends',

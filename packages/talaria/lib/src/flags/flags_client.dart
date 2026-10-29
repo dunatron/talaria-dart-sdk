@@ -30,25 +30,25 @@ class TalariaFlags {
     required Identity identity,
     required TalariaStorage storage,
     required Future<Map<String, Object?>> Function(Map<String, Object?> input)
-    evaluate,
+        evaluate,
     Future<Map<String, Object?>> Function(Map<String, Object?> input)?
-    downloadDefinitions,
+        downloadDefinitions,
     required String? Function() userId,
     TalariaAnalytics? analytics,
     this.startTimeout = const Duration(seconds: 3),
     Duration pollInterval = const Duration(seconds: 60),
     void Function(Map<String, FlagEvaluationResult> flags)? onFlagsChanged,
     LocalFlagEvaluator evaluator = const LocalFlagEvaluator(),
-  }) : _options = options,
-       _identity = identity,
-       _storage = storage,
-       _evaluate = evaluate,
-       _downloadDefinitions = downloadDefinitions,
-       _userId = userId,
-       _analytics = analytics,
-       _pollInterval = pollInterval,
-       _onFlagsChanged = onFlagsChanged,
-       _evaluator = evaluator {
+  })  : _options = options,
+        _identity = identity,
+        _storage = storage,
+        _evaluate = evaluate,
+        _downloadDefinitions = downloadDefinitions,
+        _userId = userId,
+        _analytics = analytics,
+        _pollInterval = pollInterval,
+        _onFlagsChanged = onFlagsChanged,
+        _evaluator = evaluator {
     _loadCacheForCurrentContext();
   }
 
@@ -60,9 +60,9 @@ class TalariaFlags {
   final Identity _identity;
   final TalariaStorage _storage;
   final Future<Map<String, Object?>> Function(Map<String, Object?> input)
-  _evaluate;
+      _evaluate;
   final Future<Map<String, Object?>> Function(Map<String, Object?> input)?
-  _downloadDefinitions;
+      _downloadDefinitions;
   final String? Function() _userId;
   final TalariaAnalytics? _analytics;
   final void Function(Map<String, FlagEvaluationResult> flags)? _onFlagsChanged;
@@ -128,15 +128,13 @@ class TalariaFlags {
   }) async {
     if (!identical(userId, _unset)) {
       final raw = userId as String?;
-      _contextUserId = (raw != null && raw.trim().isNotEmpty)
-          ? raw.trim()
-          : null;
+      _contextUserId =
+          (raw != null && raw.trim().isNotEmpty) ? raw.trim() : null;
     }
     if (!identical(organizationId, _unset)) {
       final raw = organizationId as String?;
-      _organizationId = (raw != null && raw.trim().isNotEmpty)
-          ? raw.trim()
-          : null;
+      _organizationId =
+          (raw != null && raw.trim().isNotEmpty) ? raw.trim() : null;
     }
     if (attributes != null) {
       _attributes = Map.unmodifiable(

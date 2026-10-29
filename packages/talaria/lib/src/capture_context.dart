@@ -43,11 +43,11 @@ class ExceptionMechanism {
   final bool synthetic;
 
   Map<String, Object?> toWire() => {
-    '__className__': 'ExceptionMechanismDto',
-    'type': type.isEmpty ? 'generic' : type,
-    'handled': handled,
-    'synthetic': synthetic,
-  };
+        '__className__': 'ExceptionMechanismDto',
+        'type': type.isEmpty ? 'generic' : type,
+        'handled': handled,
+        'synthetic': synthetic,
+      };
 }
 
 /// Mutable event bag passed to [TalariaOptions.beforeSend].

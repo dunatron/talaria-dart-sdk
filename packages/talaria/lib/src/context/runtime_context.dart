@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'platform_info_stub.dart'
-    if (dart.library.io) 'platform_info_io.dart'
+import 'platform_info_stub.dart' if (dart.library.io) 'platform_info_io.dart'
     as platform_info;
 
 /// Best-effort runtime context for auto-enrichment.
@@ -346,9 +345,9 @@ class RuntimeContext {
     final mi = t.minute.toString().padLeft(2, '0');
     final s = t.second.toString().padLeft(2, '0');
     final fraction = (t.millisecond * 1000 + t.microsecond).toString().padLeft(
-      6,
-      '0',
-    );
+          6,
+          '0',
+        );
     var trimmed = fraction;
     while (trimmed.length > 3 && trimmed.endsWith('0')) {
       trimmed = trimmed.substring(0, trimmed.length - 1);

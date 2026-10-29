@@ -33,10 +33,10 @@ class Tracer {
     required void Function(FinishedSpan span) enqueue,
     required SpanEnrichment Function() enrichment,
     Random? random,
-  }) : _options = options,
-       _enqueue = enqueue,
-       _enrichment = enrichment,
-       _random = random ?? Random();
+  })  : _options = options,
+        _enqueue = enqueue,
+        _enrichment = enrichment,
+        _random = random ?? Random();
 
   static const int maxSpansPerTrace = 200;
   static const int maxSqlSpans = 168;
@@ -480,8 +480,7 @@ class _RecordingSpan implements Span {
       events: List<SpanEvent>.from(_events),
       links: List<SpanLink>.from(_links),
       release: enrichment.release,
-      userId:
-          enrichment.userId ??
+      userId: enrichment.userId ??
           _attributes['enduser.id'] ??
           _attributes['user.id'],
       anonymousId: enrichment.anonymousId,

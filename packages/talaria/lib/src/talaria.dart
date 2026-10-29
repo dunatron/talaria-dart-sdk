@@ -93,7 +93,8 @@ class Talaria {
     Object level,
     String message, {
     CaptureContext? context,
-  }) => _requireClient().log(level, message, context: context);
+  }) =>
+      _requireClient().log(level, message, context: context);
 
   static SeverityLevel getMinLevel() => _requireClient().getMinLevel();
 
@@ -106,11 +107,12 @@ class Talaria {
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) => _requireClient().captureException(
-    error,
-    stackTrace: stackTrace,
-    context: context,
-  );
+  }) =>
+      _requireClient().captureException(
+        error,
+        stackTrace: stackTrace,
+        context: context,
+      );
 
   static Future<void> captureMessage(
     String message, {
