@@ -15,12 +15,12 @@ import 'package:test/test.dart';
 final _t0 = DateTime.utc(2026, 10, 19, 1);
 
 TransportException _rateLimited([int? seconds]) => TransportException(
-      'HTTP 429',
-      statusCode: 429,
-      className: 'ApiRateLimitedException',
-      retry: true,
-      retryAfter: seconds == null ? null : Duration(seconds: seconds),
-    );
+  'HTTP 429',
+  statusCode: 429,
+  className: 'ApiRateLimitedException',
+  retry: true,
+  retryAfter: seconds == null ? null : Duration(seconds: seconds),
+);
 
 TransportException _quota({String? meter, DateTime? resetAt, int? after}) =>
     TransportException(
@@ -37,10 +37,7 @@ void main() {
     test('Retry-After as seconds or an HTTP date', () {
       expect(HttpTransport.retryAfterOf('30'), const Duration(seconds: 30));
       expect(
-        HttpTransport.retryAfterOf(
-          'Mon, 19 Oct 2026 01:02:00 GMT',
-          now: _t0,
-        ),
+        HttpTransport.retryAfterOf('Mon, 19 Oct 2026 01:02:00 GMT', now: _t0),
         const Duration(minutes: 2),
       );
       expect(
@@ -54,8 +51,8 @@ void main() {
 
     Future<TransportException> failWith(http.Response response) async {
       final transport = HttpTransport(
-        baseUrl: 'http://localhost:8080',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'http://localhost:8080',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         httpClient: MockClient((_) async => response),
       );
       try {
@@ -67,18 +64,20 @@ void main() {
     }
 
     test('429 is a rate limit with its Retry-After', () async {
-      final e = await failWith(http.Response(
-        jsonEncode({
-          'className': 'ApiRateLimitedException',
-          'data': {
-            'message': 'Too many requests',
-            'retryAfterSeconds': 42,
-            'retry': true,
-          },
-        }),
-        429,
-        headers: {'retry-after': '37'},
-      ));
+      final e = await failWith(
+        http.Response(
+          jsonEncode({
+            'className': 'ApiRateLimitedException',
+            'data': {
+              'message': 'Too many requests',
+              'retryAfterSeconds': 42,
+              'retry': true,
+            },
+          }),
+          429,
+          headers: {'retry-after': '37'},
+        ),
+      );
       expect(e.isRateLimited, isTrue);
       expect(e.isTransient, isTrue);
       expect(e.isQuotaExceeded, isFalse);
@@ -86,43 +85,47 @@ void main() {
     });
 
     test('a 429 without the header falls back to retryAfterSeconds', () async {
-      final e = await failWith(http.Response(
-        jsonEncode({
-          'className': 'ApiRateLimitedException',
-          'data': {'message': 'slow down', 'retryAfterSeconds': 42},
-        }),
-        429,
-      ));
+      final e = await failWith(
+        http.Response(
+          jsonEncode({
+            'className': 'ApiRateLimitedException',
+            'data': {'message': 'slow down', 'retryAfterSeconds': 42},
+          }),
+          429,
+        ),
+      );
       expect(e.retryAfter, const Duration(seconds: 42));
     });
 
-    test('402 is a quota with its meter and reset time, never transient',
-        () async {
-      final e = await failWith(http.Response(
-        jsonEncode({
-          'className': 'ApiQuotaExceededException',
-          'data': {
-            'message': 'Monthly span quota reached',
-            'meter': 'spans',
-            'resetAt': '2026-11-01T00:00:00.000Z',
-          },
-        }),
-        402,
-        headers: {'retry-after': '1000'},
-      ));
-      expect(e.isQuotaExceeded, isTrue);
-      expect(e.isTransient, isFalse);
-      expect(e.meter, 'spans');
-      expect(e.resetAt, DateTime.utc(2026, 11));
-    });
+    test(
+      '402 is a quota with its meter and reset time, never transient',
+      () async {
+        final e = await failWith(
+          http.Response(
+            jsonEncode({
+              'className': 'ApiQuotaExceededException',
+              'data': {
+                'message': 'Monthly span quota reached',
+                'meter': 'spans',
+                'resetAt': '2026-11-01T00:00:00.000Z',
+              },
+            }),
+            402,
+            headers: {'retry-after': '1000'},
+          ),
+        );
+        expect(e.isQuotaExceeded, isTrue);
+        expect(e.isTransient, isFalse);
+        expect(e.meter, 'spans');
+        expect(e.resetAt, DateTime.utc(2026, 11));
+      },
+    );
   });
 
   group('IngestBackoff', () {
     late DateTime now;
-    IngestBackoff backoff() => IngestBackoff(
-          clock: () => now,
-          random: Random(7),
-        );
+    IngestBackoff backoff() =>
+        IngestBackoff(clock: () => now, random: Random(7));
     setUp(() => now = _t0);
 
     test('429 waits at least Retry-After, plus at most 20% jitter', () {
@@ -173,11 +176,13 @@ void main() {
 
     test('validation errors are not retried and do not pause', () {
       final b = backoff();
-      final outcome = b.onFailure(TransportException(
-        'HTTP 400',
-        statusCode: 400,
-        className: 'ApiValidationException',
-      ));
+      final outcome = b.onFailure(
+        TransportException(
+          'HTTP 400',
+          statusCode: 400,
+          className: 'ApiValidationException',
+        ),
+      );
       expect(outcome.reason, DiscardReason.network);
       expect(b.isPaused, isFalse);
     });
@@ -217,14 +222,14 @@ void main() {
     late IngestBackoff backoff;
 
     EventQueue queue({int maxBufferSize = 200}) => EventQueue(
-          transport: transport,
-          maxBatchSize: 10,
-          maxBufferSize: maxBufferSize,
-          flushIntervalMs: 0,
-          clock: () => now,
-          backoff: backoff,
-          onDiscard: (count, reason) => discards.add((count, reason)),
-        );
+      transport: transport,
+      maxBatchSize: 10,
+      maxBufferSize: maxBufferSize,
+      flushIntervalMs: 0,
+      clock: () => now,
+      backoff: backoff,
+      onDiscard: (count, reason) => discards.add((count, reason)),
+    );
 
     setUp(() {
       now = _t0;
@@ -233,60 +238,66 @@ void main() {
       backoff = IngestBackoff(clock: () => now, random: Random(1));
     });
 
-    test('a rate-limited batch is held, then sent once the pause is over',
-        () async {
-      final q = queue();
-      transport.eventFailures.add(_rateLimited(10));
-      q.enqueue(_event('a'));
-      q.enqueue(_event('b'));
-      await q.flush();
-      expect(transport.eventsSent, isEmpty);
-      expect(transport.eventAttempts, 1);
-      expect(q.count, 2, reason: 'requeued, not dropped');
-      expect(discards, isEmpty);
+    test(
+      'a rate-limited batch is held, then sent once the pause is over',
+      () async {
+        final q = queue();
+        transport.eventFailures.add(_rateLimited(10));
+        q.enqueue(_event('a'));
+        q.enqueue(_event('b'));
+        await q.flush();
+        expect(transport.eventsSent, isEmpty);
+        expect(transport.eventAttempts, 1);
+        expect(q.count, 2, reason: 'requeued, not dropped');
+        expect(discards, isEmpty);
 
-      await q.flush();
-      expect(transport.eventAttempts, 1, reason: 'paused: no request');
+        await q.flush();
+        expect(transport.eventAttempts, 1, reason: 'paused: no request');
 
-      now = now.add(const Duration(seconds: 13));
-      await q.flush();
-      expect(transport.eventsSent.single.map((e) => e.message), ['a', 'b']);
-      expect(backoff.isPaused, isFalse);
-    });
+        now = now.add(const Duration(seconds: 13));
+        await q.flush();
+        expect(transport.eventsSent.single.map((e) => e.message), ['a', 'b']);
+        expect(backoff.isPaused, isFalse);
+      },
+    );
 
-    test('a buffer that fills behind a rate limit drops as rate_limited',
-        () async {
-      final q = queue(maxBufferSize: 3);
-      transport.eventFailures.add(_rateLimited(10));
-      for (final m in ['a', 'b', 'c']) {
-        q.enqueue(_event(m));
-      }
-      await q.flush();
-      q.enqueue(_event('d'));
-      expect(discards, [(1, DiscardReason.rateLimited)]);
-    });
+    test(
+      'a buffer that fills behind a rate limit drops as rate_limited',
+      () async {
+        final q = queue(maxBufferSize: 3);
+        transport.eventFailures.add(_rateLimited(10));
+        for (final m in ['a', 'b', 'c']) {
+          q.enqueue(_event(m));
+        }
+        await q.flush();
+        q.enqueue(_event('d'));
+        expect(discards, [(1, DiscardReason.rateLimited)]);
+      },
+    );
 
-    test('a 402 drops the batch as quota and refuses new events until reset',
-        () async {
-      final q = queue();
-      transport.eventFailures.add(
-        _quota(meter: 'events', resetAt: _t0.add(const Duration(minutes: 5))),
-      );
-      q.enqueue(_event('a'));
-      await q.flush();
-      expect(discards, [(1, DiscardReason.quota)]);
-      expect(q.count, 0, reason: 'not retried');
+    test(
+      'a 402 drops the batch as quota and refuses new events until reset',
+      () async {
+        final q = queue();
+        transport.eventFailures.add(
+          _quota(meter: 'events', resetAt: _t0.add(const Duration(minutes: 5))),
+        );
+        q.enqueue(_event('a'));
+        await q.flush();
+        expect(discards, [(1, DiscardReason.quota)]);
+        expect(q.count, 0, reason: 'not retried');
 
-      q.enqueue(_event('b'));
-      expect(discards.last, (1, DiscardReason.quota));
-      expect(q.count, 0);
+        q.enqueue(_event('b'));
+        expect(discards.last, (1, DiscardReason.quota));
+        expect(q.count, 0);
 
-      now = now.add(const Duration(minutes: 5, seconds: 1));
-      q.enqueue(_event('c'));
-      await q.flush();
-      expect(transport.eventsSent.single.single.message, 'c');
-      expect(transport.eventAttempts, 2);
-    });
+        now = now.add(const Duration(minutes: 5, seconds: 1));
+        q.enqueue(_event('c'));
+        await q.flush();
+        expect(transport.eventsSent.single.single.message, 'c');
+        expect(transport.eventAttempts, 2);
+      },
+    );
 
     test('close while paused counts what is still held', () async {
       final q = queue();
@@ -303,50 +314,53 @@ void main() {
     late DateTime now;
     late _ScriptedTransport transport;
 
-    TalariaOptions options() => TalariaOptions(
-          dsn: 'https://api.example.com',
-          apiKey: 'tal_live_test_key_for_unit_tests',
+    TalariaOptions options() =>
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         )..applySdkDocument({
-            'schemaVersion': 1,
-            'active': true,
-            'tracing': {'enabled': true, 'tracesSampleRate': 0.0},
-          });
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 0.0},
+        });
 
     setUp(() {
       now = _t0;
       transport = _ScriptedTransport();
     });
 
-    test('429 then 402: spans held then dropped as quota; errors still sampled',
-        () async {
-      final client = TalariaClient(
-        options(),
-        transport: transport,
-        clock: () => now,
-      );
-      transport.spanFailures.add(_rateLimited(5));
-      // tracesSampleRate is 0, so only error spans are kept.
-      client.startTransaction('GET /ok').finish();
-      client
-          .startTransaction('GET /boom')
-          .finish(status: SpanStatus.error, statusMessage: 'boom');
-      await client.flush();
-      expect(transport.spanAttempts, 1);
-      expect(transport.discardRows, isEmpty, reason: 'held, not dropped');
+    test(
+      '429 then 402: spans held then dropped as quota; errors still sampled',
+      () async {
+        final client = TalariaClient(
+          options(),
+          transport: transport,
+          clock: () => now,
+        );
+        transport.spanFailures.add(_rateLimited(5));
+        // tracesSampleRate is 0, so only error spans are kept.
+        client.startTransaction('GET /ok').finish();
+        client
+            .startTransaction('GET /boom')
+            .finish(status: SpanStatus.error, statusMessage: 'boom');
+        await client.flush();
+        expect(transport.spanAttempts, 1);
+        expect(transport.discardRows, isEmpty, reason: 'held, not dropped');
 
-      now = now.add(const Duration(seconds: 7));
-      transport.spanFailures.add(_quota(meter: 'spans'));
-      await client.flush();
-      expect(transport.spanAttempts, 2, reason: 'the held span was retried');
-      expect(transport.discardRows, contains(('spans', 'quota', 1)));
-      expect(
-        transport.discardRows.where((r) => r.$2 == DiscardReason.network),
-        isEmpty,
-      );
-      await client.close();
-    });
+        now = now.add(const Duration(seconds: 7));
+        transport.spanFailures.add(_quota(meter: 'spans'));
+        await client.flush();
+        expect(transport.spanAttempts, 2, reason: 'the held span was retried');
+        expect(transport.discardRows, contains(('spans', 'quota', 1)));
+        expect(
+          transport.discardRows.where((r) => r.$2 == DiscardReason.network),
+          isEmpty,
+        );
+        await client.close();
+      },
+    );
 
     test('a 402 naming another meter pauses that meter too', () async {
       final client = TalariaClient(
@@ -370,83 +384,89 @@ void main() {
       await client.close();
     });
 
-    test('a failed or rate-limited reportDiscards makes no spans or errors',
-        () async {
-      final reported = <Object>[];
-      final client = TalariaClient(
-        options(),
-        transport: transport,
-        clock: () => now,
-        onTransportError: (e, [_]) => reported.add(e),
-      );
-      transport.eventFailures.add(_quota(meter: 'events'));
-      await client.captureMessage('dropped');
-      transport.discardFailures.addAll([
-        _rateLimited(20),
-        TransportException('HTTP 500', statusCode: 500),
-      ]);
-      // A request span is open while the discard report fails.
-      final span = client.startTransaction('GET /in-flight');
-      await client.flush();
-      expect(transport.discardAttempts, 1);
-      reported.clear();
+    test(
+      'a failed or rate-limited reportDiscards makes no spans or errors',
+      () async {
+        final reported = <Object>[];
+        final client = TalariaClient(
+          options(),
+          transport: transport,
+          clock: () => now,
+          onTransportError: (e, [_]) => reported.add(e),
+        );
+        transport.eventFailures.add(_quota(meter: 'events'));
+        await client.captureMessage('dropped');
+        transport.discardFailures.addAll([
+          _rateLimited(20),
+          TransportException('HTTP 500', statusCode: 500),
+        ]);
+        // A request span is open while the discard report fails.
+        final span = client.startTransaction('GET /in-flight');
+        await client.flush();
+        expect(transport.discardAttempts, 1);
+        reported.clear();
 
-      // Paused: no report is attempted.
-      await client.flush();
-      expect(transport.discardAttempts, 1);
+        // Paused: no report is attempted.
+        await client.flush();
+        expect(transport.discardAttempts, 1);
 
-      now = now.add(const Duration(seconds: 25));
-      await client.flush(); // 500
-      expect(transport.discardAttempts, 2);
-      now = now.add(const Duration(seconds: 3));
-      await client.flush();
-      expect(transport.discardAttempts, 3);
-      expect(transport.discardRows, [('events', 'quota', 1)]);
+        now = now.add(const Duration(seconds: 25));
+        await client.flush(); // 500
+        expect(transport.discardAttempts, 2);
+        now = now.add(const Duration(seconds: 3));
+        await client.flush();
+        expect(transport.discardAttempts, 3);
+        expect(transport.discardRows, [('events', 'quota', 1)]);
 
-      span.finish();
-      await client.flush();
-      expect(transport.spanBatches, isEmpty,
-          reason: 'sampled out; the discard failures added no spans');
-      expect(reported, isEmpty, reason: 'discard failures are not surfaced');
-      expect(transport.eventsSent, isEmpty);
-      expect(
-        transport.discardRows.where((r) => r.$1 == 'discards'),
-        isEmpty,
-      );
-      await client.close();
-    });
+        span.finish();
+        await client.flush();
+        expect(
+          transport.spanBatches,
+          isEmpty,
+          reason: 'sampled out; the discard failures added no spans',
+        );
+        expect(reported, isEmpty, reason: 'discard failures are not surfaced');
+        expect(transport.eventsSent, isEmpty);
+        expect(transport.discardRows.where((r) => r.$1 == 'discards'), isEmpty);
+        await client.close();
+      },
+    );
 
-    test('a server without the new reasons still gets the legacy ones',
-        () async {
-      final client = TalariaClient(
-        options(),
-        transport: transport,
-        clock: () => now,
-      );
-      transport.eventFailures.add(_quota(meter: 'events'));
-      transport.spanFailures.add(
-        TransportException('HTTP 503', statusCode: 503),
-      );
-      await client.captureMessage('over quota');
-      client
-          .startTransaction('GET /boom')
-          .finish(status: SpanStatus.error, statusMessage: 'boom');
-      transport.discardFailures.add(TransportException(
-        'HTTP 400',
-        statusCode: 400,
-        className: 'ApiValidationException',
-        bodyMessage: 'Unknown discard signal or reason',
-      ));
-      await client.flush();
-      expect(transport.discardAttempts, 2, reason: 'one legacy-only retry');
-      expect(transport.discardRows, [('spans', 'network', 1)]);
+    test(
+      'a server without the new reasons still gets the legacy ones',
+      () async {
+        final client = TalariaClient(
+          options(),
+          transport: transport,
+          clock: () => now,
+        );
+        transport.eventFailures.add(_quota(meter: 'events'));
+        transport.spanFailures.add(
+          TransportException('HTTP 503', statusCode: 503),
+        );
+        await client.captureMessage('over quota');
+        client
+            .startTransaction('GET /boom')
+            .finish(status: SpanStatus.error, statusMessage: 'boom');
+        transport.discardFailures.add(
+          TransportException(
+            'HTTP 400',
+            statusCode: 400,
+            className: 'ApiValidationException',
+            bodyMessage: 'Unknown discard signal or reason',
+          ),
+        );
+        await client.flush();
+        expect(transport.discardAttempts, 2, reason: 'one legacy-only retry');
+        expect(transport.discardRows, [('spans', 'network', 1)]);
 
-      // Later quota drops are no longer sent to this server at all.
-      await client.captureMessage('still over quota');
-      await client.flush();
-      expect(transport.discardAttempts, 2);
-      await client.close();
-    });
+        // Later quota drops are no longer sent to this server at all.
+        await client.captureMessage('still over quota');
+        await client.flush();
+        expect(transport.discardAttempts, 2);
+        await client.close();
+      },
+    );
 
     test('close sends what a pause still holds as a discard row', () async {
       final client = TalariaClient(
@@ -465,19 +485,19 @@ void main() {
 }
 
 FinishedSpan _span() => FinishedSpan(
-      traceId: '0' * 31 + '1',
-      spanId: '0' * 15 + '2',
-      name: 'GET /x',
-      kind: SpanKind.server,
-      startTime: _t0,
-      endTime: _t0.add(const Duration(milliseconds: 1)),
-    );
+  traceId: '0' * 31 + '1',
+  spanId: '0' * 15 + '2',
+  name: 'GET /x',
+  kind: SpanKind.server,
+  startTime: _t0,
+  endTime: _t0.add(const Duration(milliseconds: 1)),
+);
 
 Event _event(String message) => Event(
-      message: message,
-      level: SeverityLevel.error,
-      timestamp: _t0.toIso8601String(),
-    );
+  message: message,
+  level: SeverityLevel.error,
+  timestamp: _t0.toIso8601String(),
+);
 
 /// Fails each call with the next scripted error, then succeeds.
 class _ScriptedTransport extends FakeTransport {

@@ -4,6 +4,7 @@ import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
 import 'dart:convert';
 
 void main() {
@@ -16,16 +17,10 @@ void main() {
         flushIntervalMs: 0,
       );
 
-      queue.enqueue(Event(
-        message: 'one',
-        level: SeverityLevel.info,
-      ));
+      queue.enqueue(Event(message: 'one', level: SeverityLevel.info));
       expect(transport.batches, isEmpty);
 
-      queue.enqueue(Event(
-        message: 'two',
-        level: SeverityLevel.info,
-      ));
+      queue.enqueue(Event(message: 'two', level: SeverityLevel.info));
 
       await Future<void>.delayed(Duration.zero);
       await queue.flush();
@@ -46,20 +41,16 @@ void main() {
       });
 
       final transport = HttpTransport(
-        baseUrl: 'https://api.example.com',
-        apiKey: 'tal_live_testkey',
+        url: 'https://api.example.com',
+        apiKey: 'tal_prod_testkey',
         httpClient: client,
       );
 
       await transport.sendBatch([
-        Event(
-          message: 'hello',
-          level: SeverityLevel.warning,
-          platform: 'dart',
-        ),
+        Event(message: 'hello', level: SeverityLevel.warning, platform: 'dart'),
       ]);
 
-      expect(apiKey, 'tal_live_testkey');
+      expect(apiKey, 'tal_prod_testkey');
       expect(body!['input']['__className__'], 'IngestEventBatchInput');
       final events = body!['input']['events'] as List;
       expect(events.length, 1);
@@ -76,17 +67,14 @@ void main() {
       });
 
       final transport = HttpTransport(
-        baseUrl: 'https://api.example.com',
-        apiKey: 'tal_live_testkey',
+        url: 'https://api.example.com',
+        apiKey: 'tal_prod_testkey',
         httpClient: client,
       );
 
       try {
         await transport.sendBatch([
-          Event(
-            message: 'hello',
-            level: SeverityLevel.error,
-          ),
+          Event(message: 'hello', level: SeverityLevel.error),
         ]);
         fail('expected TransportException');
       } on TransportException catch (e) {

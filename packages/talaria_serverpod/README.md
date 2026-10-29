@@ -20,7 +20,7 @@ dependencies:
   serverpod: ^4.0.0
 ```
 
-Create a client key under **Project settings → Client keys** (`tal_live_…`). Default keys include `eventsWrite` and `spansWrite`. The API key decides the environment.
+Create a client key under **Project settings → Client keys** (`tal_prod_…`). Default keys include `eventsWrite` and `spansWrite`. The API key decides the environment.
 
 ## Wire it
 
@@ -46,8 +46,8 @@ void run(List<String> args) async {
   );
 
   await TalariaServerpod.init(TalariaOptions(
-    dsn: 'https://ingest.newtalaria.com',
-    apiKey: 'tal_live_…',
+    url: 'https://ingest.newtalaria.com',
+    apiKey: 'tal_prod_…',
     release: '1.2.3',
     minLevel: SeverityLevel.warning,
     // tracing follows the project policy document

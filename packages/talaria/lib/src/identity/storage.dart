@@ -13,7 +13,7 @@ abstract class TalariaStorage {
 /// Process-local map. Fine for tests and Dart servers; not durable.
 class MemoryTalariaStorage implements TalariaStorage {
   MemoryTalariaStorage([Map<String, String>? seed])
-      : _data = Map<String, String>.from(seed ?? const {});
+    : _data = Map<String, String>.from(seed ?? const {});
 
   final Map<String, String> _data;
 

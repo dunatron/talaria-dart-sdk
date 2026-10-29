@@ -11,10 +11,7 @@ void main() {
       tags: {'a': '1'},
       extraJson: '{"x":1}',
       userAgent: 'Mozilla/5.0',
-      exception: {
-        '__className__': 'ExceptionDataDto',
-        'values': <Object?>[],
-      },
+      exception: {'__className__': 'ExceptionDataDto', 'values': <Object?>[]},
     );
 
     final wire = event.toWire();
@@ -64,10 +61,7 @@ void main() {
 
   test('empty message rejected', () {
     expect(
-      () => Event(
-        message: '  ',
-        level: SeverityLevel.info,
-      ),
+      () => Event(message: '  ', level: SeverityLevel.info),
       throwsArgumentError,
     );
   });

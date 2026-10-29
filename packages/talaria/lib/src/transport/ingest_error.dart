@@ -122,7 +122,9 @@ class IngestError {
   ];
 
   static DateTime? _firstDate(
-      Map<Object?, Object?> a, Map<Object?, Object?> b) {
+    Map<Object?, Object?> a,
+    Map<Object?, Object?> b,
+  ) {
     for (final key in _resetKeys) {
       final value = dateOf(a[key] ?? b[key]);
       if (value != null) return value;

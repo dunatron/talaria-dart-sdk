@@ -29,8 +29,7 @@ class FakeTransport implements Transport {
   @override
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
-  ) async =>
-      const {};
+  ) async => const {};
 
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
@@ -45,19 +44,17 @@ class FakeTransport implements Transport {
 
   /// Optional evaluate handler for unit tests.
   Future<Map<String, Object?>> Function(Map<String, Object?> input)?
-      onEvaluateFlags;
+  onEvaluateFlags;
 
   /// Optional definitions download handler for unit tests.
   Future<Map<String, Object?>> Function(Map<String, Object?> input)?
-      onDownloadFlagDefinitions;
+  onDownloadFlagDefinitions;
 
   final List<Map<String, Object?>> evaluateCalls = [];
   final List<Map<String, Object?>> downloadDefinitionCalls = [];
 
   @override
-  Future<Map<String, Object?>> evaluateFlags(
-    Map<String, Object?> input,
-  ) async {
+  Future<Map<String, Object?>> evaluateFlags(Map<String, Object?> input) async {
     evaluateCalls.add(Map<String, Object?>.from(input));
     final handler = onEvaluateFlags;
     if (handler != null) {

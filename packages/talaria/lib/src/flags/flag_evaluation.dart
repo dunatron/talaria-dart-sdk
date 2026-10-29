@@ -40,12 +40,12 @@ class FlagEvaluationResult {
   }
 
   Map<String, Object?> toCacheJson() => {
-        'key': key,
-        'variationKey': variationKey,
-        'valueJson': valueJson ?? encodeValueJson(value),
-        'version': version,
-        if (reason != null) 'reason': reason,
-      };
+    'key': key,
+    'variationKey': variationKey,
+    'valueJson': valueJson ?? encodeValueJson(value),
+    'version': version,
+    if (reason != null) 'reason': reason,
+  };
 
   static Object? decodeValueJson(String? valueJson) {
     if (valueJson == null || valueJson.isEmpty) {

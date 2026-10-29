@@ -15,8 +15,7 @@ class TalariaOptions {
   /// [environment] is accepted so call sites built against 0.3.6 still compile.
   /// The API key decides the environment, so the value is not stored or sent.
   TalariaOptions({
-    String? dsn,
-    String? baseUrl,
+    String? url,
     required this.apiKey,
     String? environment,
     String? release,
@@ -40,49 +39,51 @@ class TalariaOptions {
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.storage,
-  })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
-        release = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).release,
-        commitSha = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).commitSha,
-        releaseRefKind = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).releaseRefKind,
-        sampleRate = sampleRate.clamp(0.0, 1.0),
-        maxBatchSize = max(1, maxBatchSize),
-        flushIntervalMs = max(0, flushIntervalMs),
-        spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
-        spanFlushIntervalMs = max(0, spanFlushIntervalMs),
-        maxSpanExportsPerMinute = maxSpanExportsPerMinute.clamp(1, 600),
-        maxSpanQueueSize = max(
-          spanBatchSize.clamp(1, maxSpanBatchSize),
-          maxSpanQueueSize,
-        ),
-        tags = normalizeTags(tags ?? const {}),
-        httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
-        minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
-        loggers = Map.unmodifiable(loggers ?? const {}),
-        ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
-        ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
-        enableTracing = false,
-        tracesSampleRate = null,
-        enableAnalytics = false,
-        enableFlags = false {
+  }) : url = _resolveUrl(url: url),
+       release = ReleaseIdentity.resolve(
+         release: release,
+         commitSha: commitSha,
+       ).release,
+       commitSha = ReleaseIdentity.resolve(
+         release: release,
+         commitSha: commitSha,
+       ).commitSha,
+       releaseRefKind = ReleaseIdentity.resolve(
+         release: release,
+         commitSha: commitSha,
+       ).releaseRefKind,
+       sampleRate = sampleRate.clamp(0.0, 1.0),
+       maxBatchSize = max(1, maxBatchSize),
+       flushIntervalMs = max(0, flushIntervalMs),
+       spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
+       spanFlushIntervalMs = max(0, spanFlushIntervalMs),
+       maxSpanExportsPerMinute = maxSpanExportsPerMinute.clamp(1, 600),
+       maxSpanQueueSize = max(
+         spanBatchSize.clamp(1, maxSpanBatchSize),
+         maxSpanQueueSize,
+       ),
+       tags = normalizeTags(tags ?? const {}),
+       httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
+       minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
+       loggers = Map.unmodifiable(loggers ?? const {}),
+       ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
+       ignoreUrls = List.unmodifiable(ignoreUrls ?? const []),
+       enableTracing = false,
+       tracesSampleRate = null,
+       enableAnalytics = false,
+       enableFlags = false {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw ArgumentError('Talaria init requires apiKey.');
     }
-    if (!key.startsWith('tal_live_')) {
-      throw ArgumentError('Talaria apiKey must start with tal_live_.');
+    if (!_isValidApiKey(key)) {
+      throw ArgumentError(
+        'Talaria apiKey must start with tal_prod_, tal_stg_, tal_test_, or tal_dev_.',
+      );
     }
   }
 
-  final String baseUrl;
+  final String url;
   final String apiKey;
   final String? release;
   final String? commitSha;
@@ -231,8 +232,7 @@ class TalariaOptions {
 
   /// Copy with selected overrides. Used by `talaria_flutter` to set platform.
   TalariaOptions copyWith({
-    String? dsn,
-    String? baseUrl,
+    String? url,
     String? apiKey,
     String? release,
     String? commitSha,
@@ -257,8 +257,7 @@ class TalariaOptions {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      dsn: dsn,
-      baseUrl: baseUrl ?? this.baseUrl,
+      url: url ?? this.url,
       apiKey: apiKey ?? this.apiKey,
       release: release ?? this.release,
       commitSha: commitSha ?? this.commitSha,
@@ -295,12 +294,19 @@ class TalariaOptions {
     return created;
   }
 
-  static String _resolveBaseUrl({String? dsn, String? baseUrl}) {
-    final raw = (dsn ?? baseUrl)?.trim();
+  static String _resolveUrl({String? url}) {
+    final raw = url?.trim();
     if (raw == null || raw.isEmpty) {
-      throw ArgumentError('Talaria init requires dsn or baseUrl.');
+      return 'https://ingest.newtalaria.com';
     }
     return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+  }
+
+  static bool _isValidApiKey(String key) {
+    return key.startsWith('tal_prod_') ||
+        key.startsWith('tal_stg_') ||
+        key.startsWith('tal_test_') ||
+        key.startsWith('tal_dev_');
   }
 
   static Map<String, String> normalizeTags(Map<String, Object?> tags) {

@@ -11,12 +11,12 @@ import 'package:test/test.dart';
 /// that answers 415 gets the body again uncompressed.
 void main() {
   List<Event> bigBatch() => [
-        for (var i = 0; i < 40; i++)
-          Event(
-            message: 'TypeError: checkout failed for cart $i',
-            level: SeverityLevel.error,
-          ),
-      ];
+    for (var i = 0; i < 40; i++)
+      Event(
+        message: 'TypeError: checkout failed for cart $i',
+        level: SeverityLevel.error,
+      ),
+  ];
 
   ({HttpTransport transport, List<http.Request> seen}) setup({
     int Function(http.Request)? status,
@@ -28,7 +28,7 @@ void main() {
     });
     return (
       transport: HttpTransport(
-        baseUrl: 'https://api.example.com',
+        url: 'https://api.example.com',
         apiKey: 'tal_live_testkey',
         httpClient: client,
       ),
@@ -49,32 +49,34 @@ void main() {
     expect(transport.gzipRequests, isFalse);
   });
 
-  test('advertised: large bodies are gzipped and decode to the same JSON',
-      () async {
-    final (:transport, :seen) = setup();
-    final plain = setup();
-    transport.applyCapabilities({'gzipRequests': true});
-    await transport.sendBatch(bigBatch());
-    await plain.transport.sendBatch(bigBatch());
-    final zipped = seen.single;
-    expect(zipped.headers['Content-Encoding'], 'gzip');
-    expect(zipped.headers['Content-Type'], startsWith('application/json'));
-    expect(zipped.bodyBytes.length,
-        lessThan(plain.seen.single.bodyBytes.length ~/ 2));
-    final a = decode(zipped)['input'] as Map;
-    final b = decode(plain.seen.single)['input'] as Map;
-    expect(
-      (a['events'] as List).map((e) => (e as Map)['message']),
-      (b['events'] as List).map((e) => (e as Map)['message']),
-    );
-  });
+  test(
+    'advertised: large bodies are gzipped and decode to the same JSON',
+    () async {
+      final (:transport, :seen) = setup();
+      final plain = setup();
+      transport.applyCapabilities({'gzipRequests': true});
+      await transport.sendBatch(bigBatch());
+      await plain.transport.sendBatch(bigBatch());
+      final zipped = seen.single;
+      expect(zipped.headers['Content-Encoding'], 'gzip');
+      expect(zipped.headers['Content-Type'], startsWith('application/json'));
+      expect(
+        zipped.bodyBytes.length,
+        lessThan(plain.seen.single.bodyBytes.length ~/ 2),
+      );
+      final a = decode(zipped)['input'] as Map;
+      final b = decode(plain.seen.single)['input'] as Map;
+      expect(
+        (a['events'] as List).map((e) => (e as Map)['message']),
+        (b['events'] as List).map((e) => (e as Map)['message']),
+      );
+    },
+  );
 
   test('small bodies stay plain even when advertised', () async {
     final (:transport, :seen) = setup();
     transport.applyCapabilities({'gzipRequests': true});
-    await transport.sendBatch([
-      Event(message: 'x', level: SeverityLevel.info),
-    ]);
+    await transport.sendBatch([Event(message: 'x', level: SeverityLevel.info)]);
     expect(seen.single.headers['Content-Encoding'], isNull);
   });
 
@@ -99,19 +101,21 @@ void main() {
     expect(seen.single.headers['Content-Encoding'], isNull);
   });
 
-  test('a 415 for a gzipped body resends it plain and stops compressing',
-      () async {
-    final (:transport, :seen) = setup(
-      status: (r) => r.headers['Content-Encoding'] == 'gzip' ? 415 : 200,
-    );
-    transport.applyCapabilities({'gzipRequests': true});
-    await transport.sendBatch(bigBatch());
-    expect(seen.map((r) => r.headers['Content-Encoding']), ['gzip', null]);
-    expect(decode(seen[0]), decode(seen[1]));
-    expect(transport.gzipRequests, isFalse);
-    await transport.sendBatch(bigBatch());
-    expect(seen.last.headers['Content-Encoding'], isNull);
-  });
+  test(
+    'a 415 for a gzipped body resends it plain and stops compressing',
+    () async {
+      final (:transport, :seen) = setup(
+        status: (r) => r.headers['Content-Encoding'] == 'gzip' ? 415 : 200,
+      );
+      transport.applyCapabilities({'gzipRequests': true});
+      await transport.sendBatch(bigBatch());
+      expect(seen.map((r) => r.headers['Content-Encoding']), ['gzip', null]);
+      expect(decode(seen[0]), decode(seen[1]));
+      expect(transport.gzipRequests, isFalse);
+      await transport.sendBatch(bigBatch());
+      expect(seen.last.headers['Content-Encoding'], isNull);
+    },
+  );
 
   test('TalariaClient: gzip follows getConfig, close() sends plain', () async {
     TalariaClient.clearPolicyCache();
@@ -134,14 +138,14 @@ void main() {
       return http.Response('{}', 200);
     });
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_gzip_client_test',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_gzip_client_test',
       httpClient: httpClient,
     );
     final client = TalariaClient(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_gzip_client_test',
+        url: 'https://api.example.com',
+        apiKey: 'tal_prod_gzip_client_test',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -157,7 +161,7 @@ void main() {
       );
     }
     await client.flush();
-    final batch = seen.lastWhere((r) => r.url.path == '/events/ingestBatch');
+    final batch = seen.lastWhere((r) => r.url.path == '/v1/events');
     expect(batch.headers['Content-Encoding'], 'gzip');
 
     for (var i = 0; i < 40; i++) {
@@ -167,7 +171,7 @@ void main() {
       );
     }
     await client.close();
-    final last = seen.lastWhere((r) => r.url.path == '/events/ingestBatch');
+    final last = seen.lastWhere((r) => r.url.path == '/v1/events');
     expect(identical(last, batch), isFalse);
     expect(last.headers['Content-Encoding'], isNull);
     advertise = false;

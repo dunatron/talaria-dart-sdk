@@ -183,7 +183,8 @@ String encodeFlagDefinitionsCache(List<FlagDefinition> defs) {
               {
                 'key': v.key,
                 'valueJson':
-                    v.valueJson ?? FlagEvaluationResult.encodeValueJson(v.value),
+                    v.valueJson ??
+                    FlagEvaluationResult.encodeValueJson(v.value),
                 if (v.name != null) 'name': v.name,
               },
           ],

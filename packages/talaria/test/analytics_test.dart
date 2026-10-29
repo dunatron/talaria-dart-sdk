@@ -18,8 +18,8 @@ void main() {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       platform: platform,
       storage: storage,
       defaultIntegrations: false,
@@ -99,8 +99,10 @@ void main() {
     expect(events[0].kind, AnalyticsEventKind.track);
     expect(events[1].kind, AnalyticsEventKind.page);
     expect(events[2].kind, AnalyticsEventKind.screen);
-    expect(jsonDecode(events[0].propertiesJson!),
-        {'product_id': '123', 'price': 129.99});
+    expect(jsonDecode(events[0].propertiesJson!), {
+      'product_id': '123',
+      'price': 129.99,
+    });
     await client.close();
   });
 
@@ -179,7 +181,9 @@ void main() {
     expect(transport.analyticsBatches, isEmpty);
     expect(transport.discardReports, isNotEmpty);
     expect(
-      transport.discardReports.expand((rows) => rows).any(
+      transport.discardReports
+          .expand((rows) => rows)
+          .any(
             (row) =>
                 row.signal == DiscardSignal.analytics &&
                 row.reason == DiscardReason.signalDisabled,
@@ -191,23 +195,26 @@ void main() {
 
   test('sample rate discards are reported', () async {
     final transport = FakeTransport();
-    final opts = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'events': {'sampleRate': 0},
-      });
+    final opts =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'events': {'sampleRate': 0},
+        });
     final client = TalariaClient(opts, transport: transport);
 
     await client.warning('dropped');
     await client.flush();
     expect(transport.batches, isEmpty);
     expect(
-      transport.discardReports.expand((rows) => rows).any(
+      transport.discardReports
+          .expand((rows) => rows)
+          .any(
             (row) =>
                 row.signal == DiscardSignal.events &&
                 row.reason == DiscardReason.sampleRate,
@@ -281,22 +288,20 @@ void main() {
 
   test('stamps live traceId and spanId', () async {
     final transport = FakeTransport();
-    final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
-      platform: 'flutter',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          platform: 'flutter',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
+    final client = TalariaClient(options, transport: transport);
 
     final txn = client.startTransaction('checkout');
     await client.analytics.track('pay');
@@ -311,20 +316,18 @@ void main() {
 
   test('events and spans include anonymousId', () async {
     final transport = FakeTransport();
-    final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
+    final client = TalariaClient(options, transport: transport);
 
     await client.warning('hello');
     final span = client.startTransaction('work');
@@ -347,8 +350,8 @@ void main() {
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_testkey',
       httpClient: httpClient,
     );
 
@@ -364,7 +367,7 @@ void main() {
       ),
     ]);
 
-    expect(path, '/analytics/ingestBatch');
+    expect(path, '/v1/analytics');
     expect(body!['input']['__className__'], 'IngestAnalyticsEventBatchInput');
     final events = body!['input']['events'] as List;
     expect(events.single['__className__'], 'IngestAnalyticsEventInput');
@@ -400,8 +403,8 @@ void main() {
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_testkey',
       httpClient: httpClient,
     );
 
@@ -519,8 +522,7 @@ class _ThrowingAnalyticsTransport implements Transport {
   @override
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
-  ) async =>
-      const {};
+  ) async => const {};
 
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
@@ -534,12 +536,10 @@ class _ThrowingAnalyticsTransport implements Transport {
   @override
   Future<Map<String, Object?>> evaluateFlags(
     Map<String, Object?> input,
-  ) async =>
-      const {};
+  ) async => const {};
 
   @override
   Future<Map<String, Object?>> downloadFlagDefinitions(
     Map<String, Object?> input,
-  ) async =>
-      const {};
+  ) async => const {};
 }

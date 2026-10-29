@@ -2,28 +2,15 @@ import '../context/runtime_context.dart';
 import 'trace_context.dart';
 
 /// OTel SpanKind wire values (`SpanKindWire`).
-enum SpanKind {
-  internal,
-  server,
-  client,
-  producer,
-  consumer,
-}
+enum SpanKind { internal, server, client, producer, consumer }
 
 /// OTel span status wire values (`SpanStatusWire`).
-enum SpanStatus {
-  unset,
-  ok,
-  error,
-}
+enum SpanStatus { unset, ok, error }
 
 /// Optional span event (`SpanEventDto`).
 class SpanEvent {
-  SpanEvent({
-    required this.name,
-    DateTime? timestamp,
-    this.attributes,
-  }) : timestamp = (timestamp ?? DateTime.now()).toUtc();
+  SpanEvent({required this.name, DateTime? timestamp, this.attributes})
+    : timestamp = (timestamp ?? DateTime.now()).toUtc();
 
   final DateTime timestamp;
   final String name;
@@ -50,10 +37,10 @@ class SpanLink {
   final String spanId;
 
   Map<String, Object?> toWire() => {
-        '__className__': 'SpanLinkDto',
-        'traceId': traceId,
-        'spanId': spanId,
-      };
+    '__className__': 'SpanLinkDto',
+    'traceId': traceId,
+    'spanId': spanId,
+  };
 }
 
 /// Timed operation. No-op when tracing is disabled.
@@ -109,10 +96,10 @@ class FinishedSpan {
     this.anonymousId,
     this.sessionId,
     this.requestId,
-  })  : attributes = attributes ?? const {},
-        resource = resource ?? const {},
-        events = events ?? const [],
-        links = links ?? const [];
+  }) : attributes = attributes ?? const {},
+       resource = resource ?? const {},
+       events = events ?? const [],
+       links = links ?? const [];
 
   final String traceId;
   final String spanId;
@@ -167,14 +154,8 @@ class FinishedSpan {
     put('statusMessage', statusMessage);
     put('attributes', attributes.isEmpty ? null : attributes);
     put('resource', resource.isEmpty ? null : resource);
-    put(
-      'events',
-      events.isEmpty ? null : [for (final e in events) e.toWire()],
-    );
-    put(
-      'links',
-      links.isEmpty ? null : [for (final l in links) l.toWire()],
-    );
+    put('events', events.isEmpty ? null : [for (final e in events) e.toWire()]);
+    put('links', links.isEmpty ? null : [for (final l in links) l.toWire()]);
     put('release', release);
     put('userId', userId);
     put('anonymousId', anonymousId);
@@ -287,16 +268,9 @@ class NoOpSpan implements Span {
   void markError({String? message}) {}
 
   @override
-  void finish({
-    DateTime? endTime,
-    SpanStatus? status,
-    String? statusMessage,
-  }) {}
+  void finish({DateTime? endTime, SpanStatus? status, String? statusMessage}) {}
 
   @override
-  Traceparent toTraceparent() => Traceparent(
-        traceId: traceId,
-        spanId: spanId,
-        sampled: false,
-      );
+  Traceparent toTraceparent() =>
+      Traceparent(traceId: traceId, spanId: spanId, sampled: false);
 }

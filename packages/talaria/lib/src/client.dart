@@ -42,28 +42,25 @@ class TalariaClient {
     void Function(Object error, [StackTrace? stack])? onTransportError,
     DateTime Function()? clock,
     TalariaStorage? storage,
-  })  : _options = options,
-        _identity = Identity(
-          storage: storage ?? options.storage,
-          clock: clock,
-        ),
-        _globalTags = Map<String, String>.from(options.tags),
-        _globalUserId = options.userId,
-        _minLevel = options.minLevel,
-        _enforceDefaultLevel = options.enforceDefaultLevel,
-        _loggers = Map<String, LoggerPreset>.from(options.loggers),
-        _beforeSend = options.beforeSend {
+  }) : _options = options,
+       _identity = Identity(storage: storage ?? options.storage, clock: clock),
+       _globalTags = Map<String, String>.from(options.tags),
+       _globalUserId = options.userId,
+       _minLevel = options.minLevel,
+       _enforceDefaultLevel = options.enforceDefaultLevel,
+       _loggers = Map<String, LoggerPreset>.from(options.loggers),
+       _beforeSend = options.beforeSend {
     final httpTransport = transport is HttpTransport
         ? transport
         : (transport == null
-            ? HttpTransport(
-                baseUrl: options.baseUrl,
-                apiKey: options.apiKey,
-                timeout: Duration(
-                  milliseconds: (options.httpTimeoutSeconds * 1000).round(),
-                ),
-              )
-            : null);
+              ? HttpTransport(
+                  url: options.url,
+                  apiKey: options.apiKey,
+                  timeout: Duration(
+                    milliseconds: (options.httpTimeoutSeconds * 1000).round(),
+                  ),
+                )
+              : null);
 
     _ownedHttp = httpTransport;
     final resolvedTransport = transport ?? httpTransport!;
@@ -75,7 +72,8 @@ class TalariaClient {
     _heatmapsBackoff = IngestBackoff(clock: clock);
     _flagsBackoff = IngestBackoff(clock: clock);
 
-    _queue = queue ??
+    _queue =
+        queue ??
         EventQueue(
           transport: resolvedTransport,
           maxBatchSize: options.maxBatchSize,
@@ -85,11 +83,8 @@ class TalariaClient {
             onTransportError?.call(e);
             developer.log('[Talaria] ${e.message}', name: 'talaria');
           },
-          onDiscard: (count, reason) => _recordDiscard(
-            DiscardSignal.events,
-            reason,
-            count,
-          ),
+          onDiscard: (count, reason) =>
+              _recordDiscard(DiscardSignal.events, reason, count),
           backoff: _eventsBackoff,
         );
 
@@ -106,11 +101,8 @@ class TalariaClient {
         onTransportError?.call(e);
         developer.log('[Talaria] ${e.message}', name: 'talaria');
       },
-      onDiscard: (count, reason) => _recordDiscard(
-        DiscardSignal.spans,
-        reason,
-        count,
-      ),
+      onDiscard: (count, reason) =>
+          _recordDiscard(DiscardSignal.spans, reason, count),
       backoff: _spansBackoff,
     );
 
@@ -123,11 +115,8 @@ class TalariaClient {
         onTransportError?.call(e);
         developer.log('[Talaria] ${e.message}', name: 'talaria');
       },
-      onDiscard: (count, reason) => _recordDiscard(
-        DiscardSignal.analytics,
-        reason,
-        count,
-      ),
+      onDiscard: (count, reason) =>
+          _recordDiscard(DiscardSignal.analytics, reason, count),
       backoff: _analyticsBackoff,
     );
 
@@ -302,10 +291,7 @@ class TalariaClient {
     SeverityLevel? minLevel,
   }) {
     final preset = name != null ? _loggers[name] : null;
-    final mergedTags = <String, String>{
-      ...?preset?.tags,
-      ...?tags,
-    };
+    final mergedTags = <String, String>{...?preset?.tags, ...?tags};
     final resolvedMin = minLevel ?? preset?.minLevel;
     return LoggerOptions(
       name: name,
@@ -334,68 +320,57 @@ class TalariaClient {
   Future<void> fatal(String message, {CaptureContext? context}) =>
       captureMessage(message, level: SeverityLevel.fatal, context: context);
 
-  Future<void> log(
-    Object level,
-    String message, {
-    CaptureContext? context,
-  }) =>
+  Future<void> log(Object level, String message, {CaptureContext? context}) =>
       captureMessage(message, level: level, context: context);
 
   Future<void> captureException(
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) =>
-      _captureExceptionInternal(
-        error,
-        stackTrace: stackTrace,
-        context: context,
-        respectMinLevel: true,
-      );
+  }) => _captureExceptionInternal(
+    error,
+    stackTrace: stackTrace,
+    context: context,
+    respectMinLevel: true,
+  );
 
   /// Logger-originated exception capture.
   Future<void> captureExceptionFromLogger(
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) =>
-      _captureExceptionInternal(
-        error,
-        stackTrace: stackTrace,
-        context: context,
-        respectMinLevel: _enforceDefaultLevel,
-      );
+  }) => _captureExceptionInternal(
+    error,
+    stackTrace: stackTrace,
+    context: context,
+    respectMinLevel: _enforceDefaultLevel,
+  );
 
   Future<void> captureMessage(
     String message, {
     Object level = SeverityLevel.info,
     CaptureContext? context,
-  }) =>
-      _captureMessageInternal(
-        message,
-        level: level,
-        context: context,
-        respectMinLevel: true,
-      );
+  }) => _captureMessageInternal(
+    message,
+    level: level,
+    context: context,
+    respectMinLevel: true,
+  );
 
   /// Logger-originated message capture.
   Future<void> captureMessageFromLogger(
     String message, {
     Object level = SeverityLevel.info,
     CaptureContext? context,
-  }) =>
-      _captureMessageInternal(
-        message,
-        level: level,
-        context: context,
-        respectMinLevel: _enforceDefaultLevel,
-      );
+  }) => _captureMessageInternal(
+    message,
+    level: level,
+    context: context,
+    respectMinLevel: _enforceDefaultLevel,
+  );
 
   void setTags(Map<String, String> tags) {
-    _globalTags = {
-      ..._globalTags,
-      ...TalariaOptions.normalizeTags(tags),
-    };
+    _globalTags = {..._globalTags, ...TalariaOptions.normalizeTags(tags)};
   }
 
   void addProcessor(EventProcessor processor) {
@@ -677,7 +652,7 @@ class TalariaClient {
   }
 
   static final Map<String, ({int fetchedAt, Map<String, Object?> document})>
-      _policyCache = {};
+  _policyCache = {};
 
   /// Test-only. Policy cache is process-wide so tests do not share documents.
   static void clearPolicyCache() => _policyCache.clear();
@@ -737,8 +712,10 @@ class TalariaClient {
     } else {
       analytics.optOut();
     }
-    final ttlSeconds =
-        ((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(60, 3600);
+    final ttlSeconds = ((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(
+      60,
+      3600,
+    );
     flags.onPolicyUpdated(pollInterval: Duration(seconds: ttlSeconds));
   }
 
@@ -754,7 +731,10 @@ class TalariaClient {
   }
 
   static int _ttlMs(Map<String, Object?> document) {
-    return (((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(60, 3600)) *
+    return (((document['ttlSeconds'] as num?)?.toInt() ?? 300).clamp(
+          60,
+          3600,
+        )) *
         1000;
   }
 
@@ -828,7 +808,8 @@ class TalariaClient {
 
   static bool _rejectsNewReasons(TransportException e, List<DiscardRow> rows) {
     if (e.statusCode != 400) return false;
-    final validation = (e.className ?? '').contains('ApiValidationException') ||
+    final validation =
+        (e.className ?? '').contains('ApiValidationException') ||
         (e.bodyMessage ?? '').contains('discard signal or reason');
     return validation &&
         rows.any((row) => !DiscardReason.legacy.contains(row.reason));
@@ -938,10 +919,7 @@ class TalariaClient {
       framePlatform: platform == 'flutter' ? 'flutter' : 'dart',
     );
 
-    final extra = <String, Object?>{
-      ..._globalExtra,
-      ...?context?.extra,
-    };
+    final extra = <String, Object?>{..._globalExtra, ...?context?.extra};
 
     await _enqueueBuilt(
       message: ExceptionPayloadBuilder.messageOf(error).trim().isEmpty
@@ -991,10 +969,7 @@ class TalariaClient {
       return;
     }
 
-    final extra = <String, Object?>{
-      ..._globalExtra,
-      ...?context?.extra,
-    };
+    final extra = <String, Object?>{..._globalExtra, ...?context?.extra};
 
     await _enqueueBuilt(
       message: message,
@@ -1032,18 +1007,16 @@ class TalariaClient {
     final runtimeTags = TalariaOptions.normalizeTags(
       Map<String, Object?>.from(runtime['tags'] as Map? ?? const {}),
     );
-    final runtimeExtra =
-        Map<String, Object?>.from(runtime['extra'] as Map? ?? const {});
+    final runtimeExtra = Map<String, Object?>.from(
+      runtime['extra'] as Map? ?? const {},
+    );
 
     var tags = <String, String>{
       ...runtimeTags,
       ..._globalTags,
       ...flags.stampTags(),
     };
-    var extra = <String, Object?>{
-      ...runtimeExtra,
-      ...?context.extra,
-    };
+    var extra = <String, Object?>{...runtimeExtra, ...?context.extra};
     var url = runtime['url'] as String?;
     var requestId = runtime['requestId'] as String?;
 
@@ -1085,14 +1058,12 @@ class TalariaClient {
       }
     }
 
-    tags = {
-      ...tags,
-      ...?context.tags,
-    };
+    tags = {...tags, ...?context.tags};
 
     var userId = context.userId;
     if (userId == null || userId.isEmpty) {
-      userId = RuntimeContext.userId ??
+      userId =
+          RuntimeContext.userId ??
           _globalUserId ??
           userIdFromSpan(_spanForCapture());
     }
@@ -1145,7 +1116,8 @@ class TalariaClient {
       }
     }
 
-    final isError = outException != null ||
+    final isError =
+        outException != null ||
         outLevel == SeverityLevel.error ||
         outLevel == SeverityLevel.fatal;
 
@@ -1208,7 +1180,8 @@ class TalariaClient {
   }
 
   SpanEnrichment _spanEnrichment() {
-    final service = _globalTags['service'] ??
+    final service =
+        _globalTags['service'] ??
         (_options.platform == 'flutter' || platformOverride == 'flutter'
             ? 'flutter'
             : 'dart');

@@ -62,23 +62,28 @@ class SpanScope {
 
   /// Run [body] with an isolated current-span stack.
   static T run<T>(T Function() body, {String? sessionId}) {
-    return Zone.current.fork(zoneValues: {
-      stackZoneKey: <Span>[],
-      if (sessionId != null && sessionId.isNotEmpty)
-        sessionIdZoneKey: sessionId,
-    }).run(body);
+    return Zone.current
+        .fork(
+          zoneValues: {
+            stackZoneKey: <Span>[],
+            if (sessionId != null && sessionId.isNotEmpty)
+              sessionIdZoneKey: sessionId,
+          },
+        )
+        .run(body);
   }
 
   /// Async variant of [run].
-  static Future<T> runAsync<T>(
-    Future<T> Function() body, {
-    String? sessionId,
-  }) {
-    return Zone.current.fork(zoneValues: {
-      stackZoneKey: <Span>[],
-      if (sessionId != null && sessionId.isNotEmpty)
-        sessionIdZoneKey: sessionId,
-    }).run(body);
+  static Future<T> runAsync<T>(Future<T> Function() body, {String? sessionId}) {
+    return Zone.current
+        .fork(
+          zoneValues: {
+            stackZoneKey: <Span>[],
+            if (sessionId != null && sessionId.isNotEmpty)
+              sessionIdZoneKey: sessionId,
+          },
+        )
+        .run(body);
   }
 
   /// Test / shutdown helper.

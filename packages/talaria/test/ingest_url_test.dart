@@ -20,6 +20,10 @@ void main() {
     'sdk/reportDiscards',
     'flags/evaluate',
     'flags/downloadDefinitions',
+    // New /v1/ paths
+    'v1/events',
+    'v1/spans',
+    'v1/analytics',
   ];
 
   test('every SDK call is an ingest URL, also behind a path prefix', () {

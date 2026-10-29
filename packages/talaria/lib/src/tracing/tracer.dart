@@ -33,10 +33,10 @@ class Tracer {
     required void Function(FinishedSpan span) enqueue,
     required SpanEnrichment Function() enrichment,
     Random? random,
-  })  : _options = options,
-        _enqueue = enqueue,
-        _enrichment = enrichment,
-        _random = random ?? Random();
+  }) : _options = options,
+       _enqueue = enqueue,
+       _enrichment = enrichment,
+       _random = random ?? Random();
 
   static const int maxSpansPerTrace = 200;
   static const int maxSqlSpans = 168;
@@ -276,8 +276,9 @@ class Tracer {
       executionMs: duration,
     );
     state.queryGroups[key] = updated;
-    final index =
-        state.pendingQueryGroups.indexWhere((item) => item.spanId == group.spanId);
+    final index = state.pendingQueryGroups.indexWhere(
+      (item) => item.spanId == group.spanId,
+    );
     if (index >= 0) {
       state.pendingQueryGroups[index] = updated;
     }
@@ -443,11 +444,7 @@ class _RecordingSpan implements Span {
   }
 
   @override
-  void finish({
-    DateTime? endTime,
-    SpanStatus? status,
-    String? statusMessage,
-  }) {
+  void finish({DateTime? endTime, SpanStatus? status, String? statusMessage}) {
     if (_finished) {
       return;
     }
@@ -464,11 +461,8 @@ class _RecordingSpan implements Span {
   }
 
   @override
-  Traceparent toTraceparent() => Traceparent(
-        traceId: traceId,
-        spanId: spanId,
-        sampled: sampled,
-      );
+  Traceparent toTraceparent() =>
+      Traceparent(traceId: traceId, spanId: spanId, sampled: sampled);
 
   FinishedSpan _toFinished(SpanEnrichment enrichment) {
     return FinishedSpan(
@@ -486,7 +480,8 @@ class _RecordingSpan implements Span {
       events: List<SpanEvent>.from(_events),
       links: List<SpanLink>.from(_links),
       release: enrichment.release,
-      userId: enrichment.userId ??
+      userId:
+          enrichment.userId ??
           _attributes['enduser.id'] ??
           _attributes['user.id'],
       anonymousId: enrichment.anonymousId,

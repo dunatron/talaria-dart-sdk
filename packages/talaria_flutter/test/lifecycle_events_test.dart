@@ -21,7 +21,7 @@ void main() {
     final transport = FakeTransport();
     final options = TalariaOptions(
       dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );

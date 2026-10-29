@@ -30,7 +30,8 @@ class Talaria {
       assert(() {
         // ignore: avoid_print
         print(
-            '[Talaria] init() called more than once; ignoring subsequent init.');
+          '[Talaria] init() called more than once; ignoring subsequent init.',
+        );
         return true;
       }());
       return _client!;
@@ -58,11 +59,7 @@ class Talaria {
     Map<String, String>? tags,
     SeverityLevel? minLevel,
   }) {
-    return _requireClient().logger(
-      name: name,
-      tags: tags,
-      minLevel: minLevel,
-    );
+    return _requireClient().logger(name: name, tags: tags, minLevel: minLevel);
   }
 
   static bool isEnforceDefaultLevel() =>
@@ -96,8 +93,7 @@ class Talaria {
     Object level,
     String message, {
     CaptureContext? context,
-  }) =>
-      _requireClient().log(level, message, context: context);
+  }) => _requireClient().log(level, message, context: context);
 
   static SeverityLevel getMinLevel() => _requireClient().getMinLevel();
 
@@ -110,23 +106,18 @@ class Talaria {
     Object error, {
     StackTrace? stackTrace,
     CaptureContext? context,
-  }) =>
-      _requireClient().captureException(
-        error,
-        stackTrace: stackTrace,
-        context: context,
-      );
+  }) => _requireClient().captureException(
+    error,
+    stackTrace: stackTrace,
+    context: context,
+  );
 
   static Future<void> captureMessage(
     String message, {
     Object level = SeverityLevel.info,
     CaptureContext? context,
   }) =>
-      _requireClient().captureMessage(
-        message,
-        level: level,
-        context: context,
-      );
+      _requireClient().captureMessage(message, level: level, context: context);
 
   static Future<void> flush() async {
     await _client?.flush();
@@ -198,7 +189,8 @@ class Talaria {
     final client = _client;
     if (client == null) {
       throw StateError(
-          'Talaria.init() must be called before capturing events.');
+        'Talaria.init() must be called before capturing events.',
+      );
     }
     return client;
   }

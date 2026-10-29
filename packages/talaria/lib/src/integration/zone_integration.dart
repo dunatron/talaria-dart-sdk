@@ -26,33 +26,24 @@ class ZoneIntegration {
 }
 
 /// Run [body] in a zone that reports uncaught errors to [client].
-R? runZonedTalaria<R>(
-  TalariaClient client,
-  R Function() body,
-) {
-  return runZonedGuarded(
-    body,
-    (error, stack) {
-      // ignore: discarded_futures
-      client
-          .captureException(
-        error,
-        stackTrace: stack,
-        context: const CaptureContext(
-          mechanism: ExceptionMechanism(
-            type: 'zone',
-            handled: false,
+R? runZonedTalaria<R>(TalariaClient client, R Function() body) {
+  return runZonedGuarded(body, (error, stack) {
+    // ignore: discarded_futures
+    client
+        .captureException(
+          error,
+          stackTrace: stack,
+          context: const CaptureContext(
+            mechanism: ExceptionMechanism(type: 'zone', handled: false),
           ),
-        ),
-      )
-          .catchError((Object e, StackTrace st) {
-        developer.log(
-          '[Talaria] zone capture failed: $e',
-          name: 'talaria',
-          error: e,
-          stackTrace: st,
-        );
-      });
-    },
-  );
+        )
+        .catchError((Object e, StackTrace st) {
+          developer.log(
+            '[Talaria] zone capture failed: $e',
+            name: 'talaria',
+            error: e,
+            stackTrace: st,
+          );
+        });
+  });
 }

@@ -24,8 +24,8 @@ void main() {
     double? tracesSampleRate,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -141,7 +141,11 @@ void main() {
     );
     final root = tracer.startTransaction('sync');
     final import = tracer.startSpan('shopify.import_products');
-    for (final name in ['SELECT File', 'SELECT SiteTree', 'SELECT Shopify_ProductVariant']) {
+    for (final name in [
+      'SELECT File',
+      'SELECT SiteTree',
+      'SELECT Shopify_ProductVariant',
+    ]) {
       for (var i = 0; i < 12; i++) {
         final query = tracer.startSpan(
           name,
@@ -166,7 +170,12 @@ void main() {
       queries.every((span) => span.attributes['db.query.count'] == '12'),
       isTrue,
     );
-    expect(finished.singleWhere((span) => span.isRoot).attributes['dropped_span_count'], isNull);
+    expect(
+      finished
+          .singleWhere((span) => span.isRoot)
+          .attributes['dropped_span_count'],
+      isNull,
+    );
   });
 
   test('the 169th distinct statement is dropped and a phase span is kept', () {
@@ -193,7 +202,9 @@ void main() {
     expect(names, contains('shopify.import_collections'));
     expect(names, isNot(contains('SELECT t${Tracer.maxSqlSpans}')));
     expect(
-      finished.singleWhere((span) => span.isRoot).attributes['dropped_span_count'],
+      finished
+          .singleWhere((span) => span.isRoot)
+          .attributes['dropped_span_count'],
       '1',
     );
   });
@@ -221,6 +232,9 @@ void main() {
     expect(tracer.recordQuerySpans, isTrue);
     tracer.startSpan('shopify.import_collections').finish();
     root.finish();
-    expect(finished.map((span) => span.name), ['shopify.import_collections', 'task']);
+    expect(finished.map((span) => span.name), [
+      'shopify.import_collections',
+      'task',
+    ]);
   });
 }

@@ -56,10 +56,7 @@ class SqlSanitizer {
     return collection != null ? '$op $collection' : op;
   }
 
-  static String spanNameFor({
-    required String operation,
-    String? table,
-  }) {
+  static String spanNameFor({required String operation, String? table}) {
     final op = operation.trim().isEmpty ? 'QUERY' : operation.toUpperCase();
     if (table == null || table.isEmpty) {
       return op;

@@ -10,20 +10,18 @@ void main() {
 
   test('span user.id is copied onto finished spans and error events', () async {
     final transport = FakeTransport();
-    final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
+    final client = TalariaClient(options, transport: transport);
 
     final span = client.startTransaction('POST /lab');
     span.setAttribute('enduser.id', 'user-9');
@@ -40,26 +38,26 @@ void main() {
   test('userAgent is copied onto events', () async {
     final transport = FakeTransport();
     RuntimeContext.setUserAgent('Mozilla/5.0 Test');
-    final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
+    final client = TalariaClient(options, transport: transport);
 
     await client.captureException(StateError('ua'));
     await client.flush();
 
-    expect(transport.batches.expand((b) => b).single.userAgent,
-        'Mozilla/5.0 Test');
+    expect(
+      transport.batches.expand((b) => b).single.userAgent,
+      'Mozilla/5.0 Test',
+    );
     await client.close();
   });
 }

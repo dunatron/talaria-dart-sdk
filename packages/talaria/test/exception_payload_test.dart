@@ -27,14 +27,18 @@ void main() {
     expect(frames, isNotEmpty);
     final frame = frames.last as Map;
     expect(frame['__className__'], 'StackFrameDto');
-    expect(frame.containsKey('functionName') || frame.containsKey('absPath'),
-        isTrue);
+    expect(
+      frame.containsKey('functionName') || frame.containsKey('absPath'),
+      isTrue,
+    );
   });
 
   test('inApp heuristics', () {
     expect(StackFrameBuilder.isInApp('dart:core'), isFalse);
     expect(
-        StackFrameBuilder.isInApp('package:flutter/src/widgets.dart'), isFalse);
+      StackFrameBuilder.isInApp('package:flutter/src/widgets.dart'),
+      isFalse,
+    );
     expect(StackFrameBuilder.isInApp('package:my_app/main.dart'), isTrue);
     expect(StackFrameBuilder.isInApp('package:harbor_server/lab.dart'), isTrue);
     expect(StackFrameBuilder.isInApp('file:///tmp/main.dart'), isTrue);
@@ -71,7 +75,9 @@ void main() {
       'WebSocketConnectionClosed',
     );
     expect(
-        ExceptionPayloadBuilder.sanitizeTypeName('StateError'), 'StateError');
+      ExceptionPayloadBuilder.sanitizeTypeName('StateError'),
+      'StateError',
+    );
   });
 
   test('shortName prefers the exception message over a generated class', () {
@@ -90,10 +96,7 @@ void main() {
       'Bad state: uncaught',
     );
     expect(ExceptionPayloadBuilder.shortName(TypeError()), 'TypeError');
-    expect(
-      ExceptionPayloadBuilder.shortName(FormatException('bad')),
-      'bad',
-    );
+    expect(ExceptionPayloadBuilder.shortName(FormatException('bad')), 'bad');
   });
 }
 

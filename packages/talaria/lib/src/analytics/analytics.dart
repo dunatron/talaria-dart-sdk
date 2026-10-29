@@ -31,19 +31,19 @@ class TalariaAnalytics {
     void Function(String reason)? onDiscard,
     this.contextProvider,
     this.propertyEnricher,
-  })  : _identity = identity,
-        _queue = queue,
-        _enabled = enabled,
-        _isDisabled = isDisabled,
-        _isClosed = isClosed,
-        _isFlutter = isFlutter,
-        _platform = platform,
-        _release = release,
-        _userId = userId,
-        _setUser = setUser,
-        _currentSpan = currentSpan,
-        _requestId = requestId,
-        _onDiscard = onDiscard;
+  }) : _identity = identity,
+       _queue = queue,
+       _enabled = enabled,
+       _isDisabled = isDisabled,
+       _isClosed = isClosed,
+       _isFlutter = isFlutter,
+       _platform = platform,
+       _release = release,
+       _userId = userId,
+       _setUser = setUser,
+       _currentSpan = currentSpan,
+       _requestId = requestId,
+       _onDiscard = onDiscard;
 
   final Identity _identity;
   final AnalyticsQueue _queue;
@@ -218,15 +218,18 @@ class TalariaAnalytics {
       return;
     }
 
-    final resolvedUserId = _nonEmpty(userId) ??
+    final resolvedUserId =
+        _nonEmpty(userId) ??
         _nonEmpty(RuntimeContext.userId) ??
         _nonEmpty(_userId());
-    final resolvedAnonymousId = _nonEmpty(anonymousId) ??
+    final resolvedAnonymousId =
+        _nonEmpty(anonymousId) ??
         _nonEmpty(RuntimeContext.anonymousId) ??
         (_isFlutter() ? _identity.anonymousId : null);
 
     if (!_isFlutter()) {
-      final hasCallerIdentity = resolvedUserId != null ||
+      final hasCallerIdentity =
+          resolvedUserId != null ||
           _nonEmpty(anonymousId) != null ||
           _nonEmpty(RuntimeContext.anonymousId) != null;
       if (!hasCallerIdentity) {
@@ -241,9 +244,7 @@ class TalariaAnalytics {
 
     _identity.touch();
     final page = _pageContext();
-    final resolvedUrl = Utm.sanitizeUrl(
-      url ?? page?.url ?? RuntimeContext.url,
-    );
+    final resolvedUrl = Utm.sanitizeUrl(url ?? page?.url ?? RuntimeContext.url);
     _identity.captureUtmFromUrl(resolvedUrl);
     final utm = _identity.firstTouchUtm;
 
@@ -272,7 +273,8 @@ class TalariaAnalytics {
         name: name,
         kind: kind,
         anonymousId: anonymous,
-        sessionId: _nonEmpty(sessionId) ??
+        sessionId:
+            _nonEmpty(sessionId) ??
             _nonEmpty(RuntimeContext.sessionId) ??
             _identity.sessionId,
         timestamp: DateTime.now().toUtc(),

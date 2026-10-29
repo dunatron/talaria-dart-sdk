@@ -8,8 +8,8 @@ void main() {
 
   TalariaOptions options() {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );

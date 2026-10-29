@@ -25,7 +25,7 @@ import 'package:talaria_flutter/talaria_flutter.dart';
 Future<void> main() async {
   await TalariaFlutter.runZonedApp(
     TalariaOptions(
-      dsn: 'https://ingest.newtalaria.com',
+      url: 'https://ingest.newtalaria.com',
       apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
       minLevel: SeverityLevel.warning,
     ),

@@ -6,13 +6,13 @@ Future<void> main() async {
 
   await TalariaFlutter.init(
     TalariaOptions(
-      dsn: const String.fromEnvironment(
+      url: const String.fromEnvironment(
         'TALARIA_DSN',
         defaultValue: 'https://ingest.newtalaria.com',
       ),
       apiKey: const String.fromEnvironment(
         'TALARIA_API_KEY',
-        defaultValue: 'tal_live_replace_me',
+        defaultValue: 'tal_prod_replace_me',
       ),
       release: const String.fromEnvironment(
         'APP_RELEASE',

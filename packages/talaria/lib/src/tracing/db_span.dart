@@ -67,13 +67,19 @@ class DbSpan {
     }
   }
 
-  static void _breadcrumb(TalariaClient client, String system, String operation) {
-    client.addBreadcrumb(Breadcrumb(
-      type: 'query',
-      category: 'db',
-      message: operation.toUpperCase(),
-      level: 'info',
-      data: {'db.system.name': system},
-    ));
+  static void _breadcrumb(
+    TalariaClient client,
+    String system,
+    String operation,
+  ) {
+    client.addBreadcrumb(
+      Breadcrumb(
+        type: 'query',
+        category: 'db',
+        message: operation.toUpperCase(),
+        level: 'info',
+        data: {'db.system.name': system},
+      ),
+    );
   }
 }

@@ -1,5 +1,4 @@
-import 'release_env_stub.dart'
-    if (dart.library.io) 'release_env_io.dart';
+import 'release_env_stub.dart' if (dart.library.io) 'release_env_io.dart';
 
 /// A resolved `<ref>@<shortsha>` plus the full commit SHA.
 class ReleaseIdentity {
@@ -14,24 +13,29 @@ class ReleaseIdentity {
   static const definedRelease = String.fromEnvironment('TALARIA_RELEASE');
   static const definedCommitSha = String.fromEnvironment('TALARIA_COMMIT_SHA');
 
-  /// Explicit values win. `--dart-define` is next. CI env fills both only when
-  /// release and commit SHA are still empty.
+  /// Explicit values win. `--dart-define` is next. `TALARIA_*` env vars follow,
+  /// then `OTEL_*`, then CI env fills both only when release and commit SHA are
+  /// still empty. Precedence: code > TALARIA_* > OTEL_* > CI > default.
   static ReleaseIdentity resolve({
     String? release,
     String? commitSha,
     Map<String, String>? env,
   }) {
     final variables = env ?? releaseEnvironment();
-    final explicitRelease = _nonEmpty(release) ??
+    final explicitRelease =
+        _nonEmpty(release) ??
         _nonEmpty(definedRelease) ??
-        _nonEmpty(variables['TALARIA_RELEASE']);
-    final explicitSha = _nonEmpty(commitSha) ??
+        _nonEmpty(variables['TALARIA_RELEASE']) ??
+        _nonEmpty(variables['OTEL_SERVICE_VERSION']);
+    final explicitSha =
+        _nonEmpty(commitSha) ??
         _nonEmpty(definedCommitSha) ??
         _nonEmpty(variables['TALARIA_COMMIT_SHA']);
     final ci = _fromCi(variables);
 
     if (explicitRelease != null || explicitSha != null) {
-      final matchesCi = explicitRelease != null &&
+      final matchesCi =
+          explicitRelease != null &&
           ci.release != null &&
           explicitRelease == ci.release;
       return ReleaseIdentity(

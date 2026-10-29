@@ -9,11 +9,11 @@ import 'transport.dart';
 /// `quota` or `network`.
 class IngestPausedException extends TransportException {
   IngestPausedException(this.reason, Duration remaining, {String? label})
-      : super(
-          'Talaria ${label ?? 'request'} paused ($reason) for '
-          '${remaining.inSeconds}s',
-          retryAfter: remaining,
-        );
+    : super(
+        'Talaria ${label ?? 'request'} paused ($reason) for '
+        '${remaining.inSeconds}s',
+        retryAfter: remaining,
+      );
 
   final String reason;
 }
@@ -51,8 +51,8 @@ class IngestBackoff {
     this.maxDelay = const Duration(minutes: 5),
     this.quotaPause = const Duration(minutes: 10),
     this.maxQuotaPause = const Duration(hours: 1),
-  })  : _clock = clock ?? DateTime.now,
-        _random = random ?? Random();
+  }) : _clock = clock ?? DateTime.now,
+       _random = random ?? Random();
 
   /// First transient-failure pause; doubles on each consecutive failure.
   final Duration baseDelay;
@@ -169,13 +169,14 @@ class IngestBackoff {
   /// [wait] plus up to 20%, so clients told the same `Retry-After` don't
   /// all come back in the same second.
   Duration _jitterUp(Duration wait) => Duration(
-        milliseconds: wait.inMilliseconds +
-            (_random.nextDouble() * wait.inMilliseconds * 0.2).round(),
-      );
+    milliseconds:
+        wait.inMilliseconds +
+        (_random.nextDouble() * wait.inMilliseconds * 0.2).round(),
+  );
 
   /// Between half and all of [wait].
   Duration _fullJitter(Duration wait) => Duration(
-        milliseconds:
-            (wait.inMilliseconds * (0.5 + _random.nextDouble() * 0.5)).round(),
-      );
+    milliseconds: (wait.inMilliseconds * (0.5 + _random.nextDouble() * 0.5))
+        .round(),
+  );
 }

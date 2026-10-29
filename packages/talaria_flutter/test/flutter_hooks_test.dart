@@ -19,7 +19,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -60,7 +60,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -104,7 +104,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -136,7 +136,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -168,7 +168,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -231,7 +231,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -258,7 +258,7 @@ void main() {
     final client = await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -289,7 +289,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -338,7 +338,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -380,7 +380,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -448,7 +448,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),

@@ -12,8 +12,8 @@ void main() {
   test('HttpClient created after init continues the active trace', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );

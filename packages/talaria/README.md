@@ -24,7 +24,7 @@ The API key decides the environment.
 import 'package:talaria/talaria.dart';
 
 await Talaria.init(TalariaOptions(
-  dsn: 'https://ingest.newtalaria.com',
+  url: 'https://ingest.newtalaria.com',
   apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
   release: '1.4.2',
   minLevel: SeverityLevel.warning,

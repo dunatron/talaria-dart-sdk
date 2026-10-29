@@ -13,10 +13,7 @@ import 'flag_evaluation.dart';
 class LocalFlagEvaluator {
   const LocalFlagEvaluator();
 
-  FlagEvaluationResult evaluate(
-    FlagDefinition flag,
-    LocalFlagContext context,
-  ) {
+  FlagEvaluationResult evaluate(FlagDefinition flag, LocalFlagContext context) {
     if (!flag.enabled) {
       return _serve(flag, flag.offVariationKey, reason: 'off');
     }
@@ -51,7 +48,8 @@ class LocalFlagEvaluator {
     String variationKey, {
     required String reason,
   }) {
-    final variation = flag.variationByKey(variationKey) ??
+    final variation =
+        flag.variationByKey(variationKey) ??
         flag.variationByKey(flag.offVariationKey) ??
         (flag.variations.isNotEmpty ? flag.variations.first : null);
     return FlagEvaluationResult(
@@ -60,7 +58,8 @@ class LocalFlagEvaluator {
       value: variation?.value,
       version: flag.version,
       reason: reason,
-      valueJson: variation?.valueJson ??
+      valueJson:
+          variation?.valueJson ??
           FlagEvaluationResult.encodeValueJson(variation?.value),
     );
   }
@@ -131,10 +130,7 @@ class LocalFlagEvaluator {
   static int bucket(String flagKey, String bucketKey) {
     final digest = sha256.convert(utf8.encode('$flagKey\n$bucketKey'));
     final bytes = digest.bytes;
-    final n = (bytes[0] << 24) |
-        (bytes[1] << 16) |
-        (bytes[2] << 8) |
-        bytes[3];
+    final n = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
     return n.abs() % 100;
   }
 }

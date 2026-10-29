@@ -31,16 +31,16 @@ Map<String, Object?> unwrapServerpodResult(Map<String, Object?> raw) {
 /// Wrap application HTTP separately, or pass [spanHttpClient] for span ingest.
 class HttpTransport implements Transport {
   HttpTransport({
-    required this.baseUrl,
+    required this.url,
     required this.apiKey,
     this.timeout = const Duration(seconds: 3),
     http.Client? httpClient,
     http.Client? spanHttpClient,
-  })  : _http = httpClient ?? http.Client(),
-        _ownsClient = httpClient == null,
-        _spanHttp = spanHttpClient;
+  }) : _http = httpClient ?? http.Client(),
+       _ownsClient = httpClient == null,
+       _spanHttp = spanHttpClient;
 
-  final String baseUrl;
+  final String url;
   final String apiKey;
   final Duration timeout;
   final http.Client _http;
@@ -102,10 +102,10 @@ class HttpTransport implements Transport {
     };
 
     await _postJson(
-      path: '/events/ingestBatch',
+      path: '/v1/events',
       payload: payload,
       client: _http,
-      label: 'events/ingestBatch',
+      label: 'v1/events',
     );
   }
 
@@ -123,10 +123,10 @@ class HttpTransport implements Transport {
     };
 
     await _postJson(
-      path: '/spans/ingestBatch',
+      path: '/v1/spans',
       payload: payload,
       client: _spansClient,
-      label: 'spans/ingestBatch',
+      label: 'v1/spans',
     );
   }
 
@@ -144,10 +144,10 @@ class HttpTransport implements Transport {
     };
 
     await _postJson(
-      path: '/analytics/ingestBatch',
+      path: '/v1/analytics',
       payload: payload,
       client: _http,
-      label: 'analytics/ingestBatch',
+      label: 'v1/analytics',
     );
   }
 
@@ -220,9 +220,7 @@ class HttpTransport implements Transport {
   }
 
   @override
-  Future<Map<String, Object?>> evaluateFlags(
-    Map<String, Object?> input,
-  ) async {
+  Future<Map<String, Object?>> evaluateFlags(Map<String, Object?> input) async {
     final body = <String, Object?>{
       '__className__': 'EvaluateFlagsInput',
       ...input,
@@ -286,7 +284,7 @@ class HttpTransport implements Transport {
     required String label,
     Duration? timeout,
   }) async {
-    final uri = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}$path');
+    final uri = Uri.parse('${url.replaceAll(RegExp(r'/+$'), '')}$path');
 
     final (body, gzipped) = encodeBody(jsonEncode(payload));
     late http.Response response;
@@ -311,10 +309,7 @@ class HttpTransport implements Transport {
         );
       }
     } catch (e) {
-      throw TransportException(
-        'Talaria $label failed: $e',
-        cause: e,
-      );
+      throw TransportException('Talaria $label failed: $e', cause: e);
     }
 
     final status = response.statusCode;
@@ -336,7 +331,8 @@ class HttpTransport implements Transport {
       className: parsed.className,
       retry: parsed.retry,
       bodyMessage: parsed.message,
-      retryAfter: retryAfterOf(response.headers['retry-after']) ??
+      retryAfter:
+          retryAfterOf(response.headers['retry-after']) ??
           (parsed.retryAfterSeconds == null
               ? null
               : Duration(seconds: parsed.retryAfterSeconds!)),

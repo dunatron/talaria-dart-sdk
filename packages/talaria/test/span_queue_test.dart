@@ -13,13 +13,13 @@ import 'package:test/test.dart';
 final _start = DateTime.utc(2026, 10, 19);
 
 FinishedSpan _span(int i) => FinishedSpan(
-      traceId: i.toRadixString(16).padLeft(32, '0'),
-      spanId: (i + 1).toRadixString(16).padLeft(16, '0'),
-      name: 'GET /x/$i',
-      kind: SpanKind.server,
-      startTime: _start,
-      endTime: _start.add(const Duration(milliseconds: 1)),
-    );
+  traceId: i.toRadixString(16).padLeft(32, '0'),
+  spanId: (i + 1).toRadixString(16).padLeft(16, '0'),
+  name: 'GET /x/$i',
+  kind: SpanKind.server,
+  startTime: _start,
+  endTime: _start.add(const Duration(milliseconds: 1)),
+);
 
 int _spanCount(FakeTransport t) =>
     t.spanBatches.fold(0, (sum, b) => sum + b.length);
@@ -225,16 +225,17 @@ void main() {
   });
 
   group('TalariaClient', () {
-    TalariaOptions options({int flushIntervalMs = 2000}) => TalariaOptions(
-          dsn: 'https://api.example.com',
-          apiKey: 'tal_live_test_key_for_unit_tests',
+    TalariaOptions options({int flushIntervalMs = 2000}) =>
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
           defaultIntegrations: false,
           flushIntervalMs: flushIntervalMs,
         )..applySdkDocument({
-            'schemaVersion': 1,
-            'active': true,
-            'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-          });
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
 
     test('span export defaults', () {
       final o = options();
@@ -316,12 +317,12 @@ void main() {
 void _backoffTests() {
   group('with backoff', () {
     TransportException rateLimited(int seconds) => TransportException(
-          'HTTP 429',
-          statusCode: 429,
-          className: 'ApiRateLimitedException',
-          retry: true,
-          retryAfter: Duration(seconds: seconds),
-        );
+      'HTTP 429',
+      statusCode: 429,
+      className: 'ApiRateLimitedException',
+      retry: true,
+      retryAfter: Duration(seconds: seconds),
+    );
 
     test('a 429 holds the batch; it is resent after the pause, not before', () {
       fakeAsync((async) {
@@ -341,8 +342,11 @@ void _backoffTests() {
         async.flushMicrotasks();
         expect(transport.attempts, 1);
         expect(queue.count, 2, reason: 'rate-limited batch is kept');
-        expect(queue.hasPendingExport, isTrue,
-            reason: 'timer armed for the end of the pause');
+        expect(
+          queue.hasPendingExport,
+          isTrue,
+          reason: 'timer armed for the end of the pause',
+        );
 
         // An explicit flush doesn't override the pause.
         // ignore: discarded_futures
@@ -365,13 +369,15 @@ void _backoffTests() {
     test('a 402 drops the batch as quota and refuses new spans', () {
       fakeAsync((async) {
         final transport = _FailingTransport()
-          ..failures.add(TransportException(
-            'HTTP 402',
-            statusCode: 402,
-            className: 'ApiQuotaExceededException',
-            meter: 'spans',
-            retryAfter: const Duration(minutes: 2),
-          ));
+          ..failures.add(
+            TransportException(
+              'HTTP 402',
+              statusCode: 402,
+              className: 'ApiQuotaExceededException',
+              meter: 'spans',
+              retryAfter: const Duration(minutes: 2),
+            ),
+          );
         final discards = <(int, String)>[];
         DateTime clock() => _start.add(async.elapsed);
         final queue = SpanQueue(

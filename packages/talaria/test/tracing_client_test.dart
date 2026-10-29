@@ -17,8 +17,8 @@ void main() {
     double? tracesSampleRate,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -43,14 +43,8 @@ void main() {
     );
 
     final txn = client.startTransaction('checkout');
-    client.addBreadcrumb(Breadcrumb(
-      type: 'navigation',
-      message: '/checkout',
-    ));
-    client.addBreadcrumb(Breadcrumb(
-      type: 'http',
-      message: 'GET /pay',
-    ));
+    client.addBreadcrumb(Breadcrumb(type: 'navigation', message: '/checkout'));
+    client.addBreadcrumb(Breadcrumb(type: 'http', message: 'GET /pay'));
 
     try {
       throw StateError('pay failed');
@@ -112,8 +106,8 @@ void main() {
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_testkey',
       httpClient: httpClient,
     );
 
@@ -129,7 +123,7 @@ void main() {
       ),
     ]);
 
-    expect(path, '/spans/ingestBatch');
+    expect(path, '/v1/spans');
     expect(body!['input']['__className__'], 'IngestSpanBatchInput');
     final spans = body!['input']['spans'] as List;
     expect(spans.single['__className__'], 'IngestSpanInput');
@@ -161,7 +155,7 @@ void main() {
     expect(lastUri.toString(), contains('token=secret'));
 
     await wrapped.post(
-      Uri.parse('https://api.example.com/spans/ingestBatch'),
+      Uri.parse('https://api.example.com/v1/spans'),
       body: '{}',
     );
     // Ingest path is not given a new traceparent from a nested span; the

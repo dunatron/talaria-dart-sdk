@@ -15,8 +15,8 @@ void main() {
     double sampleRate = 1.0,
   }) {
     return TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_prod_test_key_for_unit_tests',
       minLevel: minLevel,
       enforceDefaultLevel: enforce,
       loggers: loggers,
@@ -30,8 +30,10 @@ void main() {
 
   test('direct client respects minLevel', () async {
     final transport = FakeTransport();
-    final client = TalariaClient(options(minLevel: SeverityLevel.warning),
-        transport: transport);
+    final client = TalariaClient(
+      options(minLevel: SeverityLevel.warning),
+      transport: transport,
+    );
 
     await client.info('nope');
     await client.warning('yep');
@@ -44,8 +46,10 @@ void main() {
 
   test('scoped logger may go below root when enforce is false', () async {
     final transport = FakeTransport();
-    final client = TalariaClient(options(minLevel: SeverityLevel.warning),
-        transport: transport);
+    final client = TalariaClient(
+      options(minLevel: SeverityLevel.warning),
+      transport: transport,
+    );
 
     final scoped = client.logger(minLevel: SeverityLevel.info);
     await scoped.info('verbose');
@@ -134,15 +138,15 @@ void main() {
     expect(transport.batches.first.single.message, 'from facade');
   });
 
-  test('apiKey must start with tal_live_', () {
-    expect(
-      () => TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'wrong',
-      ),
-      throwsArgumentError,
-    );
-  });
+  test(
+    'apiKey must start with tal_prod_, tal_stg_, tal_test_, or tal_dev_',
+    () {
+      expect(
+        () => TalariaOptions(url: 'https://api.example.com', apiKey: 'wrong'),
+        throwsArgumentError,
+      );
+    },
+  );
 
   test('invalid key disables further event capture', () async {
     final transport = _ThrowingTransport(
@@ -154,10 +158,7 @@ void main() {
         bodyMessage: 'Invalid API key',
       ),
     );
-    final client = TalariaClient(
-      options(),
-      transport: transport,
-    );
+    final client = TalariaClient(options(), transport: transport);
 
     await client.captureMessage('first');
     await client.flush();
@@ -254,8 +255,7 @@ class _ThrowingTransport implements Transport {
   @override
   Future<Map<String, Object?>> sendScreenHeatmapBatch(
     List<Map<String, Object?>> screenViews,
-  ) async =>
-      const {};
+  ) async => const {};
 
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {}
@@ -269,12 +269,10 @@ class _ThrowingTransport implements Transport {
   @override
   Future<Map<String, Object?>> evaluateFlags(
     Map<String, Object?> input,
-  ) async =>
-      const {};
+  ) async => const {};
 
   @override
   Future<Map<String, Object?>> downloadFlagDefinitions(
     Map<String, Object?> input,
-  ) async =>
-      const {};
+  ) async => const {};
 }

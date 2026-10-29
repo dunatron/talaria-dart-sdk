@@ -31,13 +31,13 @@ class SpanQueue {
     void Function(int count, String reason)? onDiscard,
     DateTime Function()? clock,
     IngestBackoff? backoff,
-  })  : assert(maxBatchSize > 0),
-        assert(maxExportsPerMinute > 0),
-        _transport = transport,
-        _backoff = backoff,
-        _onError = onError,
-        _onDiscard = onDiscard,
-        _clock = clock ?? DateTime.now;
+  }) : assert(maxBatchSize > 0),
+       assert(maxExportsPerMinute > 0),
+       _transport = transport,
+       _backoff = backoff,
+       _onError = onError,
+       _onDiscard = onDiscard,
+       _clock = clock ?? DateTime.now;
 
   final Transport _transport;
   final int maxBatchSize;
