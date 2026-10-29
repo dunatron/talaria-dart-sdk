@@ -32,9 +32,19 @@ Spans (when tracing is enabled):
 Analytics:
 
 - `POST {url}/v1/analytics`
-- Body: `{ "analytics": [ { "eventId": "…", "name": "…", "kind": "track", "anonymousId": "…", "sessionId": "…", "timestamp": "…" } ] }`
-- Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `anonymousId` + `sessionId`.
-- Discard counts: `POST {url}/v1/client-reports` with `{ "discards": [ { "signal", "reason", "count" } ] }`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`, `rate_limited`, `quota`.
+- Body: `{ "events": [ { "name": "…", "kind": "track", "anonymousId": "…", "sessionId": "…", "timestamp": "…" } ] }`
+- The array key is `events`. `analytics` is not a schema key.
+- `kind`: `track` | `page` | `screen` | `identify`
+- Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `name`, `kind`, `anonymousId`, `sessionId`, and `timestamp`.
+
+Screen heatmaps:
+
+- `POST {url}/v1/screen-heatmaps` with `{ "screenViews": [ … ] }`. `screenHeatmaps` is not a schema key.
+- Tap coordinates (`relX`, `relY`, `xBp`, `yBp`, `contentX`, `contentY`) are integers.
+- `POST {url}/v1/screen-heatmaps/snapshots` requires non-empty `pngBytes` (standard base64), `manifestJson`, `viewportWidth`, `viewportHeight`, `contentHeight`, `capturedAt`, and `tiles` (`offsetPx` + `pngBytes`).
+- `POST {url}/v1/screen-heatmaps/recordings` is `{ "recordingId", "screenViewId", "frames": [ { "offsetMs", "pngBytes" } ] }`.
+
+Discard counts: `POST {url}/v1/client-reports` with `{ "discards": [ { "signal", "reason", "count" } ] }`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`, `rate_limited`, `quota`.
 
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string

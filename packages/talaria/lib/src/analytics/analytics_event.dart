@@ -13,7 +13,7 @@ class AnalyticsEventNames {
   static const featureFlagCalled = r'$feature_flag_called';
 }
 
-/// In-memory analytics event ready to serialize as a plain JSON analytics item.
+/// In-memory analytics event ready to serialize as one `events` item.
 class AnalyticsEvent {
   AnalyticsEvent({
     required this.eventId,

@@ -223,7 +223,8 @@ class _TracingIoClient implements HttpClient {
       Uri url,
       String? proxyHost,
       int? proxyPort,
-    )? f,
+    )?
+    f,
   ) {
     _inner.connectionFactory = f;
   }
@@ -236,7 +237,7 @@ class _TracingIoClient implements HttpClient {
   @override
   set authenticateProxy(
     Future<bool> Function(String host, int port, String scheme, String? realm)?
-        f,
+    f,
   ) {
     _inner.authenticateProxy = f;
   }

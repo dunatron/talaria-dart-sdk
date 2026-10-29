@@ -5,7 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
 import 'flutter_web_info_stub.dart'
-    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
+    if (dart.library.js_interop) 'flutter_web_info_web.dart'
+    as web_info;
 
 /// Web `$pageview` follows the browser path, not every logical screen.
 bool shouldEmitWebPageView({
@@ -53,23 +54,20 @@ class ScreenSpanController {
     RuntimeContext.setUrl(label);
 
     final resolved = client ?? Talaria.getClient();
-    resolved?.setTags({
-      'route': label,
-      'screen': label,
-    });
-    resolved?.addBreadcrumb(Breadcrumb(
-      type: 'navigation',
-      category: 'navigation',
-      message: label,
-      data: {'ui.screen.name': label},
-    ));
+    resolved?.setTags({'route': label, 'screen': label});
+    resolved?.addBreadcrumb(
+      Breadcrumb(
+        type: 'navigation',
+        category: 'navigation',
+        message: label,
+        data: {'ui.screen.name': label},
+      ),
+    );
 
     _span = resolved?.startTransaction(
       label,
       kind: SpanKind.internal,
-      attributes: {
-        'ui.screen.name': label,
-      },
+      attributes: {'ui.screen.name': label},
     );
     final span = _span;
     if (span != null && span.isRecording) {
@@ -83,8 +81,9 @@ class ScreenSpanController {
     if (client == null || !client.analytics.isEnabled) {
       return;
     }
-    final screenTitle =
-        (title != null && title.trim().isNotEmpty) ? title.trim() : label;
+    final screenTitle = (title != null && title.trim().isNotEmpty)
+        ? title.trim()
+        : label;
     // ignore: discarded_futures
     client.analytics.screen(path: label, title: screenTitle);
     if (!kIsWeb) {

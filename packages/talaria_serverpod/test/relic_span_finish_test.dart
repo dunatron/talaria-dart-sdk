@@ -9,17 +9,17 @@ void main() {
 
   setUp(() {
     transport = FakeTransport();
-    final options = TalariaOptions(
-      url: 'https://api.example.com',
-      apiKey:
-          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
     client = TalariaClient(options, transport: transport);
   });
 

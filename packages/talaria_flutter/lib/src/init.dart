@@ -6,7 +6,8 @@ import 'package:talaria/talaria.dart';
 
 import 'flutter_runtime.dart';
 import 'flutter_web_info_stub.dart'
-    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
+    if (dart.library.js_interop) 'flutter_web_info_web.dart'
+    as web_info;
 import 'heatmaps/session.dart';
 import 'lifecycle_observer.dart';
 import 'screen_span.dart';
@@ -54,10 +55,7 @@ class TalariaFlutter {
 
     final flutterOptions = options.copyWith(
       platform: 'flutter',
-      tags: {
-        ...options.tags,
-        'flutter': 'true',
-      },
+      tags: {...options.tags, 'flutter': 'true'},
       defaultIntegrations: false,
       storage: storage,
     );
@@ -154,46 +152,42 @@ class TalariaFlutter {
   }) {
     final started = Completer<void>();
 
-    runZonedGuarded(() async {
-      WidgetsFlutterBinding.ensureInitialized();
-      await init(options, transport: transport);
-      ErrorWidget.builder = talariaErrorWidgetBuilder();
-      runApp(app);
-      if (!started.isCompleted) {
-        started.complete();
-      }
-    }, (Object error, StackTrace stack) {
-      final client = Talaria.getClient();
-      if (client != null) {
-        // ignore: discarded_futures
-        client.captureException(
-          error,
-          stackTrace: stack,
-          context: const CaptureContext(
-            mechanism: ExceptionMechanism(
-              type: 'zone',
-              handled: false,
+    runZonedGuarded(
+      () async {
+        WidgetsFlutterBinding.ensureInitialized();
+        await init(options, transport: transport);
+        ErrorWidget.builder = talariaErrorWidgetBuilder();
+        runApp(app);
+        if (!started.isCompleted) {
+          started.complete();
+        }
+      },
+      (Object error, StackTrace stack) {
+        final client = Talaria.getClient();
+        if (client != null) {
+          // ignore: discarded_futures
+          client.captureException(
+            error,
+            stackTrace: stack,
+            context: const CaptureContext(
+              mechanism: ExceptionMechanism(type: 'zone', handled: false),
             ),
-          ),
-        );
-        ScreenHeatmapController.instance.noteError();
-      } else {
-        debugPrint('[Talaria] early zone error: $error\n$stack');
-      }
-      if (!started.isCompleted) {
-        started.completeError(error, stack);
-      }
-    });
+          );
+          ScreenHeatmapController.instance.noteError();
+        } else {
+          debugPrint('[Talaria] early zone error: $error\n$stack');
+        }
+        if (!started.isCompleted) {
+          started.completeError(error, stack);
+        }
+      },
+    );
 
     return started.future;
   }
 
   /// Short INTERNAL screen span + breadcrumb for IndexedStack / tab hosts.
-  static void setScreen(
-    String name, {
-    TalariaClient? client,
-    String? title,
-  }) {
+  static void setScreen(String name, {TalariaClient? client, String? title}) {
     ScreenSpanController.instance.start(name, client: client, title: title);
     ScreenHeatmapController.instance.setManualScreen(name);
   }

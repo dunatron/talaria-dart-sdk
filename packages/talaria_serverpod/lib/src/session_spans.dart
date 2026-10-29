@@ -20,8 +20,9 @@ class SessionSpans {
     return nameFor(
       endpoint: session.endpoint,
       method: session.method,
-      futureCallName:
-          session is FutureCallSession ? session.futureCallName : null,
+      futureCallName: session is FutureCallSession
+          ? session.futureCallName
+          : null,
     );
   }
 
@@ -50,8 +51,9 @@ class SessionSpans {
     return attributesFor(
       endpoint: session.endpoint,
       method: session.method,
-      futureCallName:
-          session is FutureCallSession ? session.futureCallName : null,
+      futureCallName: session is FutureCallSession
+          ? session.futureCallName
+          : null,
       isMethodStream: session is MethodStreamSession,
     );
   }

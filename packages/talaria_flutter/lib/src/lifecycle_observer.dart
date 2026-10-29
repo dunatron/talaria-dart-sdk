@@ -24,7 +24,7 @@ class TalariaLifecycleEvents {
 /// transient interruptions such as the app switcher or a notification shade.
 class LifecycleObserver with WidgetsBindingObserver {
   LifecycleObserver(this._client, {bool trackAnalytics = true})
-      : _trackAnalytics = trackAnalytics;
+    : _trackAnalytics = trackAnalytics;
 
   final TalariaClient _client;
   final bool _trackAnalytics;

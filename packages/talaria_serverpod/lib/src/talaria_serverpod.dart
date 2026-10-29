@@ -117,16 +117,19 @@ class TalariaServerpod {
       return;
     }
 
-    final sessionId =
-        context is OperationEventContext ? context.sessionId?.toString() : null;
-    final resolvedSessionId =
-        (sessionId != null && sessionId.isNotEmpty) ? sessionId : null;
+    final sessionId = context is OperationEventContext
+        ? context.sessionId?.toString()
+        : null;
+    final resolvedSessionId = (sessionId != null && sessionId.isNotEmpty)
+        ? sessionId
+        : null;
     final uri = context is ClientCallOpContext ? context.uri.toString() : null;
     final userId = context is OperationEventContext
         ? context.userAuthInfo?.userIdentifier.trim()
         : null;
-    final fromSession =
-        resolvedSessionId == null ? null : _sessionUsers[resolvedSessionId];
+    final fromSession = resolvedSessionId == null
+        ? null
+        : _sessionUsers[resolvedSessionId];
     final resolvedUserId = _firstUser(userId, fromSession);
 
     final sameRequest =
@@ -141,8 +144,9 @@ class TalariaServerpod {
       }
     }
 
-    final callerTags =
-        resolvedSessionId == null ? null : _sessionTags[resolvedSessionId];
+    final callerTags = resolvedSessionId == null
+        ? null
+        : _sessionTags[resolvedSessionId];
     final tags = callerTags == null || callerTags.isEmpty
         ? null
         : Map<String, String>.from(callerTags);
