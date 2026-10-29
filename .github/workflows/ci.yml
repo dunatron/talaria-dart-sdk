@@ -33,6 +33,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Resolve talaria from this repo
+        run: |
+          cat > pubspec_overrides.yaml << 'EOF'
+          dependency_overrides:
+            talaria:
+              path: ../talaria
+          EOF
       - run: flutter pub get
       - run: dart format --set-exit-if-changed .
       - run: flutter analyze --fatal-infos
@@ -49,6 +56,13 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: stable
+      - name: Resolve talaria from this repo
+        run: |
+          cat > pubspec_overrides.yaml << 'EOF'
+          dependency_overrides:
+            talaria:
+              path: ../talaria
+          EOF
       - run: dart pub get
       - run: dart format --set-exit-if-changed .
       - run: dart analyze --fatal-infos
