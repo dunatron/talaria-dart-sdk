@@ -51,8 +51,7 @@ class ClassifiedTap {
 }
 
 class _PendingTap {
-  _PendingTap(this.sample, this.at)
-      : observeUntil = at + deadWindowMs;
+  _PendingTap(this.sample, this.at) : observeUntil = at + deadWindowMs;
 
   final TapSample sample;
   final int at;

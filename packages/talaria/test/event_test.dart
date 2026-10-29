@@ -2,7 +2,7 @@ import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('Event.toWire includes className and required fields', () {
+  test('Event.toWire is plain JSON with required fields', () {
     final event = Event(
       message: 'boom',
       level: SeverityLevel.error,
@@ -11,11 +11,11 @@ void main() {
       tags: {'a': '1'},
       extraJson: '{"x":1}',
       userAgent: 'Mozilla/5.0',
-      exception: {'__className__': 'ExceptionDataDto', 'values': <Object?>[]},
+      exception: {'values': <Object?>[]},
     );
 
     final wire = event.toWire();
-    expect(wire['__className__'], 'IngestEventInput');
+    expect(wire.containsKey('__className__'), isFalse);
     expect(wire['message'], 'boom');
     expect(wire['level'], 'error');
     expect(wire['eventType'], 'error');
@@ -35,7 +35,6 @@ void main() {
       spanId: 'b7ad6b7169203331',
       breadcrumbs: [
         {
-          '__className__': 'BreadcrumbDto',
           'timestamp': '2026-01-01T00:00:00.000Z',
           'type': 'http',
         },

@@ -7,7 +7,7 @@ enum SpanKind { internal, server, client, producer, consumer }
 /// OTel span status wire values (`SpanStatusWire`).
 enum SpanStatus { unset, ok, error }
 
-/// Optional span event (`SpanEventDto`).
+/// Optional span event.
 class SpanEvent {
   SpanEvent({required this.name, DateTime? timestamp, this.attributes})
       : timestamp = (timestamp ?? DateTime.now()).toUtc();
@@ -18,7 +18,6 @@ class SpanEvent {
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
-      '__className__': 'SpanEventDto',
       'timestamp': RuntimeContext.isoTimestamp(timestamp),
       'name': name,
     };
@@ -29,7 +28,7 @@ class SpanEvent {
   }
 }
 
-/// Optional span link (`SpanLinkDto`).
+/// Optional span link.
 class SpanLink {
   const SpanLink({required this.traceId, required this.spanId});
 
@@ -37,7 +36,6 @@ class SpanLink {
   final String spanId;
 
   Map<String, Object?> toWire() => {
-        '__className__': 'SpanLinkDto',
         'traceId': traceId,
         'spanId': spanId,
       };
@@ -75,7 +73,7 @@ abstract class Span {
   Traceparent toTraceparent();
 }
 
-/// Finished span ready for `IngestSpanInput`.
+/// Finished span ready for a plain JSON `/v1/spans` item.
 class FinishedSpan {
   FinishedSpan({
     required this.traceId,
@@ -124,7 +122,6 @@ class FinishedSpan {
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
-      '__className__': 'IngestSpanInput',
       'traceId': traceId,
       'spanId': spanId,
       'name': name,

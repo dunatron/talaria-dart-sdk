@@ -1,7 +1,7 @@
 import '../capture_context.dart';
 import 'stack_frame_builder.dart';
 
-/// Builds Serverpod `ExceptionDataDto` wire trees from Dart errors.
+/// Builds plain JSON exception trees from Dart errors.
 class ExceptionPayloadBuilder {
   ExceptionPayloadBuilder._();
 
@@ -18,15 +18,13 @@ class ExceptionPayloadBuilder {
     );
 
     final value = <String, Object?>{
-      '__className__': 'ExceptionValueDto',
       'type': typeName(error),
       'value': messageOf(error),
       'mechanism': mechanismWire,
-      'stacktrace': {'__className__': 'StackTraceDto', 'frames': frames},
+      'stacktrace': {'frames': frames},
     };
 
     return {
-      '__className__': 'ExceptionDataDto',
       'values': [value],
     };
   }

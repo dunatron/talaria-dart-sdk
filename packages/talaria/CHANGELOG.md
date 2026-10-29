@@ -2,6 +2,7 @@
 
 ## 0.4.0
 
+- Analytics, event (log and exception), span, breadcrumb, and screen-heatmap bodies are plain JSON. They do not include Serverpod `__className__` or other wire class markers. Ingest rejects those fields with 400 `body does not match the route schema`.
 - Hard cut onto the locked `/v1` contract (platform PR #234 at `571c590c`).
 - API keys are `tal_pk_<env>_<cell>_<43 base62><6 CRC32 base62>` or `tal_sk_…`, checksum alphabet `0-9A-Za-z`. `tal_live_` and class-less `tal_<env>_` keys are invalid. Monitor tokens (`tal_mon_…`) are not SDK api keys.
 - The ingest URL is `https://ingest-<cell>.newtalaria.com` unless `url` or `TALARIA_URL` is set. A `self` cell fails fast without that override.

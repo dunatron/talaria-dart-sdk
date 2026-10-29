@@ -1,6 +1,6 @@
 import 'package:stack_trace/stack_trace.dart' as st;
 
-/// Builds Serverpod `StackFrameDto` wire maps from Dart stack traces.
+/// Builds plain JSON stack-frame maps from Dart stack traces.
 class StackFrameBuilder {
   StackFrameBuilder._();
 
@@ -30,7 +30,6 @@ class StackFrameBuilder {
     String framePlatform,
   ) {
     final wire = <String, Object?>{
-      '__className__': 'StackFrameDto',
       'platform': framePlatform,
       'inApp': isInApp(frame.uri.toString()),
     };
