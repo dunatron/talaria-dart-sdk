@@ -33,8 +33,9 @@ void main() {
   late _UploadTransport transport;
 
   TalariaOptions options({bool flags = false}) => TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -56,53 +57,66 @@ void main() {
   });
 
   group('screen heatmaps', () {
-    test('a 429 pauses every heatmap upload for Retry-After plus jitter',
-        () async {
-      final c = client();
-      transport.heatmapFailures.add(_rateLimited(30));
-      await expectLater(
-        c.sendScreenHeatmapBatch([_view('a')]),
-        throwsA(isA<TransportException>()
-            .having((e) => e.isRateLimited, 'isRateLimited', isTrue)),
-      );
-      expect(transport.heatmapCalls, 1);
-      final paused = c.heatmapsPausedFor!;
-      expect(paused, greaterThanOrEqualTo(const Duration(seconds: 30)));
-      expect(paused, lessThanOrEqualTo(const Duration(seconds: 36)));
+    test(
+      'a 429 pauses every heatmap upload for Retry-After plus jitter',
+      () async {
+        final c = client();
+        transport.heatmapFailures.add(_rateLimited(30));
+        await expectLater(
+          c.sendScreenHeatmapBatch([_view('a')]),
+          throwsA(
+            isA<TransportException>().having(
+              (e) => e.isRateLimited,
+              'isRateLimited',
+              isTrue,
+            ),
+          ),
+        );
+        expect(transport.heatmapCalls, 1);
+        final paused = c.heatmapsPausedFor!;
+        expect(paused, greaterThanOrEqualTo(const Duration(seconds: 30)));
+        expect(paused, lessThanOrEqualTo(const Duration(seconds: 36)));
 
-      // Batch, snapshot and recording are all refused locally.
-      await expectLater(
-        c.sendScreenHeatmapBatch([_view('a')]),
-        throwsA(isA<IngestPausedException>()
-            .having((e) => e.reason, 'reason', 'rate_limited')),
-      );
-      await expectLater(
-        c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'}),
-        throwsA(isA<IngestPausedException>()),
-      );
-      await expectLater(
-        c.uploadScreenHeatmapRecording({'recordingId': 'r'}),
-        throwsA(isA<IngestPausedException>()),
-      );
-      expect(transport.heatmapCalls, 1, reason: 'nothing sent while paused');
+        // Batch, snapshot and recording are all refused locally.
+        await expectLater(
+          c.sendScreenHeatmapBatch([_view('a')]),
+          throwsA(
+            isA<IngestPausedException>().having(
+              (e) => e.reason,
+              'reason',
+              'rate_limited',
+            ),
+          ),
+        );
+        await expectLater(
+          c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'}),
+          throwsA(isA<IngestPausedException>()),
+        );
+        await expectLater(
+          c.uploadScreenHeatmapRecording({'recordingId': 'r'}),
+          throwsA(isA<IngestPausedException>()),
+        );
+        expect(transport.heatmapCalls, 1, reason: 'nothing sent while paused');
 
-      now = now.add(const Duration(seconds: 37));
-      expect(c.heatmapsPausedFor, isNull);
-      await c.sendScreenHeatmapBatch([_view('a')]);
-      await c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'});
-      expect(transport.heatmapCalls, 2);
-      expect(transport.snapshotCalls, 1);
+        now = now.add(const Duration(seconds: 37));
+        expect(c.heatmapsPausedFor, isNull);
+        await c.sendScreenHeatmapBatch([_view('a')]);
+        await c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'});
+        expect(transport.heatmapCalls, 2);
+        expect(transport.snapshotCalls, 1);
 
-      // A rate limit keeps the data with the caller: no discard row.
-      await c.flush();
-      expect(transport.discardRows, isEmpty);
-      await c.close();
-    });
+        // A rate limit keeps the data with the caller: no discard row.
+        await c.flush();
+        expect(transport.discardRows, isEmpty);
+        await c.close();
+      },
+    );
 
     test('a 402 pauses until resetAt and counts heatmaps/quota', () async {
       final c = client();
-      transport.heatmapFailures
-          .add(_quota(resetAt: _t0.add(const Duration(minutes: 20))));
+      transport.heatmapFailures.add(
+        _quota(resetAt: _t0.add(const Duration(minutes: 20))),
+      );
       await expectLater(
         c.sendScreenHeatmapBatch([_view('a'), _view('b')]),
         throwsA(isA<TransportException>()),
@@ -110,8 +124,13 @@ void main() {
       expect(c.heatmapsPausedFor, const Duration(minutes: 20));
       await expectLater(
         c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'}),
-        throwsA(isA<IngestPausedException>()
-            .having((e) => e.reason, 'reason', 'quota')),
+        throwsA(
+          isA<IngestPausedException>().having(
+            (e) => e.reason,
+            'reason',
+            'quota',
+          ),
+        ),
       );
       await c.flush();
       expect(transport.discardRows, [('heatmaps', 'quota', 2)]);
@@ -122,26 +141,29 @@ void main() {
       await c.close();
     });
 
-    test('a 402 re-checks within an hour, or after 10 min without a reset',
-        () async {
-      final c = client();
-      transport.recordingFailures
-          .add(_quota(resetAt: _t0.add(const Duration(days: 12))));
-      await expectLater(
-        c.uploadScreenHeatmapRecording({'recordingId': 'r'}),
-        throwsA(isA<TransportException>()),
-      );
-      expect(c.heatmapsPausedFor, const Duration(hours: 1));
+    test(
+      'a 402 re-checks within an hour, or after 10 min without a reset',
+      () async {
+        final c = client();
+        transport.recordingFailures.add(
+          _quota(resetAt: _t0.add(const Duration(days: 12))),
+        );
+        await expectLater(
+          c.uploadScreenHeatmapRecording({'recordingId': 'r'}),
+          throwsA(isA<TransportException>()),
+        );
+        expect(c.heatmapsPausedFor, const Duration(hours: 1));
 
-      now = now.add(const Duration(hours: 1, seconds: 1));
-      transport.snapshotFailures.add(_quota());
-      await expectLater(
-        c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'}),
-        throwsA(isA<TransportException>()),
-      );
-      expect(c.heatmapsPausedFor, const Duration(minutes: 10));
-      await c.close();
-    });
+        now = now.add(const Duration(hours: 1, seconds: 1));
+        transport.snapshotFailures.add(_quota());
+        await expectLater(
+          c.uploadScreenHeatmapSnapshot({'screenViewId': 'a'}),
+          throwsA(isA<TransportException>()),
+        );
+        expect(c.heatmapsPausedFor, const Duration(minutes: 10));
+        await c.close();
+      },
+    );
 
     test('heatmap backoff leaves events and spans alone', () async {
       final c = client();
@@ -171,40 +193,42 @@ void main() {
           ],
         };
 
-    test('a 429 keeps the last evaluations and skips the network until it ends',
-        () async {
-      var reply = evaluation('on');
-      final failures = <TransportException>[];
-      transport.onEvaluateFlags = (_) async {
-        if (failures.isNotEmpty) throw failures.removeAt(0);
-        return reply;
-      };
-      final c = client(flags: true);
-      await c.flags.reload();
-      expect(c.flags.activeFlags['demo'], 'on');
-      expect(transport.evaluateCalls, hasLength(1));
+    test(
+      'a 429 keeps the last evaluations and skips the network until it ends',
+      () async {
+        var reply = evaluation('on');
+        final failures = <TransportException>[];
+        transport.onEvaluateFlags = (_) async {
+          if (failures.isNotEmpty) throw failures.removeAt(0);
+          return reply;
+        };
+        final c = client(flags: true);
+        await c.flags.reload();
+        expect(c.flags.activeFlags['demo'], 'on');
+        expect(transport.evaluateCalls, hasLength(1));
 
-      failures.add(_rateLimited(120));
-      reply = evaluation('off');
-      await c.flags.reload();
-      expect(transport.evaluateCalls, hasLength(2));
-      expect(c.flags.activeFlags['demo'], 'on', reason: 'last good kept');
-      final paused = c.flagsPausedFor!;
-      expect(paused, greaterThanOrEqualTo(const Duration(seconds: 120)));
+        failures.add(_rateLimited(120));
+        reply = evaluation('off');
+        await c.flags.reload();
+        expect(transport.evaluateCalls, hasLength(2));
+        expect(c.flags.activeFlags['demo'], 'on', reason: 'last good kept');
+        final paused = c.flagsPausedFor!;
+        expect(paused, greaterThanOrEqualTo(const Duration(seconds: 120)));
 
-      await c.flags.reload();
-      expect(transport.evaluateCalls, hasLength(2), reason: 'paused');
+        await c.flags.reload();
+        expect(transport.evaluateCalls, hasLength(2), reason: 'paused');
 
-      now = now.add(const Duration(seconds: 145));
-      await c.flags.reload();
-      expect(transport.evaluateCalls, hasLength(3));
-      expect(c.flags.activeFlags['demo'], 'off');
+        now = now.add(const Duration(seconds: 145));
+        await c.flags.reload();
+        expect(transport.evaluateCalls, hasLength(3));
+        expect(c.flags.activeFlags['demo'], 'off');
 
-      // Flags aren't telemetry: nothing is reported as a discard.
-      await c.flush();
-      expect(transport.discardRows, isEmpty);
-      await c.close();
-    });
+        // Flags aren't telemetry: nothing is reported as a discard.
+        await c.flush();
+        expect(transport.discardRows, isEmpty);
+        await c.close();
+      },
+    );
 
     test('a 402 on flags pauses for 10 min without a reset time', () async {
       transport.onEvaluateFlags = (_) async => throw _quota();

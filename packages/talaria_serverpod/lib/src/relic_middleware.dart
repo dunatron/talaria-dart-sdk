@@ -23,66 +23,62 @@ Middleware talariaRelicMiddleware(
       final requestId = incoming?.traceId;
       final crumbs = BreadcrumbBuffer();
 
-      return BreadcrumbScope.runWithAsync(
-        () {
-          return RuntimeContext.runWithAsync(
-            () async {
-              if (!client.tracer.isEnabled ||
-                  TalariaServerpodPaths.isNoisy(req.url) ||
-                  (skip?.call(req.url) ?? false)) {
-                return innerHandler(req);
-              }
+      return BreadcrumbScope.runWithAsync(() {
+        return RuntimeContext.runWithAsync(
+          () async {
+            if (!client.tracer.isEnabled ||
+                TalariaServerpodPaths.isNoisy(req.url) ||
+                (skip?.call(req.url) ?? false)) {
+              return innerHandler(req);
+            }
 
-              return SpanScope.runAsync(() async {
-                final method = req.method.value;
-                final route = TalariaServerpodPaths.httpRoute(req.url);
-                final span = client.startTransaction(
-                  '$method $route',
-                  kind: SpanKind.server,
-                  attributes: {
-                    'http.request.method': method,
-                    'http.route': route,
-                    'url.path': req.url.path.isEmpty ? '/' : req.url.path,
-                  },
-                  parent: incoming,
-                );
-                client.addBreadcrumb(Breadcrumb(
+            return SpanScope.runAsync(() async {
+              final method = req.method.value;
+              final route = TalariaServerpodPaths.httpRoute(req.url);
+              final span = client.startTransaction(
+                '$method $route',
+                kind: SpanKind.server,
+                attributes: {
+                  'http.request.method': method,
+                  'http.route': route,
+                  'url.path': req.url.path.isEmpty ? '/' : req.url.path,
+                },
+                parent: incoming,
+              );
+              client.addBreadcrumb(
+                Breadcrumb(
                   type: 'http',
                   category: 'http',
                   message: '$method $route',
                   level: 'info',
-                  data: {
-                    'http.request.method': method,
-                    'http.route': route,
-                  },
-                ));
+                  data: {'http.request.method': method, 'http.route': route},
+                ),
+              );
 
-                try {
-                  final result = await innerHandler(req);
-                  if (result is Response) {
-                    RelicSpanFinish.onResponse(span, result.statusCode);
-                  } else {
-                    RelicSpanFinish.onResponse(span, null);
-                  }
-                  return result;
-                } catch (e) {
-                  RelicSpanFinish.onThrow(span, e);
-                  rethrow;
-                } finally {
-                  // No flush here: one export per request hit the per-key
-                  // rate limit at about 100 traced requests a minute. The
-                  // client sends spans in batches, and attach() flushes on
-                  // shutdown.
-                  span.finish();
+              try {
+                final result = await innerHandler(req);
+                if (result is Response) {
+                  RelicSpanFinish.onResponse(span, result.statusCode);
+                } else {
+                  RelicSpanFinish.onResponse(span, null);
                 }
-              });
-            },
-            url: url,
-            requestId: requestId,
-          );
-        },
-        buffer: crumbs,
-      );
+                return result;
+              } catch (e) {
+                RelicSpanFinish.onThrow(span, e);
+                rethrow;
+              } finally {
+                // No flush here: one export per request hit the per-key
+                // rate limit at about 100 traced requests a minute. The
+                // client sends spans in batches, and attach() flushes on
+                // shutdown.
+                span.finish();
+              }
+            });
+          },
+          url: url,
+          requestId: requestId,
+        );
+      }, buffer: crumbs);
     };
   };
 }

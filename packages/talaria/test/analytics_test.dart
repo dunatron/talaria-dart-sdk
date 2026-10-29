@@ -18,8 +18,9 @@ void main() {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: platform,
       storage: storage,
       defaultIntegrations: false,
@@ -99,8 +100,10 @@ void main() {
     expect(events[0].kind, AnalyticsEventKind.track);
     expect(events[1].kind, AnalyticsEventKind.page);
     expect(events[2].kind, AnalyticsEventKind.screen);
-    expect(jsonDecode(events[0].propertiesJson!),
-        {'product_id': '123', 'price': 129.99});
+    expect(jsonDecode(events[0].propertiesJson!), {
+      'product_id': '123',
+      'price': 129.99,
+    });
     await client.close();
   });
 
@@ -192,8 +195,9 @@ void main() {
   test('sample rate discards are reported', () async {
     final transport = FakeTransport();
     final opts = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -282,8 +286,9 @@ void main() {
   test('stamps live traceId and spanId', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: 'flutter',
       defaultIntegrations: false,
       flushIntervalMs: 0,
@@ -293,10 +298,7 @@ void main() {
         'analytics': {'enabled': true},
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final client = TalariaClient(options, transport: transport);
 
     final txn = client.startTransaction('checkout');
     await client.analytics.track('pay');
@@ -312,8 +314,9 @@ void main() {
   test('events and spans include anonymousId', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -321,10 +324,7 @@ void main() {
         'active': true,
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final client = TalariaClient(options, transport: transport);
 
     await client.warning('hello');
     final span = client.startTransaction('work');
@@ -347,8 +347,9 @@ void main() {
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -364,10 +365,9 @@ void main() {
       ),
     ]);
 
-    expect(path, '/analytics/ingestBatch');
-    expect(body!['input']['__className__'], 'IngestAnalyticsEventBatchInput');
-    final events = body!['input']['events'] as List;
-    expect(events.single['__className__'], 'IngestAnalyticsEventInput');
+    expect(path, '/v1/analytics');
+    expect(body!.containsKey('input'), isFalse);
+    final events = body!['analytics'] as List;
     expect(events.single['name'], 'product_viewed');
     expect(events.single['kind'], 'track');
     expect(events.single['anonymousId'], 'anon-1');
@@ -375,15 +375,18 @@ void main() {
     expect(events.single['propertiesJson'], '{"price":9.5}');
   });
 
-  test('getConfig and reportDiscards use the policy envelopes', () async {
+  test('getConfig and client reports use the v1 routes', () async {
     final paths = <String>[];
-    Map<String, dynamic>? configBody;
+    final methods = <String>[];
+    Map<String, String>? configQuery;
     Map<String, dynamic>? discardBody;
+    String? auth;
     final httpClient = MockClient((request) async {
       paths.add(request.url.path);
-      final decoded = jsonDecode(request.body) as Map<String, dynamic>;
-      if (request.url.path == '/sdk/getConfig') {
-        configBody = decoded;
+      methods.add(request.method);
+      auth = request.headers['Authorization'];
+      if (request.url.path == '/v1/sdk-config') {
+        configQuery = request.url.queryParameters;
         return http.Response(
           jsonEncode({
             'schemaVersion': 1,
@@ -395,13 +398,14 @@ void main() {
           200,
         );
       }
-      discardBody = decoded;
+      discardBody = jsonDecode(request.body) as Map<String, dynamic>;
       return http.Response('{}', 200);
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -414,17 +418,19 @@ void main() {
       ),
     ]);
 
-    expect(paths, ['/sdk/getConfig', '/sdk/reportDiscards']);
-    expect(configBody!['input']['platform'], 'flutter');
-    expect(configBody!['input']['sdkName'], talariaSdkName);
-    expect(discardBody!['input']['__className__'], 'ReportSdkDiscardsInput');
-    expect(discardBody!['input']['discards'].single['count'], 3);
+    expect(paths, ['/v1/sdk-config', '/v1/client-reports']);
+    expect(methods, ['GET', 'POST']);
+    expect(auth, startsWith('Bearer tal_sk_'));
+    expect(configQuery!['platform'], 'flutter');
+    expect(configQuery!['sdkName'], talariaSdkName);
+    expect(discardBody!.containsKey('input'), isFalse);
+    expect(discardBody!['discards'].single['count'], 3);
   });
 
   test('missing analyticsWrite disables analytics only', () async {
     final transport = _ThrowingAnalyticsTransport(
       TransportException(
-        'Talaria analytics/ingestBatch failed: HTTP 400',
+        'Talaria /v1/analytics failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,
@@ -453,7 +459,7 @@ void main() {
   test('permanent ingest error disables analytics too', () async {
     final transport = _ThrowingAnalyticsTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 400',
+        'Talaria /v1/events failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,

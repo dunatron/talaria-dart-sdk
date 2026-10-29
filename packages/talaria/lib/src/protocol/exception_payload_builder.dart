@@ -22,10 +22,7 @@ class ExceptionPayloadBuilder {
       'type': typeName(error),
       'value': messageOf(error),
       'mechanism': mechanismWire,
-      'stacktrace': {
-        '__className__': 'StackTraceDto',
-        'frames': frames,
-      },
+      'stacktrace': {'__className__': 'StackTraceDto', 'frames': frames},
     };
 
     return {

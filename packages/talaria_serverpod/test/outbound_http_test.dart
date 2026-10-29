@@ -12,8 +12,9 @@ void main() {
   test('HttpClient created after init continues the active trace', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -47,9 +48,6 @@ void main() {
     expect(traceparent, isNotNull);
     expect(traceparent, contains(transaction.traceId));
     final spans = transport.spanBatches.expand((batch) => batch).toList();
-    expect(
-      spans.map((span) => span.name),
-      contains('GET /health'),
-    );
+    expect(spans.map((span) => span.name), contains('GET /health'));
   });
 }

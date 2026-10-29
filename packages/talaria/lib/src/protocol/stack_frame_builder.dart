@@ -19,9 +19,7 @@ class StackFrameBuilder {
       // Trace.frames is outermost (caller) first in stack_trace package —
       // reverse so oldest → newest matches PHP/server convention.
       final frames = trace.frames.reversed.toList();
-      return [
-        for (final frame in frames) fromTraceFrame(frame, framePlatform),
-      ];
+      return [for (final frame in frames) fromTraceFrame(frame, framePlatform)];
     } catch (_) {
       return const [];
     }

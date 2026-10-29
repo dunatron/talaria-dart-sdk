@@ -1,5 +1,4 @@
-import 'release_env_stub.dart'
-    if (dart.library.io) 'release_env_io.dart';
+import 'release_env_stub.dart' if (dart.library.io) 'release_env_io.dart';
 
 /// A resolved `<ref>@<shortsha>` plus the full commit SHA.
 class ReleaseIdentity {
@@ -14,8 +13,9 @@ class ReleaseIdentity {
   static const definedRelease = String.fromEnvironment('TALARIA_RELEASE');
   static const definedCommitSha = String.fromEnvironment('TALARIA_COMMIT_SHA');
 
-  /// Explicit values win. `--dart-define` is next. CI env fills both only when
-  /// release and commit SHA are still empty.
+  /// Explicit values win. `--dart-define` is next. `TALARIA_*` env vars follow,
+  /// then `OTEL_*`, then CI env fills both only when release and commit SHA are
+  /// still empty. Precedence: code > TALARIA_* > OTEL_* > CI > default.
   static ReleaseIdentity resolve({
     String? release,
     String? commitSha,
@@ -24,7 +24,9 @@ class ReleaseIdentity {
     final variables = env ?? releaseEnvironment();
     final explicitRelease = _nonEmpty(release) ??
         _nonEmpty(definedRelease) ??
-        _nonEmpty(variables['TALARIA_RELEASE']);
+        _nonEmpty(variables['TALARIA_RELEASE']) ??
+        _parseResourceAttribute(
+            variables['OTEL_RESOURCE_ATTRIBUTES'], 'service.version');
     final explicitSha = _nonEmpty(commitSha) ??
         _nonEmpty(definedCommitSha) ??
         _nonEmpty(variables['TALARIA_COMMIT_SHA']);
@@ -50,7 +52,7 @@ class ReleaseIdentity {
       final type = _nonEmpty(env['GITHUB_REF_TYPE']);
       final kind = type == 'tag' || type == 'branch' ? type : null;
       return ReleaseIdentity(
-        release: '$githubRef@${githubSha.substring(0, 7)}',
+        release: '${_releaseRef(githubRef)}@${githubSha.substring(0, 7)}',
         commitSha: githubSha,
         releaseRefKind: kind,
       );
@@ -61,7 +63,7 @@ class ReleaseIdentity {
     if (gitlabRef != null && gitlabSha != null && gitlabSha.length >= 7) {
       final tag = _nonEmpty(env['CI_COMMIT_TAG']);
       return ReleaseIdentity(
-        release: '$gitlabRef@${gitlabSha.substring(0, 7)}',
+        release: '${_releaseRef(gitlabRef)}@${gitlabSha.substring(0, 7)}',
         commitSha: gitlabSha,
         releaseRefKind: tag != null ? 'tag' : 'branch',
       );
@@ -72,5 +74,31 @@ class ReleaseIdentity {
   static String? _nonEmpty(String? value) {
     final trimmed = value?.trim() ?? '';
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// Release names cannot contain `/` (§5.5). CI refs become `feature-x@sha`.
+  static String _releaseRef(String ref) => ref.replaceAll('/', '-');
+
+  /// Parse OTEL_RESOURCE_ATTRIBUTES for a specific key.
+  /// Format: key1=value1,key2=value2
+  static String? _parseResourceAttribute(String? attributes, String key) {
+    if (attributes == null || attributes.isEmpty) return null;
+
+    for (final pair in attributes.split(',')) {
+      final parts = pair.split('=');
+      if (parts.length == 2 && parts[0].trim() == key) {
+        return _nonEmpty(parts[1]);
+      }
+    }
+    return null;
+  }
+
+  /// Resolve service name from environment variables.
+  /// Precedence: OTEL_SERVICE_NAME > OTEL_RESOURCE_ATTRIBUTES (service.name).
+  static String? resolveServiceName({Map<String, String>? env}) {
+    final variables = env ?? releaseEnvironment();
+    return _nonEmpty(variables['OTEL_SERVICE_NAME']) ??
+        _parseResourceAttribute(
+            variables['OTEL_RESOURCE_ATTRIBUTES'], 'service.name');
   }
 }

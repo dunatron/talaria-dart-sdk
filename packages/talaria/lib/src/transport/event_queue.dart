@@ -2,7 +2,7 @@ import '../event.dart';
 import 'ingest_backoff.dart';
 import 'transport.dart';
 
-/// In-memory queue that drains via ingestBatch on size or age thresholds.
+/// In-memory queue that drains via `/v1/events` on size or age thresholds.
 class EventQueue {
   EventQueue({
     required Transport transport,

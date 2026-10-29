@@ -7,7 +7,7 @@ import 'package:talaria_serverpod/src/relic_middleware.dart';
 import 'package:test/test.dart';
 
 /// The middleware used to `await client.flush()` after every traced request:
-/// one `spans/ingestBatch` per request, so the default 100/min per-key limit
+/// one `/v1/spans` request per request, so the default 100/min per-key limit
 /// was hit at about 100 traced requests a minute. Spans now wait for the
 /// client's batch.
 void main() {
@@ -20,8 +20,9 @@ void main() {
     transport = FakeTransport();
     client = TalariaClient(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -62,9 +63,8 @@ void main() {
     await client.flush();
     expect(transport.spanBatches, hasLength(1));
     expect(transport.spanBatches.single, hasLength(20));
-    expect(
-      transport.spanBatches.single.map((s) => s.name).toSet(),
-      {'POST /projects/list'},
-    );
+    expect(transport.spanBatches.single.map((s) => s.name).toSet(), {
+      'POST /projects/list',
+    });
   });
 }

@@ -104,18 +104,16 @@ class BreadcrumbScope {
   }
 
   static T runWith<T>(T Function() body, {BreadcrumbBuffer? buffer}) {
-    return Zone.current.fork(zoneValues: {
-      zoneKey: buffer ?? BreadcrumbBuffer(),
-    }).run(body);
+    return Zone.current
+        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()}).run(body);
   }
 
   static Future<T> runWithAsync<T>(
     Future<T> Function() body, {
     BreadcrumbBuffer? buffer,
   }) {
-    return Zone.current.fork(zoneValues: {
-      zoneKey: buffer ?? BreadcrumbBuffer(),
-    }).run(body);
+    return Zone.current
+        .fork(zoneValues: {zoneKey: buffer ?? BreadcrumbBuffer()}).run(body);
   }
 
   static void clearSessions() {
@@ -147,7 +145,9 @@ class BreadcrumbBuffer {
       } else {
         // The oldest is the other tier. Walk forward to drop the oldest of this tier.
         final next = _items.toList();
-        final index = next.indexWhere((item) => (item.type == 'query') == isQuery);
+        final index = next.indexWhere(
+          (item) => (item.type == 'query') == isQuery,
+        );
         if (index < 0) break;
         next.removeAt(index);
         _items
@@ -159,8 +159,9 @@ class BreadcrumbBuffer {
     _items.addLast(breadcrumb);
   }
 
-  int get _queryCap =>
-      capacity >= kMaxBreadcrumbs ? kMaxQueryBreadcrumbs : (capacity < kMaxQueryBreadcrumbs ? capacity : kMaxQueryBreadcrumbs);
+  int get _queryCap => capacity >= kMaxBreadcrumbs
+      ? kMaxQueryBreadcrumbs
+      : (capacity < kMaxQueryBreadcrumbs ? capacity : kMaxQueryBreadcrumbs);
 
   int get _otherCap {
     final query = _queryCap;

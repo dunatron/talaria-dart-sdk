@@ -10,8 +10,9 @@ void main() {
   setUp(() {
     transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -19,10 +20,7 @@ void main() {
         'active': true,
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    client = TalariaClient(options, transport: transport);
   });
 
   tearDown(() async {
@@ -31,17 +29,14 @@ void main() {
 
   test('onThrow keeps client errors off the error rate', () {
     final span = client.startTransaction('POST /project/get');
-    RelicSpanFinish.onThrow(
-      span,
-      _ApiNotFoundException('Project not found'),
-    );
+    RelicSpanFinish.onThrow(span, _ApiNotFoundException('Project not found'));
     expect(span.getAttribute('http.response.status_code'), '404');
     expect(span.status, SpanStatus.ok);
     span.finish();
   });
 
   test('onThrow treats validation exceptions as HTTP 400', () {
-    final span = client.startTransaction('POST /monitors/checkIn');
+    final span = client.startTransaction('POST /v1/monitors/my-cron/check-ins');
     RelicSpanFinish.onThrow(
       span,
       _ApiValidationException('Monitor slug must start with a letter'),

@@ -261,17 +261,19 @@ class RuntimeContext {
     String? replayId,
     bool blankUnset = false,
   }) {
-    return Zone.current.fork(
-      zoneValues: _zoneValues(
-        url: url,
-        requestId: requestId,
-        userId: userId,
-        anonymousId: anonymousId,
-        sessionId: sessionId,
-        replayId: replayId,
-        blankUnset: blankUnset,
-      ),
-    ).run(body);
+    return Zone.current
+        .fork(
+          zoneValues: _zoneValues(
+            url: url,
+            requestId: requestId,
+            userId: userId,
+            anonymousId: anonymousId,
+            sessionId: sessionId,
+            replayId: replayId,
+            blankUnset: blankUnset,
+          ),
+        )
+        .run(body);
   }
 
   /// Async variant of [runWith].
@@ -288,17 +290,19 @@ class RuntimeContext {
     String? replayId,
     bool blankUnset = false,
   }) {
-    return Zone.current.fork(
-      zoneValues: _zoneValues(
-        url: url,
-        requestId: requestId,
-        userId: userId,
-        anonymousId: anonymousId,
-        sessionId: sessionId,
-        replayId: replayId,
-        blankUnset: blankUnset,
-      ),
-    ).run(body);
+    return Zone.current
+        .fork(
+          zoneValues: _zoneValues(
+            url: url,
+            requestId: requestId,
+            userId: userId,
+            anonymousId: anonymousId,
+            sessionId: sessionId,
+            replayId: replayId,
+            blankUnset: blankUnset,
+          ),
+        )
+        .run(body);
   }
 
   static Map<String, Object?> collect({String runtime = 'dart'}) {
@@ -311,16 +315,9 @@ class RuntimeContext {
       tags['dart.version'] = version;
     }
 
-    final extra = <String, Object?>{
-      ...platform_info.platformExtra(),
-    };
+    final extra = <String, Object?>{...platform_info.platformExtra()};
 
-    return {
-      'url': url,
-      'requestId': requestId,
-      'tags': tags,
-      'extra': extra,
-    };
+    return {'url': url, 'requestId': requestId, 'tags': tags, 'extra': extra};
   }
 
   static String newSessionId() {
@@ -347,9 +344,10 @@ class RuntimeContext {
     final h = t.hour.toString().padLeft(2, '0');
     final mi = t.minute.toString().padLeft(2, '0');
     final s = t.second.toString().padLeft(2, '0');
-    final fraction = (t.millisecond * 1000 + t.microsecond)
-        .toString()
-        .padLeft(6, '0');
+    final fraction = (t.millisecond * 1000 + t.microsecond).toString().padLeft(
+          6,
+          '0',
+        );
     var trimmed = fraction;
     while (trimmed.length > 3 && trimmed.endsWith('0')) {
       trimmed = trimmed.substring(0, trimmed.length - 1);

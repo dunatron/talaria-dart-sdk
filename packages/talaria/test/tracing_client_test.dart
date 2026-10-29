@@ -17,8 +17,9 @@ void main() {
     double? tracesSampleRate,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -43,14 +44,8 @@ void main() {
     );
 
     final txn = client.startTransaction('checkout');
-    client.addBreadcrumb(Breadcrumb(
-      type: 'navigation',
-      message: '/checkout',
-    ));
-    client.addBreadcrumb(Breadcrumb(
-      type: 'http',
-      message: 'GET /pay',
-    ));
+    client.addBreadcrumb(Breadcrumb(type: 'navigation', message: '/checkout'));
+    client.addBreadcrumb(Breadcrumb(type: 'http', message: 'GET /pay'));
 
     try {
       throw StateError('pay failed');
@@ -112,8 +107,9 @@ void main() {
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -129,10 +125,9 @@ void main() {
       ),
     ]);
 
-    expect(path, '/spans/ingestBatch');
-    expect(body!['input']['__className__'], 'IngestSpanBatchInput');
-    final spans = body!['input']['spans'] as List;
-    expect(spans.single['__className__'], 'IngestSpanInput');
+    expect(path, '/v1/spans');
+    expect(body!.containsKey('input'), isFalse);
+    final spans = body!['spans'] as List;
     expect(spans.single['traceId'], '0af7651916cd43dd8448eb211c80319c');
     expect(spans.single['kind'], 'client');
   });
@@ -161,7 +156,7 @@ void main() {
     expect(lastUri.toString(), contains('token=secret'));
 
     await wrapped.post(
-      Uri.parse('https://api.example.com/spans/ingestBatch'),
+      Uri.parse('https://api.example.com/v1/spans'),
       body: '{}',
     );
     // Ingest path is not given a new traceparent from a nested span; the

@@ -34,8 +34,7 @@ if client.enforceDefaultLevel:
 
 ```dart
 await Talaria.init(TalariaOptions(
-  dsn: 'https://api.newtalaria.com',
-  apiKey: 'tal_live_…',
+  apiKey: 'tal_sk_prod_nz1_…',
   minLevel: SeverityLevel.warning,
   enforceDefaultLevel: false,
   loggers: {

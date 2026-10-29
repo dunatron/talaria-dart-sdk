@@ -14,19 +14,34 @@ void main() {
     await TalariaFlutter.close();
   });
 
+  test('init refuses a secret key', () async {
+    await expectLater(
+      TalariaFlutter.init(
+        TalariaOptions(
+          apiKey: TalariaCredential.mint(),
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        observeLifecycle: false,
+        installHooks: false,
+      ),
+      throwsArgumentError,
+    );
+  });
+
   testWidgets('navigator observer sets route tags', (tester) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -54,20 +69,21 @@ void main() {
     expect(Talaria.getClient(), isNotNull);
   });
 
-  testWidgets('navigator observer starts a transaction per route',
-      (tester) async {
+  testWidgets('navigator observer starts a transaction per route', (
+    tester,
+  ) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -98,52 +114,53 @@ void main() {
   });
 
   testWidgets(
-      'navigator observer finishes the route span without a second push',
-      (tester) async {
-    final transport = FakeTransport();
-    await TalariaFlutter.init(
-      TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      )..applySdkDocument({
+    'navigator observer finishes the route span without a second push',
+    (tester) async {
+      final transport = FakeTransport();
+      await TalariaFlutter.init(
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
           'schemaVersion': 1,
           'active': true,
           'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
         }),
-      transport: transport,
-      observeLifecycle: false,
-    );
+        transport: transport,
+        observeLifecycle: false,
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        navigatorObservers: [TalariaNavigatorObserver()],
-        home: const Scaffold(body: Text('home')),
-      ),
-    );
-    await tester.pump();
-    await Talaria.flush();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [TalariaNavigatorObserver()],
+          home: const Scaffold(body: Text('home')),
+        ),
+      );
+      await tester.pump();
+      await Talaria.flush();
 
-    final finished = transport.spanBatches.expand((b) => b).toList();
-    expect(finished, isNotEmpty);
-    expect(finished.first.name, '/');
-    expect(finished.first.kind, SpanKind.internal);
-  });
+      final finished = transport.spanBatches.expand((b) => b).toList();
+      expect(finished, isNotEmpty);
+      expect(finished.first.name, '/');
+      expect(finished.first.kind, SpanKind.internal);
+    },
+  );
 
   testWidgets('setScreen starts a short INTERNAL span', (tester) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -162,20 +179,21 @@ void main() {
     expect(RuntimeContext.url, '/cart');
   });
 
-  testWidgets('widget build errors are captured once as error_widget',
-      (tester) async {
+  testWidgets('widget build errors are captured once as error_widget', (
+    tester,
+  ) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -230,15 +248,15 @@ void main() {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -252,20 +270,21 @@ void main() {
     expect(extra, contains('os'));
   });
 
-  testWidgets('init installs FlutterError hook and sets flutter platform',
-      (tester) async {
+  testWidgets('init installs FlutterError hook and sets flutter platform', (
+    tester,
+  ) async {
     final transport = FakeTransport();
     final client = await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -288,16 +307,16 @@ void main() {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'analytics': {'enabled': true},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -337,16 +356,16 @@ void main() {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'analytics': {'enabled': true},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -374,21 +393,22 @@ void main() {
     expect(screens.where((path) => path == '/checkout'), hasLength(1));
   });
 
-  testWidgets('setScreen keeps the route path and a separate title',
-      (tester) async {
+  testWidgets('setScreen keeps the route path and a separate title', (
+    tester,
+  ) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'analytics': {'enabled': true},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -442,21 +462,22 @@ void main() {
     );
   });
 
-  testWidgets('navigator observer emits \$screen when analytics is on',
-      (tester) async {
+  testWidgets('navigator observer emits \$screen when analytics is on', (
+    tester,
+  ) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'analytics': {'enabled': true},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'analytics': {'enabled': true},
+      }),
       transport: transport,
       observeLifecycle: false,
     );

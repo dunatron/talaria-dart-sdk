@@ -241,9 +241,7 @@ class TalariaAnalytics {
 
     _identity.touch();
     final page = _pageContext();
-    final resolvedUrl = Utm.sanitizeUrl(
-      url ?? page?.url ?? RuntimeContext.url,
-    );
+    final resolvedUrl = Utm.sanitizeUrl(url ?? page?.url ?? RuntimeContext.url);
     _identity.captureUtmFromUrl(resolvedUrl);
     final utm = _identity.firstTouchUtm;
 

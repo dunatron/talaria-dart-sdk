@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'capture_context.dart';
+import 'credential.dart';
 import 'identity/storage.dart';
+import 'release_env_stub.dart' if (dart.library.io) 'release_env_io.dart';
 import 'release_identity.dart';
 import 'severity.dart';
 
@@ -15,9 +17,8 @@ class TalariaOptions {
   /// [environment] is accepted so call sites built against 0.3.6 still compile.
   /// The API key decides the environment, so the value is not stored or sent.
   TalariaOptions({
-    String? dsn,
-    String? baseUrl,
-    required this.apiKey,
+    String? url,
+    required String apiKey,
     String? environment,
     String? release,
     String? commitSha,
@@ -40,7 +41,12 @@ class TalariaOptions {
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.storage,
-  })  : baseUrl = _resolveBaseUrl(dsn: dsn, baseUrl: baseUrl),
+  })  : credential = TalariaCredential.parse(apiKey),
+        url = _resolveUrl(
+          url: url,
+          credential: TalariaCredential.parse(apiKey),
+        ),
+        apiKey = TalariaCredential.parse(apiKey).value,
         release = ReleaseIdentity.resolve(
           release: release,
           commitSha: commitSha,
@@ -73,16 +79,18 @@ class TalariaOptions {
         tracesSampleRate = null,
         enableAnalytics = false,
         enableFlags = false {
-    final key = apiKey.trim();
-    if (key.isEmpty) {
-      throw ArgumentError('Talaria init requires apiKey.');
-    }
-    if (!key.startsWith('tal_live_')) {
-      throw ArgumentError('Talaria apiKey must start with tal_live_.');
+    if (credential.isMonitor) {
+      throw ArgumentError(
+        'Talaria apiKey must be a tal_pk_ or tal_sk_ key. '
+        'A tal_mon_ token is only valid for POST /v1/check-ins.',
+      );
     }
   }
 
-  final String baseUrl;
+  /// Parsed key. Checksum and cell are checked before the client starts.
+  final TalariaCredential credential;
+
+  final String url;
   final String apiKey;
   final String? release;
   final String? commitSha;
@@ -93,7 +101,7 @@ class TalariaOptions {
   final int maxBatchSize;
   final int flushIntervalMs;
 
-  /// Most spans in one `spans/ingestBatch` request (1 to [maxSpanBatchSize]).
+  /// Most spans in one `/v1/spans` batch request (1 to [maxSpanBatchSize]).
   /// A full batch is exported without waiting for [spanFlushIntervalMs].
   final int spanBatchSize;
 
@@ -231,8 +239,7 @@ class TalariaOptions {
 
   /// Copy with selected overrides. Used by `talaria_flutter` to set platform.
   TalariaOptions copyWith({
-    String? dsn,
-    String? baseUrl,
+    String? url,
     String? apiKey,
     String? release,
     String? commitSha,
@@ -257,8 +264,7 @@ class TalariaOptions {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      dsn: dsn,
-      baseUrl: baseUrl ?? this.baseUrl,
+      url: url ?? this.url,
       apiKey: apiKey ?? this.apiKey,
       release: release ?? this.release,
       commitSha: commitSha ?? this.commitSha,
@@ -295,12 +301,37 @@ class TalariaOptions {
     return created;
   }
 
-  static String _resolveBaseUrl({String? dsn, String? baseUrl}) {
-    final raw = (dsn ?? baseUrl)?.trim();
-    if (raw == null || raw.isEmpty) {
-      throw ArgumentError('Talaria init requires dsn or baseUrl.');
+  static const definedUrl = String.fromEnvironment('TALARIA_URL');
+
+  /// Explicit [url], then `TALARIA_URL` (`--dart-define` or the process
+  /// environment), then `https://ingest-<cell>.newtalaria.com`. A `self`
+  /// cell with no override fails fast.
+  static String _resolveUrl({
+    String? url,
+    required TalariaCredential credential,
+    Map<String, String>? env,
+  }) {
+    final explicit = _nonEmpty(url);
+    if (explicit != null) return explicit;
+    final fromDefine = _nonEmpty(definedUrl);
+    if (fromDefine != null) return fromDefine;
+    final fromEnv = _nonEmpty((env ?? releaseEnvironment())['TALARIA_URL']);
+    if (fromEnv != null) return fromEnv;
+    if (credential.isSelfCell) {
+      throw ArgumentError(
+        'A self cell requires TALARIA_URL or the url option. '
+        'Refusing to derive an ingest host.',
+      );
     }
-    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+    return credential.derivedIngestUrl;
+  }
+
+  static String? _nonEmpty(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    return trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
   }
 
   static Map<String, String> normalizeTags(Map<String, Object?> tags) {

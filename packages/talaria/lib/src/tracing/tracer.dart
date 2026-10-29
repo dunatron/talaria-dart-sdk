@@ -276,8 +276,9 @@ class Tracer {
       executionMs: duration,
     );
     state.queryGroups[key] = updated;
-    final index =
-        state.pendingQueryGroups.indexWhere((item) => item.spanId == group.spanId);
+    final index = state.pendingQueryGroups.indexWhere(
+      (item) => item.spanId == group.spanId,
+    );
     if (index >= 0) {
       state.pendingQueryGroups[index] = updated;
     }
@@ -443,11 +444,7 @@ class _RecordingSpan implements Span {
   }
 
   @override
-  void finish({
-    DateTime? endTime,
-    SpanStatus? status,
-    String? statusMessage,
-  }) {
+  void finish({DateTime? endTime, SpanStatus? status, String? statusMessage}) {
     if (_finished) {
       return;
     }
@@ -464,11 +461,8 @@ class _RecordingSpan implements Span {
   }
 
   @override
-  Traceparent toTraceparent() => Traceparent(
-        traceId: traceId,
-        spanId: spanId,
-        sampled: sampled,
-      );
+  Traceparent toTraceparent() =>
+      Traceparent(traceId: traceId, spanId: spanId, sampled: sampled);
 
   FinishedSpan _toFinished(SpanEnrichment enrichment) {
     return FinishedSpan(

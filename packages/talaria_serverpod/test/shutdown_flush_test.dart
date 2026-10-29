@@ -15,8 +15,9 @@ void main() {
     transport = FakeTransport();
     client = TalariaClient(
       TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'tal_live_test_key_for_unit_tests',
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -60,8 +61,10 @@ void main() {
       'GET /pending/2',
     ]);
     expect(client.spanQueueSize(), 0);
-    expect(transport.batches.expand((b) => b).map((e) => e.message),
-        contains('pending event'));
+    expect(
+      transport.batches.expand((b) => b).map((e) => e.message),
+      contains('pending event'),
+    );
   });
 
   test('registering twice keeps one task and does not throw', () async {

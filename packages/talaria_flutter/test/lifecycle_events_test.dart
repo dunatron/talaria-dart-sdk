@@ -20,8 +20,8 @@ void main() {
   }) async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -53,16 +53,14 @@ void main() {
     ];
   }
 
-  Future<void> setState(
-    WidgetTester tester,
-    AppLifecycleState state,
-  ) async {
+  Future<void> setState(WidgetTester tester, AppLifecycleState state) async {
     tester.binding.handleAppLifecycleStateChanged(state);
     await tester.pump();
   }
 
-  testWidgets('foreground and background emit the stable event names',
-      (tester) async {
+  testWidgets('foreground and background emit the stable event names', (
+    tester,
+  ) async {
     final transport = await start(tester);
 
     await setState(tester, AppLifecycleState.resumed);
@@ -70,10 +68,7 @@ void main() {
 
     expect(
       await trackedNames(tester, transport),
-      containsAllInOrder([
-        'Application Opened',
-        'Application Backgrounded',
-      ]),
+      containsAllInOrder(['Application Opened', 'Application Backgrounded']),
     );
   });
 
@@ -139,8 +134,9 @@ void main() {
     );
   });
 
-  testWidgets('trackLifecycleEvents: false keeps the tags without the events',
-      (tester) async {
+  testWidgets('trackLifecycleEvents: false keeps the tags without the events', (
+    tester,
+  ) async {
     final transport = await start(tester, trackLifecycleEvents: false);
 
     await setState(tester, AppLifecycleState.resumed);

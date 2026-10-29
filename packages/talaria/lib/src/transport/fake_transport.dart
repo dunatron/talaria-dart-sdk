@@ -55,9 +55,7 @@ class FakeTransport implements Transport {
   final List<Map<String, Object?>> downloadDefinitionCalls = [];
 
   @override
-  Future<Map<String, Object?>> evaluateFlags(
-    Map<String, Object?> input,
-  ) async {
+  Future<Map<String, Object?>> evaluateFlags(Map<String, Object?> input) async {
     evaluateCalls.add(Map<String, Object?>.from(input));
     final handler = onEvaluateFlags;
     if (handler != null) {

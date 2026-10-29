@@ -10,7 +10,7 @@ globs:
 
 Events:
 
-- `POST {baseUrl}/events/ingestBatch`
+- `POST {url}/v1/events`
 - Header: `X-API-Key` only
 - Body:
 
@@ -27,16 +27,16 @@ Events:
 
 Spans (when tracing is enabled):
 
-- `POST {baseUrl}/spans/ingestBatch`
+- `POST {url}/v1/spans`
 - Body: `{ "input": { "__className__": "IngestSpanBatchInput", "spans": [ { "__className__": "IngestSpanInput", … } ] } }`
 - `HttpTransport.httpClient` is ingest-only — never wrap it with `TalariaHttpClient`. Optional `spanHttpClient` for span POSTs.
 
 Analytics:
 
-- `POST {baseUrl}/analytics/ingestBatch`
+- `POST {url}/v1/analytics`
 - Body: `{ "input": { "__className__": "IngestAnalyticsEventBatchInput", "events": [ { "__className__": "IngestAnalyticsEventInput", … } ] } }`
 - Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `anonymousId` + `sessionId`.
-- Discard counts: `POST {baseUrl}/sdk/reportDiscards` with `ReportSdkDiscardsInput`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`.
+- Discard counts: `POST {url}/sdk/reportDiscards` with `ReportSdkDiscardsInput`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`.
 
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string

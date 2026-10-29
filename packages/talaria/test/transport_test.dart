@@ -4,6 +4,7 @@ import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
 import 'dart:convert';
 
 void main() {
@@ -16,16 +17,10 @@ void main() {
         flushIntervalMs: 0,
       );
 
-      queue.enqueue(Event(
-        message: 'one',
-        level: SeverityLevel.info,
-      ));
+      queue.enqueue(Event(message: 'one', level: SeverityLevel.info));
       expect(transport.batches, isEmpty);
 
-      queue.enqueue(Event(
-        message: 'two',
-        level: SeverityLevel.info,
-      ));
+      queue.enqueue(Event(message: 'two', level: SeverityLevel.info));
 
       await Future<void>.delayed(Duration.zero);
       await queue.flush();
@@ -36,63 +31,70 @@ void main() {
   });
 
   group('HttpTransport', () {
-    test('posts Serverpod batch envelope', () async {
+    test('posts a plain JSON batch with bearer auth', () async {
       Map<String, dynamic>? body;
-      String? apiKey;
+      String? auth;
       final client = MockClient((request) async {
-        apiKey = request.headers['X-API-Key'];
+        auth = request.headers['Authorization'];
         body = jsonDecode(request.body) as Map<String, dynamic>;
         return http.Response('{}', 200);
       });
 
       final transport = HttpTransport(
-        baseUrl: 'https://api.example.com',
-        apiKey: 'tal_live_testkey',
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         httpClient: client,
       );
 
       await transport.sendBatch([
-        Event(
-          message: 'hello',
-          level: SeverityLevel.warning,
-          platform: 'dart',
-        ),
+        Event(message: 'hello', level: SeverityLevel.warning, platform: 'dart'),
       ]);
 
-      expect(apiKey, 'tal_live_testkey');
-      expect(body!['input']['__className__'], 'IngestEventBatchInput');
-      final events = body!['input']['events'] as List;
+      expect(
+        auth,
+        'Bearer tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+      );
+      expect(body!.containsKey('input'), isFalse);
+      final events = body!['events'] as List;
       expect(events.length, 1);
-      expect(events.first['__className__'], 'IngestEventInput');
       expect(events.first['message'], 'hello');
     });
 
-    test('attaches className and retry from error body', () async {
+    test('reads problem+json invalid_key', () async {
       final client = MockClient((request) async {
         return http.Response(
-          '{"__className__":"ApiUnauthorizedException","message":"Invalid API key","retry":false}',
-          400,
+          jsonEncode({
+            'type': 'https://newtalaria.com/docs/reference/errors#invalid_key',
+            'title': 'Invalid API key',
+            'status': 401,
+            'detail': 'Invalid API key',
+            'code': 'invalid_key',
+            'requestId': 'req_123',
+          }),
+          401,
+          headers: {'content-type': 'application/problem+json'},
         );
       });
 
       final transport = HttpTransport(
-        baseUrl: 'https://api.example.com',
-        apiKey: 'tal_live_testkey',
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         httpClient: client,
       );
 
       try {
         await transport.sendBatch([
-          Event(
-            message: 'hello',
-            level: SeverityLevel.error,
-          ),
+          Event(message: 'hello', level: SeverityLevel.error),
         ]);
         fail('expected TransportException');
       } on TransportException catch (e) {
-        expect(e.className, 'ApiUnauthorizedException');
+        expect(e.code, 'invalid_key');
         expect(e.retry, isFalse);
         expect(e.bodyMessage, 'Invalid API key');
+        expect(e.requestId, 'req_123');
+        expect(e.statusCode, 401);
       }
     });
   });

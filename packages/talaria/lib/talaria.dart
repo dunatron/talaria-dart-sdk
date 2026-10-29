@@ -14,6 +14,7 @@ export 'src/analytics/analytics_event.dart'
 export 'src/capture_context.dart';
 export 'src/client.dart';
 export 'src/config.dart';
+export 'src/credential.dart' show TalariaCredential;
 export 'src/context/runtime_context.dart';
 export 'src/event.dart';
 export 'src/flags/flag_definition.dart'

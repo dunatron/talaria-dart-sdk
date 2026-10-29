@@ -4,7 +4,7 @@ import '../tracing/span.dart';
 import 'ingest_backoff.dart';
 import 'transport.dart';
 
-/// In-memory span queue that drains via `spans/ingestBatch`.
+/// In-memory span queue that drains via `/v1/spans`.
 ///
 /// Spans are exported in batches, not one request per traced call:
 /// - when [maxBatchSize] spans are buffered, or

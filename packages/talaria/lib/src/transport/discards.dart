@@ -47,11 +47,7 @@ class DiscardReason {
 class DiscardBuffer {
   final Map<String, int> _counts = {};
 
-  void record({
-    required String signal,
-    required String reason,
-    int count = 1,
-  }) {
+  void record({required String signal, required String reason, int count = 1}) {
     if (count < 1) {
       return;
     }

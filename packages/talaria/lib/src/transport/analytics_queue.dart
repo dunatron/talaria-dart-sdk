@@ -2,7 +2,7 @@ import '../analytics/analytics_event.dart';
 import 'ingest_backoff.dart';
 import 'transport.dart';
 
-/// In-memory queue that drains via `analytics/ingestBatch`.
+/// In-memory queue that drains via `/v1/analytics`.
 class AnalyticsQueue {
   AnalyticsQueue({
     required Transport transport,

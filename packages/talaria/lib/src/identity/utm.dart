@@ -2,13 +2,7 @@ import '../tracing/url_sanitizer.dart';
 
 /// First-touch UTM campaign fields, denormalized onto every analytics row.
 class Utm {
-  const Utm({
-    this.source,
-    this.medium,
-    this.campaign,
-    this.term,
-    this.content,
-  });
+  const Utm({this.source, this.medium, this.campaign, this.term, this.content});
 
   final String? source;
   final String? medium;

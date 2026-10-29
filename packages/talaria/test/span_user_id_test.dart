@@ -11,8 +11,9 @@ void main() {
   test('span user.id is copied onto finished spans and error events', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -20,10 +21,7 @@ void main() {
         'active': true,
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final client = TalariaClient(options, transport: transport);
 
     final span = client.startTransaction('POST /lab');
     span.setAttribute('enduser.id', 'user-9');
@@ -41,8 +39,9 @@ void main() {
     final transport = FakeTransport();
     RuntimeContext.setUserAgent('Mozilla/5.0 Test');
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -50,16 +49,15 @@ void main() {
         'active': true,
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final client = TalariaClient(options, transport: transport);
 
     await client.captureException(StateError('ua'));
     await client.flush();
 
-    expect(transport.batches.expand((b) => b).single.userAgent,
-        'Mozilla/5.0 Test');
+    expect(
+      transport.batches.expand((b) => b).single.userAgent,
+      'Mozilla/5.0 Test',
+    );
     await client.close();
   });
 }

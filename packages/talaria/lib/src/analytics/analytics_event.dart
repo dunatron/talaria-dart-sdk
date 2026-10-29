@@ -1,12 +1,7 @@
 import '../context/runtime_context.dart';
 
 /// Wire `AnalyticsEventKindWire`.
-enum AnalyticsEventKind {
-  track,
-  page,
-  screen,
-  identify,
-}
+enum AnalyticsEventKind { track, page, screen, identify }
 
 /// Default names when the caller omits [AnalyticsEvent.name].
 class AnalyticsEventNames {
@@ -166,12 +161,7 @@ class AnalyticsEvent {
 
 /// Host-provided page fields (Flutter web location, current route, …).
 class AnalyticsPageContext {
-  const AnalyticsPageContext({
-    this.url,
-    this.path,
-    this.title,
-    this.referrer,
-  });
+  const AnalyticsPageContext({this.url, this.path, this.title, this.referrer});
 
   final String? url;
   final String? path;

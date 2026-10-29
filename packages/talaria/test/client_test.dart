@@ -15,8 +15,9 @@ void main() {
     double sampleRate = 1.0,
   }) {
     return TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       minLevel: minLevel,
       enforceDefaultLevel: enforce,
       loggers: loggers,
@@ -30,8 +31,10 @@ void main() {
 
   test('direct client respects minLevel', () async {
     final transport = FakeTransport();
-    final client = TalariaClient(options(minLevel: SeverityLevel.warning),
-        transport: transport);
+    final client = TalariaClient(
+      options(minLevel: SeverityLevel.warning),
+      transport: transport,
+    );
 
     await client.info('nope');
     await client.warning('yep');
@@ -44,8 +47,10 @@ void main() {
 
   test('scoped logger may go below root when enforce is false', () async {
     final transport = FakeTransport();
-    final client = TalariaClient(options(minLevel: SeverityLevel.warning),
-        transport: transport);
+    final client = TalariaClient(
+      options(minLevel: SeverityLevel.warning),
+      transport: transport,
+    );
 
     final scoped = client.logger(minLevel: SeverityLevel.info);
     await scoped.info('verbose');
@@ -134,30 +139,35 @@ void main() {
     expect(transport.batches.first.single.message, 'from facade');
   });
 
-  test('apiKey must start with tal_live_', () {
-    expect(
-      () => TalariaOptions(
-        dsn: 'https://api.example.com',
-        apiKey: 'wrong',
-      ),
-      throwsArgumentError,
-    );
-  });
+  test(
+    'apiKey must be a tal_pk_ or tal_sk_ key with a valid checksum',
+    () {
+      expect(
+        () => TalariaOptions(url: 'https://api.example.com', apiKey: 'wrong'),
+        throwsArgumentError,
+      );
+      expect(
+        () => TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey:
+              'tal_live_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 
   test('invalid key disables further event capture', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 400',
+        'Talaria /v1/events failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,
         bodyMessage: 'Invalid API key',
       ),
     );
-    final client = TalariaClient(
-      options(),
-      transport: transport,
-    );
+    final client = TalariaClient(options(), transport: transport);
 
     await client.captureMessage('first');
     await client.flush();
@@ -173,7 +183,7 @@ void main() {
   test('quota (HTTP 402) pauses events but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 402',
+        'Talaria /v1/events failed: HTTP 402',
         statusCode: 402,
         className: 'ApiQuotaExceededException',
         bodyMessage: 'quota exceeded',
@@ -204,7 +214,7 @@ void main() {
   test('5xx backs off but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 503',
+        'Talaria /v1/events failed: HTTP 503',
         statusCode: 503,
       ),
     );

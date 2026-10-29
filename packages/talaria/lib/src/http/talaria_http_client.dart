@@ -12,10 +12,8 @@ import '../tracing/url_sanitizer.dart';
 /// only to application HTTP (or give `HttpTransport` a separate span HTTP client).
 /// Talaria ingest URLs are skipped even if wrapped by mistake.
 class TalariaHttpClient extends http.BaseClient {
-  TalariaHttpClient(
-    http.Client inner, {
-    TalariaClient? client,
-  })  : _inner = inner,
+  TalariaHttpClient(http.Client inner, {TalariaClient? client})
+      : _inner = inner,
         _client = client;
 
   final http.Client _inner;
@@ -51,9 +49,7 @@ class TalariaHttpClient extends http.BaseClient {
       final requestId = client.currentRequestId;
       if (requestId != null &&
           requestId.isNotEmpty &&
-          !request.headers.keys.any(
-            (k) => k.toLowerCase() == 'x-request-id',
-          )) {
+          !request.headers.keys.any((k) => k.toLowerCase() == 'x-request-id')) {
         request.headers['X-Request-Id'] = requestId;
       }
     }
@@ -65,18 +61,20 @@ class TalariaHttpClient extends http.BaseClient {
       span.setAttribute('error.type', e.runtimeType.toString());
       span.markError(message: e.toString());
       span.finish(endTime: DateTime.now().toUtc());
-      client.addBreadcrumb(Breadcrumb(
-        type: 'http',
-        category: 'http',
-        message: '$method $path',
-        level: 'error',
-        data: {
-          'http.request.method': method,
-          'url.path': path,
-          'error.type': e.runtimeType.toString(),
-        },
-        timestamp: start,
-      ));
+      client.addBreadcrumb(
+        Breadcrumb(
+          type: 'http',
+          category: 'http',
+          message: '$method $path',
+          level: 'error',
+          data: {
+            'http.request.method': method,
+            'url.path': path,
+            'error.type': e.runtimeType.toString(),
+          },
+          timestamp: start,
+        ),
+      );
       rethrow;
     }
 
@@ -89,18 +87,20 @@ class TalariaHttpClient extends http.BaseClient {
     }
     span.finish(endTime: DateTime.now().toUtc());
 
-    client.addBreadcrumb(Breadcrumb(
-      type: 'http',
-      category: 'http',
-      message: '$method $path',
-      level: status >= 500 ? 'error' : 'info',
-      data: {
-        'http.request.method': method,
-        'url.path': path,
-        'http.response.status_code': '$status',
-      },
-      timestamp: start,
-    ));
+    client.addBreadcrumb(
+      Breadcrumb(
+        type: 'http',
+        category: 'http',
+        message: '$method $path',
+        level: status >= 500 ? 'error' : 'info',
+        data: {
+          'http.request.method': method,
+          'url.path': path,
+          'http.response.status_code': '$status',
+        },
+        timestamp: start,
+      ),
+    );
 
     return response;
   }
@@ -108,34 +108,36 @@ class TalariaHttpClient extends http.BaseClient {
   @override
   void close() => _inner.close();
 
-  /// Talaria SDK ingest and control calls, endpoint → methods. `replays`
-  /// also matches any `ingestSegment*` method.
-  static const sdkEndpointMethods = <String, Set<String>>{
-    'events': {'ingest', 'ingestBatch'},
-    'spans': {'ingestBatch'},
-    'analytics': {'ingestBatch'},
-    'heatmaps': {'ingestBatch', 'uploadSnapshot'},
-    'screenHeatmaps': {'ingestBatch', 'uploadSnapshot', 'uploadRecording'},
-    'replays': {'ingestSegment', 'ingestSegmentBatch'},
-    'sdk': {'getConfig', 'reportDiscards'},
-    'flags': {'evaluate', 'downloadDefinitions'},
+  /// Talaria SDK ingest and control endpoints. Only /v1/ paths are used.
+  /// Platform uses kebab-case routes.
+  static const sdkEndpoints = {
+    'events',
+    'spans',
+    'analytics',
+    'replays',
+    'heatmaps',
+    'screen-heatmaps',
+    'sdk-config',
+    'client-reports',
+    'check-ins',
+    'releases',
+    'source-maps',
+    'flags',
+    'monitors',
   };
 
   /// True for Talaria SDK ingest and control endpoints, which must not be
-  /// instrumented. Matches an `/<endpoint>/<method>` pair anywhere in the
-  /// path, so a DSN with a path prefix still matches.
+  /// instrumented. Only matches /v1/&lt;endpoint&gt; paths (hard cut - no old paths).
   static bool isTalariaIngestUrl(Uri uri) {
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    for (var i = 0; i + 1 < segments.length; i++) {
-      final endpoint = segments[i];
-      final method = segments[i + 1];
-      if (endpoint == 'replays' && method.startsWith('ingestSegment')) {
-        return true;
-      }
-      if (sdkEndpointMethods[endpoint]?.contains(method) ?? false) {
+
+    // Only /v1/ paths (e.g., /v1/events, /v1/spans, /v1/monitors)
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i] == 'v1' && sdkEndpoints.contains(segments[i + 1])) {
         return true;
       }
     }
+
     return false;
   }
 }

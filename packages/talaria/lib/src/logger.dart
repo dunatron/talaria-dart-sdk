@@ -86,10 +86,7 @@ class TalariaLogger {
   TalariaLogger withTags(Map<String, String> tags) {
     return TalariaLogger(
       _client,
-      LoggerOptions(
-        tags: {..._scopeTags, ...tags},
-        minLevel: _scopeMinLevel,
-      ),
+      LoggerOptions(tags: {..._scopeTags, ...tags}, minLevel: _scopeMinLevel),
     );
   }
 
@@ -101,17 +98,11 @@ class TalariaLogger {
     }
     return TalariaLogger(
       _client,
-      LoggerOptions(
-        tags: _scopeTags,
-        minLevel: next,
-      ),
+      LoggerOptions(tags: _scopeTags, minLevel: next),
     );
   }
 
-  TalariaLogger child({
-    Map<String, String>? tags,
-    Object? minLevel,
-  }) {
+  TalariaLogger child({Map<String, String>? tags, Object? minLevel}) {
     var logger = this;
     if (tags != null) {
       logger = logger.withTags(tags);
@@ -139,10 +130,7 @@ class TalariaLogger {
 
   CaptureContext _mergeContext(CaptureContext? context) {
     return CaptureContext(
-      tags: {
-        ..._scopeTags,
-        ...?context?.tags,
-      },
+      tags: {..._scopeTags, ...?context?.tags},
       extra: context?.extra,
       userId: context?.userId,
       title: context?.title,

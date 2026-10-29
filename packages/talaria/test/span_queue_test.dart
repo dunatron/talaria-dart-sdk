@@ -226,8 +226,9 @@ void main() {
 
   group('TalariaClient', () {
     TalariaOptions options({int flushIntervalMs = 2000}) => TalariaOptions(
-          dsn: 'https://api.example.com',
-          apiKey: 'tal_live_test_key_for_unit_tests',
+          url: 'https://api.example.com',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: flushIntervalMs,
         )..applySdkDocument({
@@ -341,8 +342,11 @@ void _backoffTests() {
         async.flushMicrotasks();
         expect(transport.attempts, 1);
         expect(queue.count, 2, reason: 'rate-limited batch is kept');
-        expect(queue.hasPendingExport, isTrue,
-            reason: 'timer armed for the end of the pause');
+        expect(
+          queue.hasPendingExport,
+          isTrue,
+          reason: 'timer armed for the end of the pause',
+        );
 
         // An explicit flush doesn't override the pause.
         // ignore: discarded_futures
@@ -365,13 +369,15 @@ void _backoffTests() {
     test('a 402 drops the batch as quota and refuses new spans', () {
       fakeAsync((async) {
         final transport = _FailingTransport()
-          ..failures.add(TransportException(
-            'HTTP 402',
-            statusCode: 402,
-            className: 'ApiQuotaExceededException',
-            meter: 'spans',
-            retryAfter: const Duration(minutes: 2),
-          ));
+          ..failures.add(
+            TransportException(
+              'HTTP 402',
+              statusCode: 402,
+              className: 'ApiQuotaExceededException',
+              meter: 'spans',
+              retryAfter: const Duration(minutes: 2),
+            ),
+          );
         final discards = <(int, String)>[];
         DateTime clock() => _start.add(async.elapsed);
         final queue = SpanQueue(

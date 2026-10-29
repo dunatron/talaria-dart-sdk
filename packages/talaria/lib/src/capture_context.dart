@@ -21,14 +21,8 @@ class CaptureContext {
       return this;
     }
     return CaptureContext(
-      tags: {
-        ...?tags,
-        ...?other.tags,
-      },
-      extra: {
-        ...?extra,
-        ...?other.extra,
-      },
+      tags: {...?tags, ...?other.tags},
+      extra: {...?extra, ...?other.extra},
       userId: other.userId ?? userId,
       title: other.title ?? title,
       mechanism: other.mechanism ?? mechanism,
@@ -81,10 +75,7 @@ class BeforeSendEvent {
 
 /// Hint passed alongside [BeforeSendEvent].
 class BeforeSendHint {
-  const BeforeSendHint({
-    this.originalContext,
-    this.isException = false,
-  });
+  const BeforeSendHint({this.originalContext, this.isException = false});
 
   final CaptureContext? originalContext;
   final bool isException;
@@ -92,10 +83,7 @@ class BeforeSendHint {
 
 /// Named logger preset from init.
 class LoggerPreset {
-  const LoggerPreset({
-    this.minLevel,
-    this.tags,
-  });
+  const LoggerPreset({this.minLevel, this.tags});
 
   final SeverityLevel? minLevel;
   final Map<String, String>? tags;
@@ -103,11 +91,7 @@ class LoggerPreset {
 
 /// Options for [TalariaLogger] / [TalariaClient.logger].
 class LoggerOptions {
-  const LoggerOptions({
-    this.name,
-    this.tags,
-    this.minLevel,
-  });
+  const LoggerOptions({this.name, this.tags, this.minLevel});
 
   final String? name;
   final Map<String, String>? tags;

@@ -72,8 +72,10 @@ class UserAgentParser {
         ua.contains('Firefox/')) {
       return 'Gecko';
     }
-    if (RegExp(r'(?:Chrome|CriOS|Edg|OPR|SamsungBrowser)/', caseSensitive: false)
-        .hasMatch(ua)) {
+    if (RegExp(
+      r'(?:Chrome|CriOS|Edg|OPR|SamsungBrowser)/',
+      caseSensitive: false,
+    ).hasMatch(ua)) {
       return 'Blink';
     }
     if (ua.contains('AppleWebKit')) {
@@ -97,7 +99,10 @@ class UserAgentParser {
     }
     final mac = RegExp(r'Mac OS X ([\d_]+)').firstMatch(ua);
     if (mac != null) {
-      return (name: 'macOS', version: (mac.group(1) ?? '').replaceAll('_', '.'));
+      return (
+        name: 'macOS',
+        version: (mac.group(1) ?? '').replaceAll('_', '.'),
+      );
     }
     if (ua.contains('CrOS')) {
       return (name: 'Chrome OS', version: '');
@@ -109,12 +114,16 @@ class UserAgentParser {
   }
 
   String _device(String ua) {
-    if (RegExp(r'iPad|Tablet|Android(?!.*Mobile)', caseSensitive: false)
-        .hasMatch(ua)) {
+    if (RegExp(
+      r'iPad|Tablet|Android(?!.*Mobile)',
+      caseSensitive: false,
+    ).hasMatch(ua)) {
       return 'tablet';
     }
-    if (RegExp(r'Mobi|iPhone|iPod|Android.*Mobile', caseSensitive: false)
-        .hasMatch(ua)) {
+    if (RegExp(
+      r'Mobi|iPhone|iPod|Android.*Mobile',
+      caseSensitive: false,
+    ).hasMatch(ua)) {
       return 'mobile';
     }
     return 'desktop';

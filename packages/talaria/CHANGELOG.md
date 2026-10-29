@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
+
+- Hard cut onto the locked `/v1` contract (platform PR #234 at `571c590c`).
+- API keys are `tal_pk_<env>_<cell>_<43 base62><6 CRC32 base62>` or `tal_sk_…`, checksum alphabet `0-9A-Za-z`. `tal_live_` and class-less `tal_<env>_` keys are invalid. Monitor tokens (`tal_mon_…`) are not SDK api keys.
+- The ingest URL is `https://ingest-<cell>.newtalaria.com` unless `url` or `TALARIA_URL` is set. A `self` cell fails fast without that override.
+- A Dart VM / server client logs one warning when given a `tal_pk_` key.
+- Auth is `Authorization: Bearer` only.
+- Bodies are plain JSON. Batches are `{"events":[…]}`, `{"spans":[…]}`, `{"analytics":[…]}`, and `{"screenHeatmaps":[…]}`.
+- `GET /v1/sdk-config`, `POST /v1/client-reports`, `POST /v1/flags/evaluate`, `GET /v1/flags` (definitions).
+- Errors are RFC 9457 `application/problem+json` (`code`, `detail`, `requestId`, and `cell` / `url` on `wrong_cell`).
+- CI release names replace `/` with `-` (`feature-x@a8f31c2`).
+
+## 0.3.9
 
 - Ingest and control calls send `Content-Encoding: gzip` JSON bodies (1 KB and up) once `sdk/getConfig` returns `capabilities.gzipRequests: true`. Older servers never advertise it, so they keep getting plain JSON. Web builds have no gzip codec and stay plain.
 - The sends made by `close()` are never gzipped.

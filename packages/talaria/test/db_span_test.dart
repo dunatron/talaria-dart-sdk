@@ -10,8 +10,9 @@ void main() {
   test('records a client db span and breadcrumb', () async {
     final transport = FakeTransport();
     final options = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -19,10 +20,7 @@ void main() {
         'active': true,
         'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
       });
-    final client = TalariaClient(
-      options,
-      transport: transport,
-    );
+    final client = TalariaClient(options, transport: transport);
 
     final root = client.startTransaction('POST /items');
     final result = await DbSpan.trace(
@@ -35,9 +33,9 @@ void main() {
     root.finish();
     await client.flush();
 
-    final db = transport.spanBatches.expand((b) => b).firstWhere(
-          (s) => s.name == 'SELECT items',
-        );
+    final db = transport.spanBatches
+        .expand((b) => b)
+        .firstWhere((s) => s.name == 'SELECT items');
     expect(db.kind, SpanKind.client);
     expect(db.attributes['db.system.name'], 'postgresql');
     expect(db.attributes['db.query.text'], 'SELECT * FROM items WHERE id = ?');

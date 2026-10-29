@@ -19,8 +19,9 @@ void main() {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: 'dart',
       storage: storage,
       defaultIntegrations: false,
@@ -61,7 +62,10 @@ void main() {
     transport.onEvaluateFlags = (_) async =>
         evaluateResponse(key: 'demo', variationKey: 'on', value: true);
 
-    final client = TalariaClient(options(enableFlags: false), transport: transport);
+    final client = TalariaClient(
+      options(enableFlags: false),
+      transport: transport,
+    );
 
     expect(await client.flags.boolVariation('demo', false), isFalse);
     expect(transport.evaluateCalls, isEmpty);
@@ -76,7 +80,10 @@ void main() {
           value: true,
         );
 
-    final client = TalariaClient(options(enableFlags: true), transport: transport);
+    final client = TalariaClient(
+      options(enableFlags: true),
+      transport: transport,
+    );
     await client.flags.reload();
 
     expect(await client.flags.boolVariation('demo-kill-switch', false), isTrue);
@@ -110,13 +117,19 @@ void main() {
           ],
         };
 
-    final client = TalariaClient(options(enableFlags: true), transport: transport);
+    final client = TalariaClient(
+      options(enableFlags: true),
+      transport: transport,
+    );
     await client.flags.reload();
 
     expect(await client.flags.stringVariation('copy', 'control'), 'welcome');
     final json = await client.flags.jsonVariation('remote', {'theme': 'light'});
     expect(json, {'theme': 'dark'});
-    expect(await client.flags.stringVariation('missing', 'fallback'), 'fallback');
+    expect(
+      await client.flags.stringVariation('missing', 'fallback'),
+      'fallback',
+    );
     await client.close();
   });
 
@@ -141,7 +154,8 @@ void main() {
 
     final transport2 = FakeTransport();
     // Hang evaluate so we exercise the disk cache path, not a network overwrite.
-    transport2.onEvaluateFlags = (_) => Completer<Map<String, Object?>>().future;
+    transport2.onEvaluateFlags =
+        (_) => Completer<Map<String, Object?>>().future;
     final client2 = TalariaClient(
       options(enableFlags: true, storage: storage),
       transport: transport2,
@@ -162,7 +176,10 @@ void main() {
       );
     };
 
-    final client = TalariaClient(options(enableFlags: true), transport: transport);
+    final client = TalariaClient(
+      options(enableFlags: true),
+      transport: transport,
+    );
     await client.flags.reload();
     expect(await client.flags.boolVariation('plan-gate', false), isFalse);
 
@@ -170,10 +187,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await client.flags.reload();
     expect(await client.flags.boolVariation('plan-gate', false), isTrue);
-    expect(
-      transport.evaluateCalls.any((c) => c['userId'] == 'user_9'),
-      isTrue,
-    );
+    expect(transport.evaluateCalls.any((c) => c['userId'] == 'user_9'), isTrue);
     await client.close();
   });
 
@@ -184,7 +198,10 @@ void main() {
       return evaluateResponse(key: 'slow', variationKey: 'on', value: true);
     };
 
-    final client = TalariaClient(options(enableFlags: true), transport: transport);
+    final client = TalariaClient(
+      options(enableFlags: true),
+      transport: transport,
+    );
     client.flags.startTimeout = const Duration(milliseconds: 20);
 
     final value = await client.flags.boolVariation('slow', false);
@@ -194,8 +211,9 @@ void main() {
 
   test('active=false disables flags in applySdkDocument', () {
     final opts = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
     );
     opts.applySdkDocument({
@@ -204,17 +222,15 @@ void main() {
       'flags': {'enabled': true},
     });
     expect(opts.enableFlags, isTrue);
-    opts.applySdkDocument({
-      'schemaVersion': 1,
-      'active': false,
-    });
+    opts.applySdkDocument({'schemaVersion': 1, 'active': false});
     expect(opts.enableFlags, isFalse);
   });
 
   test('copyWith preserves enableFlags', () {
     final opts = TalariaOptions(
-      dsn: 'https://api.example.com',
-      apiKey: 'tal_live_test_key_for_unit_tests',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
     )..enableFlags = true;
     final copied = opts.copyWith(platform: 'flutter');
@@ -230,24 +246,23 @@ void main() {
       body = jsonDecode(request.body) as Map<String, dynamic>;
       return http.Response(
         jsonEncode({
-          'data': {
-            'evaluations': [
-              {
-                'key': 'demo',
-                'variationKey': 'on',
-                'valueJson': 'true',
-                'version': 1,
-              },
-            ],
-          },
+          'evaluations': [
+            {
+              'key': 'demo',
+              'variationKey': 'on',
+              'valueJson': 'true',
+              'version': 1,
+            },
+          ],
         }),
         200,
       );
     });
 
     final transport = HttpTransport(
-      baseUrl: 'https://api.example.com',
-      apiKey: 'tal_live_testkey',
+      url: 'https://api.example.com',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -257,20 +272,17 @@ void main() {
       'attributes': {'plan': 'team'},
     });
 
-    expect(path, '/flags/evaluate');
-    expect(body!['input']['__className__'], 'EvaluateFlagsInput');
-    expect(body!['input']['anonymousId'], 'anon_1');
-    expect(body!['input']['attributes']['plan'], 'team');
+    expect(path, '/v1/flags/evaluate');
+    expect(body!.containsKey('input'), isFalse);
+    expect(body!['anonymousId'], 'anon_1');
+    expect(body!['attributes']['plan'], 'team');
     expect((result['evaluations'] as List).single['key'], 'demo');
   });
 
   test('optional \$feature_flag_called once per key per session', () async {
     final transport = FakeTransport();
-    transport.onEvaluateFlags = (_) async => evaluateResponse(
-          key: 'demo',
-          variationKey: 'on',
-          value: true,
-        );
+    transport.onEvaluateFlags = (_) async =>
+        evaluateResponse(key: 'demo', variationKey: 'on', value: true);
 
     final client = TalariaClient(
       options(enableFlags: true, enableAnalytics: true),
@@ -281,10 +293,8 @@ void main() {
     await client.flags.boolVariation('demo', false);
     await client.flush();
 
-    final names = transport.analyticsBatches
-        .expand((b) => b)
-        .map((e) => e.name)
-        .toList();
+    final names =
+        transport.analyticsBatches.expand((b) => b).map((e) => e.name).toList();
     expect(names.where((n) => n == r'$feature_flag_called'), hasLength(1));
     await client.close();
   });

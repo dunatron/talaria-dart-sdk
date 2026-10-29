@@ -13,9 +13,7 @@ void main() {
             children: [
               const Text('Overview'),
               FilledButton(onPressed: () {}, child: const Text('Save')),
-              const TextField(
-                decoration: InputDecoration(labelText: 'Email'),
-              ),
+              const TextField(decoration: InputDecoration(labelText: 'Email')),
               IconButton(
                 tooltip: 'Settings',
                 onPressed: () {},
@@ -59,8 +57,8 @@ void main() {
                 decoration: InputDecoration(labelText: 'Password'),
               ),
               TalariaMask(
-                  child:
-                      SizedBox(width: 80, height: 40, child: Text('Secret'))),
+                child: SizedBox(width: 80, height: 40, child: Text('Secret')),
+              ),
             ],
           ),
         ),
@@ -91,8 +89,9 @@ void main() {
     );
     expect(masked.covers.any((rect) => rect.overlaps(email)), isTrue);
     expect(
-      masked.covers
-          .any((rect) => rect.overlaps(tester.getRect(find.text('Hello')))),
+      masked.covers.any(
+        (rect) => rect.overlaps(tester.getRect(find.text('Hello'))),
+      ),
       isTrue,
     );
   });

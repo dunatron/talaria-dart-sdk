@@ -6,14 +6,11 @@ Future<void> main() async {
 
   await TalariaFlutter.init(
     TalariaOptions(
-      dsn: const String.fromEnvironment(
-        'TALARIA_DSN',
-        defaultValue: 'https://ingest.newtalaria.com',
+      url: const String.fromEnvironment(
+        'TALARIA_URL',
+        defaultValue: 'https://ingest-nz1.newtalaria.com',
       ),
-      apiKey: const String.fromEnvironment(
-        'TALARIA_API_KEY',
-        defaultValue: 'tal_live_replace_me',
-      ),
+      apiKey: const String.fromEnvironment('TALARIA_BROWSER_API_KEY'),
       release: const String.fromEnvironment(
         'APP_RELEASE',
         defaultValue: '0.1.0+example',
@@ -73,9 +70,7 @@ class HomePage extends StatelessWidget {
                   await Talaria.captureException(
                     e,
                     stackTrace: st,
-                    context: const CaptureContext(
-                      tags: {'area': 'example'},
-                    ),
+                    context: const CaptureContext(tags: {'area': 'example'}),
                   );
                 }
               },

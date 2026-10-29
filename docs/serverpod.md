@@ -10,12 +10,12 @@ Tracing and analytics follow [project configuration](https://www.newtalaria.com/
 
 ```yaml
 dependencies:
-  talaria: ^0.2.3
-  talaria_serverpod: ^0.1.3
+  talaria: ^0.4.0
+  talaria_serverpod: ^0.3.0
   serverpod: ^4.0.0
 ```
 
-Create a client key under **Project settings → Client keys** (`tal_live_…`). Default app keys include `eventsWrite` + `spansWrite`. The API key decides the environment.
+Create a secret client key under **Project settings → Client keys** (`tal_sk_…`). Default app keys include `events:write` and `spans:write`. The key's cell selects the ingest host.
 
 ## Wire it
 
@@ -41,8 +41,7 @@ void run(List<String> args) async {
   );
 
   await TalariaServerpod.init(TalariaOptions(
-    dsn: 'https://ingest.newtalaria.com',
-    apiKey: 'tal_live_…',
+    apiKey: 'tal_sk_prod_nz1_…',
     release: '1.2.3',
     minLevel: SeverityLevel.warning,
     // tracing follows the project policy document
@@ -67,7 +66,7 @@ On shutdown, `await Talaria.flush(); await Talaria.close();`.
 | Uncaught errors | `DiagnosticEventHandler` → events with `traceId` / `spanId` + breadcrumbs |
 | Outbound HTTP | `Talaria.wrapHttpClient` — never wrap the ingest client |
 
-Skipped: ingest (`ingest` and `ingestBatch`), Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
+Skipped: Talaria SDK ingest paths, Insights, `/livez`, `/readyz`, `/startupz`, `/robots.txt`, `/favicon.ico`, and `/.well-known/`.
 
 ## Outbound HTTP
 

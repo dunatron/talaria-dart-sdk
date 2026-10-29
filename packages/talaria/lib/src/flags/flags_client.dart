@@ -65,8 +65,7 @@ class TalariaFlags {
       _downloadDefinitions;
   final String? Function() _userId;
   final TalariaAnalytics? _analytics;
-  final void Function(Map<String, FlagEvaluationResult> flags)?
-      _onFlagsChanged;
+  final void Function(Map<String, FlagEvaluationResult> flags)? _onFlagsChanged;
   final LocalFlagEvaluator _evaluator;
 
   Duration startTimeout;

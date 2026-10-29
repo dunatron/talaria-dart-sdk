@@ -148,8 +148,10 @@ void main() {
   test('unsafe anchors and deep paths are capped', () {
     expect(isSafeAnchor('user@example.com'), isFalse);
     expect(isSafeAnchor('order-1234'), isFalse);
-    HeatmapElementNode? node =
-        const HeatmapElementNode(role: 'row', siblingIndex: 0);
+    HeatmapElementNode? node = const HeatmapElementNode(
+      role: 'row',
+      siblingIndex: 0,
+    );
     for (var i = 0; i < 20; i++) {
       node = HeatmapElementNode(role: 'row', siblingIndex: i, parent: node);
     }
@@ -247,39 +249,41 @@ void main() {
   });
 
   test(
-      'a scrolled page is captured one viewport at a time, including the bottom',
-      () {
-    expect(
-      screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 2000),
-      [800, 1600, 2000],
-    );
-    expect(
-      screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 1600),
-      [800, 1600],
-    );
-    expect(
-      screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 0),
-      isEmpty,
-    );
-    final tracker = ScreenScrollTracker();
-    tracker.ensureFold(viewportWidth: 400, viewportHeight: 800);
-    tracker.update(
-      viewportWidth: 400,
-      viewportHeight: 800,
-      pixels: 40,
-      maxScrollExtent: 0,
-      viewportDimension: 800,
-      vertical: true,
-    );
-    tracker.noteContentExtent(
-      contentWidth: 400,
-      contentHeight: 2400,
-      vertical: true,
-    );
-    expect(tracker.state!.contentHeight, 2400);
-    expect(tracker.state!.maxDepthPx, 800);
-    expect(tracker.state!.offsetPx, 40);
-  });
+    'a scrolled page is captured one viewport at a time, including the bottom',
+    () {
+      expect(screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 2000), [
+        800,
+        1600,
+        2000,
+      ]);
+      expect(screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 1600), [
+        800,
+        1600,
+      ]);
+      expect(
+        screenHeatmapTileOffsets(viewport: 800, maxScrollExtent: 0),
+        isEmpty,
+      );
+      final tracker = ScreenScrollTracker();
+      tracker.ensureFold(viewportWidth: 400, viewportHeight: 800);
+      tracker.update(
+        viewportWidth: 400,
+        viewportHeight: 800,
+        pixels: 40,
+        maxScrollExtent: 0,
+        viewportDimension: 800,
+        vertical: true,
+      );
+      tracker.noteContentExtent(
+        contentWidth: 400,
+        contentHeight: 2400,
+        vertical: true,
+      );
+      expect(tracker.state!.contentHeight, 2400);
+      expect(tracker.state!.maxDepthPx, 800);
+      expect(tracker.state!.offsetPx, 40);
+    },
+  );
 
   test('snapshot input allows structural-only when png is empty', () {
     final session = ScreenHeatmapSession(random: _FixedRandom());
@@ -330,9 +334,7 @@ void main() {
   });
 
   test('later flushes omit taps that were already sent', () {
-    final session = ScreenHeatmapSession(
-      random: _FixedRandom(),
-    );
+    final session = ScreenHeatmapSession(random: _FixedRandom());
     session.open(
       screenKey: '/home',
       nowMs: 0,
@@ -347,9 +349,13 @@ void main() {
     session.classifier.add(_tap(path: 'button:0'), 10);
     session.classifier.flushAll(10);
     expect(
-        session.shouldSend(
-            deviceClass: 'mobile', orientation: 'portrait', keyboard: false),
-        isTrue);
+      session.shouldSend(
+        deviceClass: 'mobile',
+        orientation: 'portrait',
+        keyboard: false,
+      ),
+      isTrue,
+    );
 
     final first = _view(session);
     final firstTaps = first['taps'] as List;
@@ -407,7 +413,11 @@ void main() {
   test('the view payload has no label text', () {
     final session = ScreenHeatmapSession(random: _FixedRandom());
     session.open(
-        screenKey: '/home', nowMs: 0, viewportWidth: 390, viewportHeight: 800);
+      screenKey: '/home',
+      nowMs: 0,
+      viewportWidth: 390,
+      viewportHeight: 800,
+    );
     session.classifier.add(_tap(path: 'button:0'), 10);
     session.classifier.flushAll(10);
     final view = session.toView(
