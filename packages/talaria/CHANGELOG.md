@@ -2,13 +2,13 @@
 
 ## 0.4.0
 
-- Analytics, event (log and exception), span, breadcrumb, and screen-heatmap bodies are plain JSON. They do not include Serverpod `__className__` or other wire class markers. Ingest rejects those fields with 400 `body does not match the route schema`.
+- Analytics, event (log and exception), span, breadcrumb, and screen-heatmap bodies are plain JSON. They do not include Serverpod `__className__` or other wire class markers.
 - Hard cut onto the locked `/v1` contract (platform PR #234 at `571c590c`).
 - API keys are `tal_pk_<env>_<cell>_<43 base62><6 CRC32 base62>` or `tal_sk_…`, checksum alphabet `0-9A-Za-z`. `tal_live_` and class-less `tal_<env>_` keys are invalid. Monitor tokens (`tal_mon_…`) are not SDK api keys.
 - The ingest URL is `https://ingest-<cell>.newtalaria.com` unless `url` or `TALARIA_URL` is set. A `self` cell fails fast without that override.
 - A Dart VM / server client logs one warning when given a `tal_pk_` key.
 - Auth is `Authorization: Bearer` only.
-- Bodies are plain JSON. Batches are `{"events":[…]}`, `{"spans":[…]}`, `{"analytics":[…]}`, and `{"screenHeatmaps":[…]}`.
+- Bodies are plain JSON. Batch keys are `{"events":[…]}` for `POST /v1/events` and `POST /v1/analytics`, `{"spans":[…]}` for `POST /v1/spans`, and `{"screenViews":[…]}` for `POST /v1/screen-heatmaps`. `analytics` and `screenHeatmaps` are not schema keys.
 - `GET /v1/sdk-config`, `POST /v1/client-reports`, `POST /v1/flags/evaluate`, `GET /v1/flags` (definitions).
 - Errors are RFC 9457 `application/problem+json` (`code`, `detail`, `requestId`, and `cell` / `url` on `wrong_cell`).
 - CI release names replace `/` with `-` (`feature-x@a8f31c2`).

@@ -337,7 +337,7 @@ void main() {
     await client.close();
   });
 
-  test('HttpTransport posts IngestAnalyticsEventBatchInput envelope', () async {
+  test('HttpTransport posts analytics as an events batch', () async {
     Map<String, dynamic>? body;
     String? path;
     final httpClient = MockClient((request) async {
@@ -366,8 +366,10 @@ void main() {
     ]);
 
     expect(path, '/v1/analytics');
-    expect(body!.containsKey('input'), isFalse);
-    final events = body!['analytics'] as List;
+    final decoded = body!;
+    expect(decoded.containsKey('input'), isFalse);
+    expect(decoded.containsKey('analytics'), isFalse);
+    final events = decoded['events'] as List;
     expect(events.single['name'], 'product_viewed');
     expect(events.single['kind'], 'track');
     expect(events.single['anonymousId'], 'anon-1');

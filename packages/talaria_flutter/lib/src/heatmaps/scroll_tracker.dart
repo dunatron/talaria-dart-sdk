@@ -40,8 +40,10 @@ class ScreenScrollTracker {
     required bool vertical,
   }) {
     final viewport = viewportDimension.round().clamp(0, 1 << 20);
-    final content =
-        (maxScrollExtent + viewportDimension).round().clamp(viewport, 1 << 20);
+    final content = (maxScrollExtent + viewportDimension).round().clamp(
+          viewport,
+          1 << 20,
+        );
     final depth = (pixels + viewportDimension).round().clamp(0, content);
     final axis =
         vertical ? ScreenScrollAxis.vertical : ScreenScrollAxis.horizontal;

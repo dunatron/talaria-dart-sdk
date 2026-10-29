@@ -2,8 +2,11 @@ import 'package:flutter/widgets.dart';
 
 /// Names a control the way `data-talaria-heatmap` names a DOM node.
 class TalariaHeatmapAnchor extends StatelessWidget {
-  const TalariaHeatmapAnchor(
-      {super.key, required this.id, required this.child});
+  const TalariaHeatmapAnchor({
+    super.key,
+    required this.id,
+    required this.child,
+  });
 
   final String id;
   final Widget child;

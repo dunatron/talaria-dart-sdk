@@ -124,7 +124,9 @@ class ScreenHeatmapSession {
     tiles.clear();
     _resetSent();
     scroll.ensureFold(
-        viewportWidth: viewportWidth, viewportHeight: viewportHeight);
+      viewportWidth: viewportWidth,
+      viewportHeight: viewportHeight,
+    );
   }
 
   void close() {
@@ -179,10 +181,14 @@ class ScreenHeatmapSession {
       'sessionId': sessionId,
       'userId': userId,
       'replayId': replayId,
-      'startedAt': DateTime.fromMillisecondsSinceEpoch(startedAtMs, isUtc: true)
-          .toIso8601String(),
-      'updatedAt': DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true)
-          .toIso8601String(),
+      'startedAt': DateTime.fromMillisecondsSinceEpoch(
+        startedAtMs,
+        isUtc: true,
+      ).toIso8601String(),
+      'updatedAt': DateTime.fromMillisecondsSinceEpoch(
+        nowMs,
+        isUtc: true,
+      ).toIso8601String(),
       'viewportWidth': metrics.viewportWidth,
       'viewportHeight': metrics.viewportHeight,
       'contentWidth': metrics.contentWidth,
@@ -223,7 +229,10 @@ class ScreenHeatmapSession {
     };
   }
 
-  /// Fold PNG and/or structural [manifestJson]. At least one must be present.
+  /// Fold PNG plus structural [manifestJson].
+  ///
+  /// `POST /v1/screen-heatmaps/snapshots` requires non-empty `pngBytes`.
+  /// A manifest with no PNG is not a valid body, so this returns null.
   Map<String, Object?>? snapshotInput({
     required List<int> png,
     required String manifestJson,
@@ -232,7 +241,7 @@ class ScreenHeatmapSession {
     final id = screenViewId;
     final metrics = scroll.state;
     if (id == null || metrics == null) return null;
-    if (png.isEmpty && manifestJson.trim().isEmpty) return null;
+    if (png.isEmpty) return null;
     return {
       'screenViewId': id,
       'pngBytes': png,
@@ -240,14 +249,13 @@ class ScreenHeatmapSession {
       'viewportWidth': metrics.viewportWidth,
       'viewportHeight': metrics.viewportHeight,
       'contentHeight': metrics.contentHeight,
-      'capturedAt': DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true)
-          .toIso8601String(),
+      'capturedAt': DateTime.fromMillisecondsSinceEpoch(
+        nowMs,
+        isUtc: true,
+      ).toIso8601String(),
       'tiles': [
         for (final entry in tiles.entries)
-          {
-            'offsetPx': entry.key,
-            'pngBytes': entry.value,
-          },
+          {'offsetPx': entry.key, 'pngBytes': entry.value},
       ],
     };
   }
@@ -261,10 +269,7 @@ class ScreenHeatmapSession {
       'screenViewId': id,
       'frames': [
         for (final frame in frames)
-          {
-            'offsetMs': frame.offsetMs,
-            'pngBytes': frame.png,
-          },
+          {'offsetMs': frame.offsetMs, 'pngBytes': frame.png},
       ],
     };
   }
@@ -324,8 +329,9 @@ class ScreenHeatmapController {
   }
 
   void noteError() {
-    session?.classifier
-        .noteError(DateTime.now().toUtc().millisecondsSinceEpoch);
+    session?.classifier.noteError(
+      DateTime.now().toUtc().millisecondsSinceEpoch,
+    );
   }
 
   bool get captureEnabled {

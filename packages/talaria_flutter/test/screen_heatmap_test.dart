@@ -285,7 +285,7 @@ void main() {
     },
   );
 
-  test('snapshot input allows structural-only when png is empty', () {
+  test('snapshot input is omitted when the fold png is empty', () {
     final session = ScreenHeatmapSession(random: _FixedRandom());
     session.open(
       screenKey: '/checkout',
@@ -293,16 +293,28 @@ void main() {
       viewportWidth: 400,
       viewportHeight: 800,
     );
+    expect(
+      session.snapshotInput(
+        png: const [],
+        manifestJson: '{"v":1,"nodes":[]}',
+        nowMs: 1000,
+      ),
+      isNull,
+    );
     final input = session.snapshotInput(
-      png: const [],
+      png: const [1, 2, 3, 4],
       manifestJson: '{"v":1,"nodes":[]}',
       nowMs: 1000,
     );
     expect(input, isNotNull);
     expect(input!.containsKey('__className__'), isFalse);
-    expect(input['pngBytes'], isEmpty);
+    expect(input['pngBytes'], [1, 2, 3, 4]);
     expect(input['manifestJson'], '{"v":1,"nodes":[]}');
     expect(input['tiles'], isEmpty);
+    expect(input.containsKey('screenViewId'), isTrue);
+    expect(input.containsKey('viewportWidth'), isTrue);
+    expect(input.containsKey('contentHeight'), isTrue);
+    expect(input.containsKey('capturedAt'), isTrue);
   });
 
   test('opportunistic tiles and micro-frames stay capped', () {

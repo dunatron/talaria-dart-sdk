@@ -14,10 +14,7 @@ Widget Function(FlutterErrorDetails details) talariaErrorWidgetBuilder({
       details.exception,
       stackTrace: details.stack,
       context: const CaptureContext(
-        mechanism: ExceptionMechanism(
-          type: 'error_widget',
-          handled: true,
-        ),
+        mechanism: ExceptionMechanism(type: 'error_widget', handled: true),
         tags: {'source': 'error_widget'},
       ),
     );

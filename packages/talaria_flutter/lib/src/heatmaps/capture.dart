@@ -248,8 +248,11 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final root = _boundaryKey.currentContext as Element?;
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     if (root == null || boundary is! RenderBox || !boundary.hasSize) return;
-    final hit = collectHeatmapTree(root, boundary, includeText: false)
-        .hit(event.position);
+    final hit = collectHeatmapTree(
+      root,
+      boundary,
+      includeText: false,
+    ).hit(event.position);
     if (hit == null) return;
     final local = boundary.globalToLocal(event.position);
     final metrics = _session.scroll.state;
@@ -581,8 +584,11 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     }
     final metrics = _session.scroll.state;
     final items = <String>[];
-    for (final node in collectHeatmapTree(root, boundary, includeText: true)
-        .forManifest(boundary.size)) {
+    for (final node in collectHeatmapTree(
+      root,
+      boundary,
+      includeText: true,
+    ).forManifest(boundary.size)) {
       if (items.length >= 200) break;
       final local = node.localRect;
       final xBp = toBasisPoints(local.left, boundary.size.width);
@@ -715,7 +721,10 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   }
 
   Future<ui.Image> _cover(
-      ui.Image image, List<Rect> rects, List<Rect> holes) async {
+    ui.Image image,
+    List<Rect> rects,
+    List<Rect> holes,
+  ) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawImage(image, Offset.zero, Paint());
@@ -800,10 +809,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
         onPointerDown: _onPointerDown,
         onPointerUp: _onPointerUp,
         // Boundary exists only so the rare idle fold PNG can call toImage.
-        child: RepaintBoundary(
-          key: _boundaryKey,
-          child: widget.child,
-        ),
+        child: RepaintBoundary(key: _boundaryKey, child: widget.child),
       ),
     );
   }

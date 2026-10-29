@@ -76,11 +76,8 @@ class FlutterRuntime {
     if (views.isNotEmpty) {
       final view = views.first;
       final dpr = view.devicePixelRatio == 0 ? 1.0 : view.devicePixelRatio;
-      final shortest = math.min(
-            view.physicalSize.width,
-            view.physicalSize.height,
-          ) /
-          dpr;
+      final shortest =
+          math.min(view.physicalSize.width, view.physicalSize.height) / dpr;
       if (shortest >= 1024) {
         return 'desktop';
       }

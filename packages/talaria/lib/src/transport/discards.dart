@@ -1,4 +1,4 @@
-/// Hourly discard rows for `POST /sdk/reportDiscards`.
+/// Hourly discard rows for `POST /v1/client-reports`.
 class DiscardRow {
   const DiscardRow({
     required this.signal,

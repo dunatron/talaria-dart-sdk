@@ -53,23 +53,20 @@ class ScreenSpanController {
     RuntimeContext.setUrl(label);
 
     final resolved = client ?? Talaria.getClient();
-    resolved?.setTags({
-      'route': label,
-      'screen': label,
-    });
-    resolved?.addBreadcrumb(Breadcrumb(
-      type: 'navigation',
-      category: 'navigation',
-      message: label,
-      data: {'ui.screen.name': label},
-    ));
+    resolved?.setTags({'route': label, 'screen': label});
+    resolved?.addBreadcrumb(
+      Breadcrumb(
+        type: 'navigation',
+        category: 'navigation',
+        message: label,
+        data: {'ui.screen.name': label},
+      ),
+    );
 
     _span = resolved?.startTransaction(
       label,
       kind: SpanKind.internal,
-      attributes: {
-        'ui.screen.name': label,
-      },
+      attributes: {'ui.screen.name': label},
     );
     final span = _span;
     if (span != null && span.isRecording) {

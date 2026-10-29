@@ -50,124 +50,116 @@ void main() {
     expect(events.single.title, 'StateError');
   });
 
-  test(
-    'dogfood capture keeps rejected API calls and drops socket noise',
-    () async {
-      final transport = FakeTransport();
-      await TalariaServerpod.init(
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        transport: transport,
-      );
-      TalariaServerpod.captureRejectedRequests = true;
+  test('dogfood capture keeps rejected API calls and drops socket noise',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+    TalariaServerpod.captureRejectedRequests = true;
 
-      for (final message in [
-        'Invalid API key',
-        'API key expired',
-        'Project access denied',
-        'Project not found',
-        'Ingest rate limit exceeded (100/min)',
-        'Transaction spending cap reached',
-      ]) {
-        TalariaServerpod.handleExceptionEvent(
-          ExceptionEvent(
-            _ApiUnauthorizedException(),
-            StackTrace.current,
-            message: message,
-          ),
-        );
-      }
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(
-          _WebSocketConnectionClosed(),
-          StackTrace.current,
-          message: 'WebSocketConnectionClosed: Connection closed. cr: done',
-        ),
-      );
-      await drain();
-
-      final titles = transport.batches
-          .expand((b) => b)
-          .map((event) => event.title)
-          .toList();
-      expect(titles, [
-        'Invalid API key',
-        'API key expired',
-        'Project access denied',
-        'Project not found',
-        'Ingest rate limit exceeded (100/min)',
-        'Transaction spending cap reached',
-      ]);
-    },
-  );
-
-  test(
-    'handleExceptionEvent drops known ApiUnauthorizedException noise',
-    () async {
-      final transport = FakeTransport();
-      await TalariaServerpod.init(
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        transport: transport,
-      );
-
-      for (final message in [
-        'Invalid API key',
-        'API key expired',
-        'Project access denied',
-      ]) {
-        TalariaServerpod.handleExceptionEvent(
-          ExceptionEvent(
-            _ApiUnauthorizedException(),
-            StackTrace.current,
-            message: message,
-          ),
-        );
-      }
-      await drain();
-      expect(transport.batches, isEmpty);
-    },
-  );
-
-  test(
-    'handleExceptionEvent reports unexpected ApiUnauthorizedException',
-    () async {
-      final transport = FakeTransport();
-      await TalariaServerpod.init(
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        transport: transport,
-      );
-
+    for (final message in [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+      'Project not found',
+      'Ingest rate limit exceeded (100/min)',
+      'Transaction spending cap reached',
+    ]) {
       TalariaServerpod.handleExceptionEvent(
         ExceptionEvent(
           _ApiUnauthorizedException(),
           StackTrace.current,
-          message: 'Ingest requires an API key',
+          message: message,
         ),
       );
-      await drain();
+    }
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _WebSocketConnectionClosed(),
+        StackTrace.current,
+        message: 'WebSocketConnectionClosed: Connection closed. cr: done',
+      ),
+    );
+    await drain();
 
-      final events = transport.batches.expand((b) => b).toList();
-      expect(events, hasLength(1));
-      expect(events.single.title, 'Ingest requires an API key');
-    },
-  );
+    final titles =
+        transport.batches.expand((b) => b).map((event) => event.title).toList();
+    expect(titles, [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+      'Project not found',
+      'Ingest rate limit exceeded (100/min)',
+      'Transaction spending cap reached',
+    ]);
+  });
+
+  test('handleExceptionEvent drops known ApiUnauthorizedException noise',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+
+    for (final message in [
+      'Invalid API key',
+      'API key expired',
+      'Project access denied',
+    ]) {
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiUnauthorizedException(),
+          StackTrace.current,
+          message: message,
+        ),
+      );
+    }
+    await drain();
+    expect(transport.batches, isEmpty);
+  });
+
+  test('handleExceptionEvent reports unexpected ApiUnauthorizedException',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
+
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _ApiUnauthorizedException(),
+        StackTrace.current,
+        message: 'Ingest requires an API key',
+      ),
+    );
+    await drain();
+
+    final events = transport.batches.expand((b) => b).toList();
+    expect(events, hasLength(1));
+    expect(events.single.title, 'Ingest requires an API key');
+  });
 
   test('handleExceptionEvent drops WebSocketConnectionClosed', () async {
     final transport = FakeTransport();
@@ -193,46 +185,44 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
-  test(
-    'handleExceptionEvent drops quota and rate-limit control flow',
-    () async {
-      final transport = FakeTransport();
-      await TalariaServerpod.init(
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        transport: transport,
-      );
+  test('handleExceptionEvent drops quota and rate-limit control flow',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
 
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(
-          _ApiQuotaExceededException(),
-          StackTrace.current,
-          message: 'Transaction spending cap reached',
-        ),
-      );
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(
-          StateError('limited'),
-          StackTrace.current,
-          message: 'Ingest rate limit exceeded (100/min)',
-        ),
-      );
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(
-          _ApiNotFoundException(),
-          StackTrace.current,
-          message: 'Project not found',
-        ),
-      );
-      await drain();
-      expect(transport.batches, isEmpty);
-    },
-  );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _ApiQuotaExceededException(),
+        StackTrace.current,
+        message: 'Transaction spending cap reached',
+      ),
+    );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        StateError('limited'),
+        StackTrace.current,
+        message: 'Ingest rate limit exceeded (100/min)',
+      ),
+    );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(
+        _ApiNotFoundException(),
+        StackTrace.current,
+        message: 'Project not found',
+      ),
+    );
+    await drain();
+    expect(transport.batches, isEmpty);
+  });
 
   test('handleExceptionEvent keeps TypeError', () async {
     final transport = FakeTransport();
@@ -328,29 +318,27 @@ void main() {
     );
   });
 
-  test(
-    'title uses the exception message instead of a generated class',
-    () async {
-      final transport = FakeTransport();
-      await TalariaServerpod.init(
-        TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        transport: transport,
-      );
+  test('title uses the exception message instead of a generated class',
+      () async {
+    final transport = FakeTransport();
+    await TalariaServerpod.init(
+      TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      ),
+      transport: transport,
+    );
 
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(_BoomImpl(), StackTrace.current, message: '_BoomImpl'),
-      );
-      await drain();
-      final events = transport.batches.expand((b) => b).toList();
-      expect(events.single.title, 'Invalid API key');
-    },
-  );
+    TalariaServerpod.handleExceptionEvent(
+      ExceptionEvent(_BoomImpl(), StackTrace.current, message: '_BoomImpl'),
+    );
+    await drain();
+    final events = transport.batches.expand((b) => b).toList();
+    expect(events.single.title, 'Invalid API key');
+  });
 
   test(
     'diagnostic capture ignores another request URL, crumbs, and span',

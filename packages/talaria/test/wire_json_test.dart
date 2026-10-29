@@ -6,9 +6,12 @@ import 'package:talaria/src/protocol/exception_payload_builder.dart';
 import 'package:talaria/talaria.dart';
 import 'package:test/test.dart';
 
-/// Regression: TIS route schemas are plain JSON. A Serverpod `__className__`
-/// (or any other wire class marker) makes ingest answer 400
-/// "body does not match the route schema".
+/// Regression: TIS route schemas are plain JSON.
+///
+/// Live `ingest-nz1` accepts these bodies (401 `invalid_key` once the
+/// schema matches, 400 `invalid_body` when the batch key or a field is
+/// wrong). `POST /v1/analytics` reads `events`. `POST /v1/screen-heatmaps`
+/// reads `screenViews`.
 void main() {
   const apiKey =
       'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S';
@@ -32,7 +35,7 @@ void main() {
     expect(body.path, '/v1/analytics');
     expect(
       body.json,
-      '{"analytics":[{"eventId":"evt-1","name":"product_viewed","kind":"track","anonymousId":"anon-1","sessionId":"sess-1","timestamp":"2026-01-01T00:00:00.000Z","propertiesJson":"{\\"price\\":9.5}"}]}',
+      '{"events":[{"eventId":"evt-1","name":"product_viewed","kind":"track","anonymousId":"anon-1","sessionId":"sess-1","timestamp":"2026-01-01T00:00:00.000Z","propertiesJson":"{\\"price\\":9.5}"}]}',
     );
     expect(body.json.contains('__className__'), isFalse);
     expect(body.json.contains('IngestAnalytics'), isFalse);
@@ -153,6 +156,141 @@ void main() {
     expect(body.json.contains('IngestSpan'), isFalse);
     expect(body.json.contains('SpanEventDto'), isFalse);
     expect(body.json.contains('SpanLinkDto'), isFalse);
+  });
+
+  test('POST /v1/screen-heatmaps body uses screenViews', () async {
+    final body = await _post(
+      apiKey: apiKey,
+      send: (transport) async {
+        await transport.sendScreenHeatmapBatch([
+          {
+            'screenViewId': '11111111-1111-4111-8111-111111111111',
+            'screenKey': 'Home',
+            'anonymousId': 'anon-1',
+            'sessionId': 'sess-1',
+            'userId': null,
+            'replayId': null,
+            'startedAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:01.000Z',
+            'viewportWidth': 390,
+            'viewportHeight': 844,
+            'contentWidth': 390,
+            'contentHeight': 2000,
+            'maxDepthPx': 400,
+            'initialFoldPx': 844,
+            'scrollAxis': 'vertical',
+            'deviceClass': 'mobile',
+            'orientation': 'portrait',
+            'keyboard': false,
+            'osName': null,
+            'release': null,
+            'platform': 'flutter',
+            'taps': [
+              {
+                'tapIndex': 0,
+                'occurredAt': '2026-01-01T00:00:00.000Z',
+                'path': 'Home/Button',
+                'role': 'button',
+                'relX': 50,
+                'relY': 20,
+                'xBp': 50,
+                'yBp': 20,
+                'contentX': 100,
+                'contentY': 200,
+                'rage': false,
+                'dead': false,
+                'error': false,
+                'recordingId': null,
+              },
+            ],
+          },
+        ]);
+      },
+    );
+
+    expect(body.path, '/v1/screen-heatmaps');
+    expect(body.json.contains('screenHeatmaps'), isFalse);
+    expect(body.json.contains('__className__'), isFalse);
+    final decoded = jsonDecode(body.json) as Map<String, Object?>;
+    expect(decoded.keys, ['screenViews']);
+    final view = (decoded['screenViews']! as List).single as Map;
+    expect(view['keyboard'], isFalse);
+    final tap = (view['taps']! as List).single as Map;
+    expect(tap['relX'], 50);
+    expect(tap['relX'], isA<int>());
+    expect(tap['recordingId'], isNull);
+  });
+
+  test('POST /v1/screen-heatmaps/snapshots encodes png bytes as base64',
+      () async {
+    const png =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    final bytes = base64Decode(png);
+    final body = await _post(
+      apiKey: apiKey,
+      send: (transport) async {
+        await transport.uploadScreenHeatmapSnapshot({
+          'screenViewId': '11111111-1111-4111-8111-111111111111',
+          'pngBytes': bytes,
+          'manifestJson': '{}',
+          'viewportWidth': 390,
+          'viewportHeight': 844,
+          'contentHeight': 2000,
+          'capturedAt': '2026-01-01T00:00:00.000Z',
+          'tiles': [
+            {'offsetPx': 0, 'pngBytes': bytes},
+          ],
+        });
+      },
+    );
+
+    expect(body.path, '/v1/screen-heatmaps/snapshots');
+    expect(
+      body.json,
+      '{"screenViewId":"11111111-1111-4111-8111-111111111111","pngBytes":"$png","manifestJson":"{}","viewportWidth":390,"viewportHeight":844,"contentHeight":2000,"capturedAt":"2026-01-01T00:00:00.000Z","tiles":[{"offsetPx":0,"pngBytes":"$png"}]}',
+    );
+  });
+
+  test('POST /v1/screen-heatmaps/recordings encodes frame pngs', () async {
+    const png =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    final body = await _post(
+      apiKey: apiKey,
+      send: (transport) async {
+        await transport.uploadScreenHeatmapRecording({
+          'recordingId': '11111111-1111-4111-8111-111111111111',
+          'screenViewId': '22222222-2222-4222-8222-222222222222',
+          'frames': [
+            {'offsetMs': 0, 'pngBytes': base64Decode(png)},
+          ],
+        });
+      },
+    );
+
+    expect(body.path, '/v1/screen-heatmaps/recordings');
+    expect(
+      body.json,
+      '{"recordingId":"11111111-1111-4111-8111-111111111111","screenViewId":"22222222-2222-4222-8222-222222222222","frames":[{"offsetMs":0,"pngBytes":"$png"}]}',
+    );
+  });
+
+  test('POST /v1/client-reports body is discards', () async {
+    final body = await _post(
+      apiKey: apiKey,
+      send: (transport) async {
+        await transport.reportDiscards(const [
+          DiscardRow(signal: 'events', reason: 'sample_rate', count: 1),
+        ]);
+      },
+    );
+
+    expect(body.path, '/v1/client-reports');
+    expect(
+      body.json,
+      '{"discards":[{"signal":"events","reason":"sample_rate","count":1}]}',
+    );
+    expect(body.json.contains('reports'), isFalse);
+    expect(body.json.contains('discardedEvents'), isFalse);
   });
 
   test('built exception trees carry no Serverpod class names', () {

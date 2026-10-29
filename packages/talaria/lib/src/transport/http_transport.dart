@@ -119,7 +119,7 @@ class HttpTransport implements Transport {
     }
 
     final payload = <String, Object?>{
-      'analytics': [for (final e in events) e.toWire()],
+      'events': [for (final e in events) e.toWire()],
     };
 
     await _postJson(
@@ -137,7 +137,7 @@ class HttpTransport implements Transport {
     if (screenViews.isEmpty) return const {};
     final raw = await _postJson(
       path: '/v1/screen-heatmaps',
-      payload: {'screenHeatmaps': screenViews},
+      payload: {'screenViews': screenViews},
       client: _http,
       label: 'v1/screen-heatmaps',
     );
@@ -229,11 +229,7 @@ class HttpTransport implements Transport {
       payload: {
         'discards': [
           for (final row in discards)
-            {
-              'signal': row.signal,
-              'reason': row.reason,
-              'count': row.count,
-            },
+            {'signal': row.signal, 'reason': row.reason, 'count': row.count},
         ],
       },
       client: _http,
