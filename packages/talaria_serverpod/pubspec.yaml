@@ -18,8 +18,8 @@ environment:
 
 dependencies:
   serverpod: ^4.0.0
-  talaria:
-    path: ../talaria
+  # Published constraint. Local path is pubspec_overrides.yaml, not this file.
+  talaria: ^0.4.0
 
 dev_dependencies:
   lints: ^5.0.0
