@@ -2,65 +2,42 @@
 class TalariaServerpodPaths {
   TalariaServerpodPaths._();
 
-  static const _health = {
-    '/',
-    '/livez',
-    '/readyz',
-    '/startupz',
+  static const _health = {'/', '/livez', '/readyz', '/startupz'};
+
+  static const _probes = {'/robots.txt', '/favicon.ico', '/sitemap.xml'};
+
+  /// Talaria SDK ingest and control endpoints. Only /v1/ paths are used.
+  static const sdkEndpoints = {
+    'events',
+    'spans',
+    'analytics',
+    'replays',
+    'heatmaps',
+    'screenHeatmaps',
+    'sdk',
+    'flags',
+    'monitors',
   };
 
-  static const _probes = {
-    '/robots.txt',
-    '/favicon.ico',
-    '/sitemap.xml',
-  };
+  /// True for a Talaria SDK ingest or control call (v1 paths only).
+  static bool isSdkCall(Uri url) {
+    final segments = url.pathSegments.where((s) => s.isNotEmpty).toList();
 
-  /// Talaria SDK ingest and control calls, as Serverpod endpoint → methods.
-  ///
-  /// When an app reports to a Talaria server that is itself traced (Talaria
-  /// dogfooding), tracing these feeds back: a rejected span batch triggers
-  /// `sdk/reportDiscards`, which becomes a traced request, and so on.
-  /// `replays` matches any `ingestSegment*` method. Dashboard methods on the
-  /// same endpoints (flag management, heatmap viewing) stay traced, and so do
-  /// an app's own endpoints that happen to share these names.
-  static const sdkEndpointMethods = <String, Set<String>>{
-    'events': {'ingest', 'ingestBatch'},
-    'spans': {'ingestBatch'},
-    'analytics': {'ingestBatch'},
-    'heatmaps': {'ingestBatch', 'uploadSnapshot'},
-    'screenHeatmaps': {'ingestBatch', 'uploadSnapshot', 'uploadRecording'},
-    'replays': {'ingestSegment', 'ingestSegmentBatch'},
-    'sdk': {'getConfig', 'reportDiscards'},
-    'flags': {'evaluate', 'downloadDefinitions'},
-  };
-
-  /// True for a Talaria SDK ingest or control call ([sdkEndpointMethods]).
-  static bool isSdkCall({required String endpoint, String? method}) {
-    if (method == null || method.isEmpty) {
-      return false;
+    // Only /v1/<endpoint> paths (e.g., /v1/events, /v1/spans, /v1/monitors)
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i] == 'v1' && sdkEndpoints.contains(segments[i + 1])) {
+        return true;
+      }
     }
-    if (endpoint == 'replays' && method.startsWith('ingestSegment')) {
-      return true;
-    }
-    return sdkEndpointMethods[endpoint]?.contains(method) ?? false;
+
+    return false;
   }
 
   static bool isNoisy(Uri url) {
-    final path = url.path;
-    if (_isIngest(path)) {
+    if (isSdkCall(url)) {
       return true;
     }
-    final segments = url.pathSegments.where((s) => s.isNotEmpty).toList();
-    if (segments.isNotEmpty &&
-        isSdkCall(
-          endpoint: segments.first,
-          method: segments.length >= 2
-              ? segments[1]
-              : url.queryParameters['method'],
-        )) {
-      return true;
-    }
-    final normalized = _normalize(path);
+    final normalized = _normalize(url.path);
     if (_health.contains(normalized) || _probes.contains(normalized)) {
       return true;
     }
@@ -73,24 +50,13 @@ class TalariaServerpodPaths {
     return false;
   }
 
-  static bool shouldSkipSession({
-    required String endpoint,
-    String? method,
-  }) {
+  static bool shouldSkipSession({required String endpoint, String? method}) {
     if (endpoint == 'InternalSession' || endpoint == 'insights') {
       return true;
     }
-    if (_isIngest(endpoint) || _isIngest(method ?? '')) {
-      return true;
-    }
-    return isSdkCall(endpoint: endpoint, method: method);
-  }
-
-  /// Batch and single-call ingest (`ingestBatch` and `ingest`).
-  static bool _isIngest(String path) {
-    return path.split(RegExp(r'[/?]')).any((segment) {
-      return segment == 'ingest' || segment == 'ingestBatch';
-    });
+    // Check if this is a v1 SDK path
+    final testUri = Uri.parse('http://example.com/v1/$endpoint');
+    return isSdkCall(testUri);
   }
 
   static String httpRoute(Uri url) {

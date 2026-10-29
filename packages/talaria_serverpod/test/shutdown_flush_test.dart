@@ -20,10 +20,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
     );
     tasks = _ShutdownTasks();
@@ -60,8 +60,10 @@ void main() {
       'GET /pending/2',
     ]);
     expect(client.spanQueueSize(), 0);
-    expect(transport.batches.expand((b) => b).map((e) => e.message),
-        contains('pending event'));
+    expect(
+      transport.batches.expand((b) => b).map((e) => e.message),
+      contains('pending event'),
+    );
   });
 
   test('registering twice keeps one task and does not throw', () async {

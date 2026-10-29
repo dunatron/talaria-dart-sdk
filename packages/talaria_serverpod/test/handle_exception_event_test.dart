@@ -49,88 +49,92 @@ void main() {
     expect(events.single.title, 'StateError');
   });
 
-  test('dogfood capture keeps rejected API calls and drops socket noise',
-      () async {
-    final transport = FakeTransport();
-    await TalariaServerpod.init(
-      TalariaOptions(
-        url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      ),
-      transport: transport,
-    );
-    TalariaServerpod.captureRejectedRequests = true;
+  test(
+    'dogfood capture keeps rejected API calls and drops socket noise',
+    () async {
+      final transport = FakeTransport();
+      await TalariaServerpod.init(
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        transport: transport,
+      );
+      TalariaServerpod.captureRejectedRequests = true;
 
-    for (final message in [
-      'Invalid API key',
-      'API key expired',
-      'Project access denied',
-      'Project not found',
-      'Ingest rate limit exceeded (100/min)',
-      'Transaction spending cap reached',
-    ]) {
+      for (final message in [
+        'Invalid API key',
+        'API key expired',
+        'Project access denied',
+        'Project not found',
+        'Ingest rate limit exceeded (100/min)',
+        'Transaction spending cap reached',
+      ]) {
+        TalariaServerpod.handleExceptionEvent(
+          ExceptionEvent(
+            _ApiUnauthorizedException(),
+            StackTrace.current,
+            message: message,
+          ),
+        );
+      }
       TalariaServerpod.handleExceptionEvent(
         ExceptionEvent(
-          _ApiUnauthorizedException(),
+          _WebSocketConnectionClosed(),
           StackTrace.current,
-          message: message,
+          message: 'WebSocketConnectionClosed: Connection closed. cr: done',
         ),
       );
-    }
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        _WebSocketConnectionClosed(),
-        StackTrace.current,
-        message: 'WebSocketConnectionClosed: Connection closed. cr: done',
-      ),
-    );
-    await drain();
+      await drain();
 
-    final titles = transport.batches
-        .expand((b) => b)
-        .map((event) => event.title)
-        .toList();
-    expect(titles, [
-      'Invalid API key',
-      'API key expired',
-      'Project access denied',
-      'Project not found',
-      'Ingest rate limit exceeded (100/min)',
-      'Transaction spending cap reached',
-    ]);
-  });
+      final titles = transport.batches
+          .expand((b) => b)
+          .map((event) => event.title)
+          .toList();
+      expect(titles, [
+        'Invalid API key',
+        'API key expired',
+        'Project access denied',
+        'Project not found',
+        'Ingest rate limit exceeded (100/min)',
+        'Transaction spending cap reached',
+      ]);
+    },
+  );
 
-  test('handleExceptionEvent drops known ApiUnauthorizedException noise',
-      () async {
-    final transport = FakeTransport();
-    await TalariaServerpod.init(
-      TalariaOptions(
-        url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      ),
-      transport: transport,
-    );
-
-    for (final message in [
-      'Invalid API key',
-      'API key expired',
-      'Project access denied',
-    ]) {
-      TalariaServerpod.handleExceptionEvent(
-        ExceptionEvent(
-          _ApiUnauthorizedException(),
-          StackTrace.current,
-          message: message,
+  test(
+    'handleExceptionEvent drops known ApiUnauthorizedException noise',
+    () async {
+      final transport = FakeTransport();
+      await TalariaServerpod.init(
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
         ),
+        transport: transport,
       );
-    }
-    await drain();
-    expect(transport.batches, isEmpty);
-  });
+
+      for (final message in [
+        'Invalid API key',
+        'API key expired',
+        'Project access denied',
+      ]) {
+        TalariaServerpod.handleExceptionEvent(
+          ExceptionEvent(
+            _ApiUnauthorizedException(),
+            StackTrace.current,
+            message: message,
+          ),
+        );
+      }
+      await drain();
+      expect(transport.batches, isEmpty);
+    },
+  );
 
   test(
     'handleExceptionEvent reports unexpected ApiUnauthorizedException',
@@ -184,43 +188,45 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
-  test('handleExceptionEvent drops quota and rate-limit control flow',
-      () async {
-    final transport = FakeTransport();
-    await TalariaServerpod.init(
-      TalariaOptions(
-        url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
-        defaultIntegrations: false,
-        flushIntervalMs: 0,
-      ),
-      transport: transport,
-    );
+  test(
+    'handleExceptionEvent drops quota and rate-limit control flow',
+    () async {
+      final transport = FakeTransport();
+      await TalariaServerpod.init(
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        transport: transport,
+      );
 
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        _ApiQuotaExceededException(),
-        StackTrace.current,
-        message: 'Transaction spending cap reached',
-      ),
-    );
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        StateError('limited'),
-        StackTrace.current,
-        message: 'Ingest rate limit exceeded (100/min)',
-      ),
-    );
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        _ApiNotFoundException(),
-        StackTrace.current,
-        message: 'Project not found',
-      ),
-    );
-    await drain();
-    expect(transport.batches, isEmpty);
-  });
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiQuotaExceededException(),
+          StackTrace.current,
+          message: 'Transaction spending cap reached',
+        ),
+      );
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          StateError('limited'),
+          StackTrace.current,
+          message: 'Ingest rate limit exceeded (100/min)',
+        ),
+      );
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(
+          _ApiNotFoundException(),
+          StackTrace.current,
+          message: 'Project not found',
+        ),
+      );
+      await drain();
+      expect(transport.batches, isEmpty);
+    },
+  );
 
   test('handleExceptionEvent keeps TypeError', () async {
     final transport = FakeTransport();
@@ -280,20 +286,14 @@ void main() {
     );
 
     Future<void> capture(String url, String crumb) {
-      return BreadcrumbScope.runWithAsync(
-        () {
-          return RuntimeContext.runWithAsync(
-            () async {
-              client.addBreadcrumb(
-                Breadcrumb(type: 'http', category: 'http', message: crumb),
-              );
-              await client.captureException(StateError(crumb));
-            },
-            url: url,
+      return BreadcrumbScope.runWithAsync(() {
+        return RuntimeContext.runWithAsync(() async {
+          client.addBreadcrumb(
+            Breadcrumb(type: 'http', category: 'http', message: crumb),
           );
-        },
-        buffer: BreadcrumbBuffer(),
-      );
+          await client.captureException(StateError(crumb));
+        }, url: url);
+      }, buffer: BreadcrumbBuffer());
     }
 
     await Future.wait([
@@ -305,8 +305,10 @@ void main() {
     final events = transport.batches.expand((b) => b).toList();
     expect(events, hasLength(2));
     final byUrl = {for (final e in events) e.url: e};
-    expect(byUrl.keys,
-        containsAll(['https://a.example/one', 'https://b.example/two']));
+    expect(
+      byUrl.keys,
+      containsAll(['https://a.example/one', 'https://b.example/two']),
+    );
     expect(
       byUrl['https://a.example/one']!.breadcrumbs?.map((c) => c['message']),
       contains('GET /one'),
@@ -317,69 +319,71 @@ void main() {
     );
   });
 
-  test('title uses the exception message instead of a generated class',
-      () async {
-    final transport = FakeTransport();
-    await TalariaServerpod.init(
-      TalariaOptions(
+  test(
+    'title uses the exception message instead of a generated class',
+    () async {
+      final transport = FakeTransport();
+      await TalariaServerpod.init(
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        transport: transport,
+      );
+
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(_BoomImpl(), StackTrace.current, message: '_BoomImpl'),
+      );
+      await drain();
+      final events = transport.batches.expand((b) => b).toList();
+      expect(events.single.title, 'Invalid API key');
+    },
+  );
+
+  test(
+    'diagnostic capture ignores another request URL, crumbs, and span',
+    () async {
+      final transport = FakeTransport();
+      final options = TalariaOptions(
         url: 'https://api.example.com',
         apiKey: 'tal_prod_test_key_for_unit_tests',
         defaultIntegrations: false,
         flushIntervalMs: 0,
-      ),
-      transport: transport,
-    );
+      );
+      options.enableTracing = true;
+      options.tracesSampleRate = 1;
+      final client = await TalariaServerpod.init(options, transport: transport);
 
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(
-        _BoomImpl(),
-        StackTrace.current,
-        message: '_BoomImpl',
-      ),
-    );
-    await drain();
-    final events = transport.batches.expand((b) => b).toList();
-    expect(events.single.title, 'Invalid API key');
-  });
+      const sessionId = '550e8400-e29b-41d4-a716-446655440000';
+      final foreign = client.startTransaction(
+        'GET /replays/start',
+        kind: SpanKind.server,
+      );
+      final sessionSpan = client.startTransaction(
+        'POST /v1/events',
+        kind: SpanKind.server,
+      );
+      SpanScope.bindSession(sessionId, sessionSpan);
+      final sessionCrumbs = BreadcrumbBuffer();
+      sessionCrumbs.add(
+        Breadcrumb(type: 'http', category: 'http', message: 'POST /v1/events'),
+      );
+      BreadcrumbScope.bindSession(sessionId, sessionCrumbs);
+      client.addBreadcrumb(
+        Breadcrumb(
+          type: 'http',
+          category: 'http',
+          message: 'GET /replays/start',
+        ),
+      );
+      RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
+      RuntimeContext.setUserId('other-user');
 
-  test('diagnostic capture ignores another request URL, crumbs, and span',
-      () async {
-    final transport = FakeTransport();
-    final options = TalariaOptions(
-      url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    );
-    options.enableTracing = true;
-    options.tracesSampleRate = 1;
-    final client = await TalariaServerpod.init(options, transport: transport);
-
-    const sessionId = '550e8400-e29b-41d4-a716-446655440000';
-    final foreign = client.startTransaction(
-      'GET /replays/start',
-      kind: SpanKind.server,
-    );
-    final sessionSpan = client.startTransaction(
-      'POST /events/ingestBatch',
-      kind: SpanKind.server,
-    );
-    SpanScope.bindSession(sessionId, sessionSpan);
-    final sessionCrumbs = BreadcrumbBuffer();
-    sessionCrumbs.add(
-      Breadcrumb(type: 'http', category: 'http', message: 'POST /events'),
-    );
-    BreadcrumbScope.bindSession(sessionId, sessionCrumbs);
-    client.addBreadcrumb(
-      Breadcrumb(type: 'http', category: 'http', message: 'GET /replays/start'),
-    );
-    RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
-    RuntimeContext.setUserId('other-user');
-
-    await RuntimeContext.runWithAsync(
-      () async {
-        await BreadcrumbScope.runWithAsync(
-          () async {
+      await RuntimeContext.runWithAsync(
+        () async {
+          await BreadcrumbScope.runWithAsync(() async {
             client.addBreadcrumb(
               Breadcrumb(
                 type: 'http',
@@ -394,32 +398,29 @@ void main() {
                 serverId: 'srv',
                 serverRunMode: 'test',
                 sessionId: UuidValue.fromString(sessionId),
-                uri: Uri.parse(
-                  'https://api.newtalaria.com/events/ingestBatch',
-                ),
-                endpoint: 'events',
-                methodName: 'ingestBatch',
+                uri: Uri.parse('https://api.newtalaria.com/v1/events'),
+                endpoint: 'v1',
+                methodName: 'events',
               ),
             );
             await drain();
-          },
-          buffer: BreadcrumbBuffer(),
-        );
-      },
-      url: 'https://api.newtalaria.com/replays/start',
-      userId: 'other-user',
-    );
+          }, buffer: BreadcrumbBuffer());
+        },
+        url: 'https://api.newtalaria.com/replays/start',
+        userId: 'other-user',
+      );
 
-    final events = transport.batches.expand((b) => b).toList();
-    expect(events, hasLength(1));
-    final event = events.single;
-    expect(event.url, 'https://api.newtalaria.com/events/ingestBatch');
-    expect(event.userId, isNot('other-user'));
-    expect(event.traceId, sessionSpan.traceId);
-    expect(event.traceId, isNot(foreign.traceId));
-    final messages = event.breadcrumbs?.map((c) => c['message']).toList();
-    expect(messages, ['POST /events']);
-  });
+      final events = transport.batches.expand((b) => b).toList();
+      expect(events, hasLength(1));
+      final event = events.single;
+      expect(event.url, 'https://api.newtalaria.com/v1/events');
+      expect(event.userId, isNot('other-user'));
+      expect(event.traceId, sessionSpan.traceId);
+      expect(event.traceId, isNot(foreign.traceId));
+      final messages = event.breadcrumbs?.map((c) => c['message']).toList();
+      expect(messages, ['POST /events']);
+    },
+  );
 
   test('diagnostic event uses the session user, not another request', () async {
     final transport = FakeTransport();
@@ -466,40 +467,46 @@ void main() {
     expect(event.url, 'https://api.example.com/project/get');
   });
 
-  test('diagnostic without a request URL does not inherit the isolate URL',
-      () async {
-    final transport = FakeTransport();
-    final options = TalariaOptions(
-      url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    );
-    options.enableTracing = true;
-    options.tracesSampleRate = 1;
-    final client = await TalariaServerpod.init(options, transport: transport);
+  test(
+    'diagnostic without a request URL does not inherit the isolate URL',
+    () async {
+      final transport = FakeTransport();
+      final options = TalariaOptions(
+        url: 'https://api.example.com',
+        apiKey: 'tal_prod_test_key_for_unit_tests',
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
+      );
+      options.enableTracing = true;
+      options.tracesSampleRate = 1;
+      final client = await TalariaServerpod.init(options, transport: transport);
 
-    client.startTransaction('GET /replays/start', kind: SpanKind.server);
-    client.addBreadcrumb(
-      Breadcrumb(type: 'http', category: 'http', message: 'GET /replays/start'),
-    );
-    RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
+      client.startTransaction('GET /replays/start', kind: SpanKind.server);
+      client.addBreadcrumb(
+        Breadcrumb(
+          type: 'http',
+          category: 'http',
+          message: 'GET /replays/start',
+        ),
+      );
+      RuntimeContext.setUrl('https://api.newtalaria.com/replays/start');
 
-    TalariaServerpod.handleExceptionEvent(
-      ExceptionEvent(StateError('orphan'), StackTrace.current),
-      context: const DiagnosticEventContext(
-        serverName: 'api',
-        serverId: 'srv',
-        serverRunMode: 'test',
-      ),
-    );
-    await drain();
+      TalariaServerpod.handleExceptionEvent(
+        ExceptionEvent(StateError('orphan'), StackTrace.current),
+        context: const DiagnosticEventContext(
+          serverName: 'api',
+          serverId: 'srv',
+          serverRunMode: 'test',
+        ),
+      );
+      await drain();
 
-    final event = transport.batches.expand((b) => b).single;
-    expect(event.url, isNull);
-    expect(event.traceId, isNull);
-    expect(event.breadcrumbs, isNull);
-  });
+      final event = transport.batches.expand((b) => b).single;
+      expect(event.url, isNull);
+      expect(event.traceId, isNull);
+      expect(event.breadcrumbs, isNull);
+    },
+  );
 
   test('handleExceptionEvent copies caller org and project tags', () async {
     final transport = FakeTransport();
@@ -530,9 +537,11 @@ void main() {
         serverId: 'srv',
         serverRunMode: 'production',
         sessionId: UuidValue.fromString(sessionId),
-        uri: Uri.parse('https://ingest.newtalaria.com/monitors/checkIn'),
+        uri: Uri.parse(
+          'https://ingest.newtalaria.com/v1/monitors/my-job/check-ins',
+        ),
         endpoint: 'monitors',
-        methodName: 'checkIn',
+        methodName: 'check-ins',
       ),
     );
     await drain();

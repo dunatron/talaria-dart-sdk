@@ -1,4 +1,4 @@
-/// Smoke-test script: builds a real ingestBatch payload and optionally POSTs it.
+/// Smoke-test script: builds a real batch payload and optionally POSTs it.
 ///
 /// ```bash
 /// cd packages/talaria

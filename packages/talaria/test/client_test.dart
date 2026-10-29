@@ -151,7 +151,7 @@ void main() {
   test('invalid key disables further event capture', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 400',
+        'Talaria /v1/events failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,
@@ -174,7 +174,7 @@ void main() {
   test('quota (HTTP 402) pauses events but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 402',
+        'Talaria /v1/events failed: HTTP 402',
         statusCode: 402,
         className: 'ApiQuotaExceededException',
         bodyMessage: 'quota exceeded',
@@ -205,7 +205,7 @@ void main() {
   test('5xx backs off but does not disable ingest', () async {
     final transport = _ThrowingTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 503',
+        'Talaria /v1/events failed: HTTP 503',
         statusCode: 503,
       ),
     );

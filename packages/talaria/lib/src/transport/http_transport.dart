@@ -25,7 +25,7 @@ Map<String, Object?> unwrapServerpodResult(Map<String, Object?> raw) {
   return raw;
 }
 
-/// Minimal Serverpod RPC client for ingestBatch endpoints.
+/// Minimal HTTP client for `/v1/...` batch endpoints.
 ///
 /// [httpClient] is the ingest client — never wrap it with `TalariaHttpClient`.
 /// Wrap application HTTP separately, or pass [spanHttpClient] for span ingest.
@@ -157,7 +157,7 @@ class HttpTransport implements Transport {
   ) async {
     if (screenViews.isEmpty) return const {};
     final raw = await _postJson(
-      path: '/screenHeatmaps/ingestBatch',
+      path: '/v1/screenHeatmaps',
       payload: {
         'input': {
           '__className__': 'IngestScreenHeatmapBatchInput',
@@ -165,7 +165,7 @@ class HttpTransport implements Transport {
         },
       },
       client: _http,
-      label: 'screenHeatmaps/ingestBatch',
+      label: 'v1/screenHeatmaps',
     );
     return unwrapServerpodResult(raw);
   }
@@ -173,12 +173,12 @@ class HttpTransport implements Transport {
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {
     await _postJson(
-      path: '/screenHeatmaps/uploadSnapshot',
+      path: '/v1/screenHeatmaps/uploadSnapshot',
       payload: {
         'input': _encodeByteFields(input, const ['pngBytes']),
       },
       client: _http,
-      label: 'screenHeatmaps/uploadSnapshot',
+      label: 'v1/screenHeatmaps/uploadSnapshot',
       timeout: const Duration(seconds: 20),
     );
   }
@@ -186,10 +186,10 @@ class HttpTransport implements Transport {
   @override
   Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) async {
     await _postJson(
-      path: '/screenHeatmaps/uploadRecording',
+      path: '/v1/screenHeatmaps/uploadRecording',
       payload: {'input': _encodeRecording(input)},
       client: _http,
-      label: 'screenHeatmaps/uploadRecording',
+      label: 'v1/screenHeatmaps/uploadRecording',
       timeout: const Duration(seconds: 20),
     );
   }

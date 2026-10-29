@@ -47,9 +47,6 @@ void main() {
     expect(traceparent, isNotNull);
     expect(traceparent, contains(transaction.traceId));
     final spans = transport.spanBatches.expand((batch) => batch).toList();
-    expect(
-      spans.map((span) => span.name),
-      contains('GET /health'),
-    );
+    expect(spans.map((span) => span.name), contains('GET /health'));
   });
 }

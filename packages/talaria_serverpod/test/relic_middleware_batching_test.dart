@@ -7,7 +7,7 @@ import 'package:talaria_serverpod/src/relic_middleware.dart';
 import 'package:test/test.dart';
 
 /// The middleware used to `await client.flush()` after every traced request:
-/// one `spans/ingestBatch` per request, so the default 100/min per-key limit
+/// one `/v1/spans` request per request, so the default 100/min per-key limit
 /// was hit at about 100 traced requests a minute. Spans now wait for the
 /// client's batch.
 void main() {
@@ -25,10 +25,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+        'schemaVersion': 1,
+        'active': true,
+        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+      }),
       transport: transport,
     );
     final app = RelicApp()
@@ -62,9 +62,8 @@ void main() {
     await client.flush();
     expect(transport.spanBatches, hasLength(1));
     expect(transport.spanBatches.single, hasLength(20));
-    expect(
-      transport.spanBatches.single.map((s) => s.name).toSet(),
-      {'POST /projects/list'},
-    );
+    expect(transport.spanBatches.single.map((s) => s.name).toSet(), {
+      'POST /projects/list',
+    });
   });
 }

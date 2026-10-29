@@ -7,7 +7,7 @@ Future<void> main() async {
   await TalariaFlutter.init(
     TalariaOptions(
       url: const String.fromEnvironment(
-        'TALARIA_DSN',
+        'TALARIA_URL',
         defaultValue: 'https://ingest.newtalaria.com',
       ),
       apiKey: const String.fromEnvironment(
@@ -73,9 +73,7 @@ class HomePage extends StatelessWidget {
                   await Talaria.captureException(
                     e,
                     stackTrace: st,
-                    context: const CaptureContext(
-                      tags: {'area': 'example'},
-                    ),
+                    context: const CaptureContext(tags: {'area': 'example'}),
                   );
                 }
               },

@@ -39,7 +39,7 @@ Finished spans are sent in batches, not one request per traced call:
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `spanBatchSize` | 200 | Spans per `spans/ingestBatch` request (at most 200). A full batch goes out straight away. |
+| `spanBatchSize` | 200 | Spans per `/v1/spans` batch request (at most 200). A full batch goes out straight away. |
 | `spanFlushIntervalMs` | 5000 | Longest a span waits before a partial batch is sent. `0` sends only full batches and explicit flushes. |
 | `maxSpanExportsPerMinute` | 30 | Ceiling on automatic span requests a minute. The server allows 100 a minute per key by default. |
 | `maxSpanQueueSize` | 2048 | Spans held while waiting. Beyond that they are dropped and reported as `queue_overflow`. |

@@ -5,11 +5,7 @@ import 'session_spans.dart';
 
 /// Delegating [Database] that emits a CLIENT span per ORM / SQL call.
 class TracingDatabase implements Database {
-  TracingDatabase(
-    this.inner, {
-    required this.client,
-    required this.session,
-  });
+  TracingDatabase(this.inner, {required this.client, required this.session});
 
   final Database inner;
   final TalariaClient client;
@@ -35,20 +31,17 @@ class TracingDatabase implements Database {
       return run();
     }
     final sessionId = SessionSpans.sessionIdOf(session);
-    return SpanScope.runAsync(
-      () {
-        return DbSpan.traceOperation(
-          client,
-          system: _system,
-          operation: operation,
-          table: table,
-          queryText: queryText,
-          parent: _parent,
-          run: run,
-        );
-      },
-      sessionId: sessionId,
-    );
+    return SpanScope.runAsync(() {
+      return DbSpan.traceOperation(
+        client,
+        system: _system,
+        operation: operation,
+        table: table,
+        queryText: queryText,
+        parent: _parent,
+        run: run,
+      );
+    }, sessionId: sessionId);
   }
 
   static String tableName<T>() {
@@ -190,11 +183,8 @@ class TracingDatabase implements Database {
     return _trace(
       operation: 'UPDATE',
       table: tableName<T>(),
-      run: () => inner.updateRow<T>(
-        row,
-        columns: columns,
-        transaction: transaction,
-      ),
+      run: () =>
+          inner.updateRow<T>(row, columns: columns, transaction: transaction),
     );
   }
 
@@ -262,10 +252,7 @@ class TracingDatabase implements Database {
   }
 
   @override
-  Future<T> insertRow<T extends TableRow>(
-    T row, {
-    Transaction? transaction,
-  }) {
+  Future<T> insertRow<T extends TableRow>(T row, {Transaction? transaction}) {
     return _trace(
       operation: 'INSERT',
       table: tableName<T>(),
@@ -339,10 +326,7 @@ class TracingDatabase implements Database {
   }
 
   @override
-  Future<T> deleteRow<T extends TableRow>(
-    T row, {
-    Transaction? transaction,
-  }) {
+  Future<T> deleteRow<T extends TableRow>(T row, {Transaction? transaction}) {
     return _trace(
       operation: 'DELETE',
       table: tableName<T>(),

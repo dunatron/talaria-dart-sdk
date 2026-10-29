@@ -28,8 +28,8 @@ class _TalariaHttpOverrides extends HttpOverrides {
 
   @override
   HttpClient createHttpClient(SecurityContext? context) {
-    final inner = _previous?.createHttpClient(context) ??
-        super.createHttpClient(context);
+    final inner =
+        _previous?.createHttpClient(context) ?? super.createHttpClient(context);
     return _TracingIoClient(inner);
   }
 
@@ -223,7 +223,8 @@ class _TracingIoClient implements HttpClient {
       Uri url,
       String? proxyHost,
       int? proxyPort,
-    )? f,
+    )?
+    f,
   ) {
     _inner.connectionFactory = f;
   }
@@ -235,12 +236,8 @@ class _TracingIoClient implements HttpClient {
 
   @override
   set authenticateProxy(
-    Future<bool> Function(
-      String host,
-      int port,
-      String scheme,
-      String? realm,
-    )? f,
+    Future<bool> Function(String host, int port, String scheme, String? realm)?
+    f,
   ) {
     _inner.authenticateProxy = f;
   }
@@ -297,17 +294,19 @@ class _TracingRequest implements HttpClientRequest {
       span.setStatus(SpanStatus.ok);
     }
     span.finish();
-    client.addBreadcrumb(Breadcrumb(
-      type: 'http',
-      category: 'http',
-      message: '$_method $path',
-      level: status >= 500 ? 'error' : 'info',
-      data: {
-        'http.request.method': _method,
-        'url.path': path,
-        'http.response.status_code': '$status',
-      },
-    ));
+    client.addBreadcrumb(
+      Breadcrumb(
+        type: 'http',
+        category: 'http',
+        message: '$_method $path',
+        level: status >= 500 ? 'error' : 'info',
+        data: {
+          'http.request.method': _method,
+          'url.path': path,
+          'http.response.status_code': '$status',
+        },
+      ),
+    );
   }
 
   void _finishError(Object error) {

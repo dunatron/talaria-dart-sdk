@@ -27,6 +27,7 @@ class TalariaServerpod {
   static set captureRejectedRequests(bool value) {
     DiagnosticFilter.captureRejectedRequests = value;
   }
+
   static final Map<String, String> _sessionUsers = {};
   static final Set<String> _userCloseHook = {};
   static final Map<String, Map<String, String>> _sessionTags = {};
@@ -37,15 +38,9 @@ class TalariaServerpod {
     TalariaOptions options, {
     Transport? transport,
   }) {
-    final tags = {
-      'runtime': 'serverpod',
-      ...options.tags,
-    };
+    final tags = {'runtime': 'serverpod', ...options.tags};
     return Talaria.init(
-      options.copyWith(
-        tags: tags,
-        defaultIntegrations: false,
-      ),
+      options.copyWith(tags: tags, defaultIntegrations: false),
       transport: transport,
     ).whenComplete(installServerpodOutboundHttp);
   }
@@ -125,8 +120,9 @@ class TalariaServerpod {
     final sessionId = context is OperationEventContext
         ? context.sessionId?.toString()
         : null;
-    final resolvedSessionId =
-        (sessionId != null && sessionId.isNotEmpty) ? sessionId : null;
+    final resolvedSessionId = (sessionId != null && sessionId.isNotEmpty)
+        ? sessionId
+        : null;
     final uri = context is ClientCallOpContext ? context.uri.toString() : null;
     final userId = context is OperationEventContext
         ? context.userAuthInfo?.userIdentifier.trim()
@@ -136,9 +132,8 @@ class TalariaServerpod {
         : _sessionUsers[resolvedSessionId];
     final resolvedUserId = _firstUser(userId, fromSession);
 
-    final sameRequest = uri != null &&
-        uri.isNotEmpty &&
-        RuntimeContext.zoneUrl == uri;
+    final sameRequest =
+        uri != null && uri.isNotEmpty && RuntimeContext.zoneUrl == uri;
 
     if (resolvedSessionId != null &&
         SpanScope.forSession(resolvedSessionId) == null &&
@@ -198,10 +193,7 @@ class TalariaServerpod {
     RuntimeContext.runWithAsync(
       () async {
         if (resolvedSessionId != null) {
-          await SpanScope.runAsync(
-            scopedCapture,
-            sessionId: resolvedSessionId,
-          );
+          await SpanScope.runAsync(scopedCapture, sessionId: resolvedSessionId);
           return;
         }
         if (sameRequest) {
@@ -335,10 +327,7 @@ class TalariaServerpod {
     clearSessionUsersForTest();
   }
 
-  static void _ensureSessionTransaction(
-    TalariaClient client,
-    Session session,
-  ) {
+  static void _ensureSessionTransaction(TalariaClient client, Session session) {
     final sessionId = SessionSpans.sessionIdOf(session);
     final result = SessionTransaction.bindOrStart(
       client: client,

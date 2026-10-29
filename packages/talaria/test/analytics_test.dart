@@ -420,7 +420,7 @@ void main() {
   test('missing analyticsWrite disables analytics only', () async {
     final transport = _ThrowingAnalyticsTransport(
       TransportException(
-        'Talaria analytics/ingestBatch failed: HTTP 400',
+        'Talaria /v1/analytics failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,
@@ -449,7 +449,7 @@ void main() {
   test('permanent ingest error disables analytics too', () async {
     final transport = _ThrowingAnalyticsTransport(
       TransportException(
-        'Talaria events/ingestBatch failed: HTTP 400',
+        'Talaria /v1/events failed: HTTP 400',
         statusCode: 400,
         className: 'ApiUnauthorizedException',
         retry: false,

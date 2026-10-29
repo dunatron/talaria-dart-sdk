@@ -10,20 +10,18 @@ void main() {
   });
 
   TalariaClient client(FakeTransport transport) {
-    final options = TalariaOptions(
-      url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
-      defaultIntegrations: false,
-      flushIntervalMs: 0,
-    )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      });
-    return TalariaClient(
-      options,
-      transport: transport,
-    );
+    final options =
+        TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey: 'tal_prod_test_key_for_unit_tests',
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        )..applySdkDocument({
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        });
+    return TalariaClient(options, transport: transport);
   }
 
   test('finish marks an unset span ok', () async {
@@ -66,51 +64,58 @@ void main() {
     await c.close();
   });
 
-  test('does not adopt another session currentSpan outside a Relic zone',
-      () async {
-    final transport = FakeTransport();
-    final c = client(transport);
-    final stream = c.startTransaction('lab/ping', kind: SpanKind.server);
+  test(
+    'does not adopt another session currentSpan outside a Relic zone',
+    () async {
+      final transport = FakeTransport();
+      final c = client(transport);
+      final stream = c.startTransaction('lab/ping', kind: SpanKind.server);
 
-    final result = SessionTransaction.bindOrStart(
-      client: c,
-      sessionId: 'method-1',
-      name: 'lab/slowQuery',
-      kind: SpanKind.server,
-      attributes: {'serverpod.session.kind': 'method'},
-      isFutureCall: false,
-    );
-
-    expect(result.created, isTrue);
-    expect(result.span.spanId, isNot(stream.spanId));
-
-    stream.finish();
-    result.span.finish();
-    await c.close();
-  });
-
-  test('adopts Relic currentSpan only inside a zone for method sessions',
-      () async {
-    final transport = FakeTransport();
-    final c = client(transport);
-
-    await SpanScope.runAsync(() async {
-      final relic = c.startTransaction('POST /lab/ping', kind: SpanKind.server);
       final result = SessionTransaction.bindOrStart(
         client: c,
-        sessionId: 'rpc-1',
-        name: 'lab/ping',
+        sessionId: 'method-1',
+        name: 'lab/slowQuery',
         kind: SpanKind.server,
         attributes: {'serverpod.session.kind': 'method'},
         isFutureCall: false,
       );
-      expect(result.created, isFalse);
-      expect(result.span.spanId, relic.spanId);
-      relic.finish();
-    });
 
-    await c.close();
-  });
+      expect(result.created, isTrue);
+      expect(result.span.spanId, isNot(stream.spanId));
+
+      stream.finish();
+      result.span.finish();
+      await c.close();
+    },
+  );
+
+  test(
+    'adopts Relic currentSpan only inside a zone for method sessions',
+    () async {
+      final transport = FakeTransport();
+      final c = client(transport);
+
+      await SpanScope.runAsync(() async {
+        final relic = c.startTransaction(
+          'POST /lab/ping',
+          kind: SpanKind.server,
+        );
+        final result = SessionTransaction.bindOrStart(
+          client: c,
+          sessionId: 'rpc-1',
+          name: 'lab/ping',
+          kind: SpanKind.server,
+          attributes: {'serverpod.session.kind': 'method'},
+          isFutureCall: false,
+        );
+        expect(result.created, isFalse);
+        expect(result.span.spanId, relic.spanId);
+        relic.finish();
+      });
+
+      await c.close();
+    },
+  );
 
   test('FutureCall inside a Relic zone still starts its own root', () async {
     final transport = FakeTransport();
@@ -164,6 +169,8 @@ void main() {
       isTrue,
     );
     expect(
-        SessionTransaction.isGenericDiagnosticMessage('StateError'), isFalse);
+      SessionTransaction.isGenericDiagnosticMessage('StateError'),
+      isFalse,
+    );
   });
 }

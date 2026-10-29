@@ -495,7 +495,7 @@ class TalariaClient {
     if (transport == null || screenViews.isEmpty) return Future.value(const {});
     return _guarded(
       _heatmapsBackoff,
-      'screenHeatmaps/ingestBatch',
+      'v1/screenHeatmaps',
       () => transport.sendScreenHeatmapBatch(screenViews),
       discardSignal: DiscardSignal.heatmaps,
       discardCount: screenViews.length,
@@ -507,7 +507,7 @@ class TalariaClient {
     if (transport == null) return Future.value();
     return _guarded(
       _heatmapsBackoff,
-      'screenHeatmaps/uploadSnapshot',
+      'v1/screenHeatmaps/uploadSnapshot',
       () => transport.uploadScreenHeatmapSnapshot(input),
       discardSignal: DiscardSignal.heatmaps,
     );

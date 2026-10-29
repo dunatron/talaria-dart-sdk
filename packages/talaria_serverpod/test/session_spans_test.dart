@@ -17,10 +17,7 @@ void main() {
 
   test('names method sessions as endpoint/method', () {
     expect(
-      SessionSpans.nameFor(
-        endpoint: 'project',
-        method: 'listProjects',
-      ),
+      SessionSpans.nameFor(endpoint: 'project', method: 'listProjects'),
       'project/listProjects',
     );
     expect(SessionSpans.kindFor(isFutureCall: false), SpanKind.server);

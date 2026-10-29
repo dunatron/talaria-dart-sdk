@@ -29,7 +29,7 @@ void main() {
     return (
       transport: HttpTransport(
         url: 'https://api.example.com',
-        apiKey: 'tal_live_testkey',
+        apiKey: 'tal_test_testkey',
         httpClient: client,
       ),
       seen: seen,

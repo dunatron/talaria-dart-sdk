@@ -94,7 +94,7 @@ class TalariaOptions {
   final int maxBatchSize;
   final int flushIntervalMs;
 
-  /// Most spans in one `spans/ingestBatch` request (1 to [maxSpanBatchSize]).
+  /// Most spans in one `/v1/spans` batch request (1 to [maxSpanBatchSize]).
   /// A full batch is exported without waiting for [spanFlushIntervalMs].
   final int spanBatchSize;
 
