@@ -8,35 +8,33 @@ globs:
 
 ## Wire contract
 
-Events:
+Events (logs and exceptions share this route; there is no `/v1/logs` in this SDK):
 
 - `POST {url}/v1/events`
-- Header: `X-API-Key` only
-- Body:
+- Header: `Authorization: Bearer` only
+- Body is plain JSON. No `__className__`, no `input` wrapper, no other Serverpod wire metadata, including on nested breadcrumbs, exception values, mechanisms, and frames:
 
 ```json
 {
-  "input": {
-    "__className__": "IngestEventBatchInput",
-    "events": [
-      { "__className__": "IngestEventInput", "message": "...", "level": "error" }
-    ]
-  }
+  "events": [
+    { "message": "...", "level": "error", "eventType": "error" }
+  ]
 }
 ```
 
 Spans (when tracing is enabled):
 
 - `POST {url}/v1/spans`
-- Body: `{ "input": { "__className__": "IngestSpanBatchInput", "spans": [ { "__className__": "IngestSpanInput", … } ] } }`
+- Body: `{ "spans": [ { "traceId": "…", "spanId": "…", "name": "…", "kind": "client", "startTime": "…", "endTime": "…" } ] }`
+- Nested span events and links are plain objects. No `__className__`.
 - `HttpTransport.httpClient` is ingest-only — never wrap it with `TalariaHttpClient`. Optional `spanHttpClient` for span POSTs.
 
 Analytics:
 
 - `POST {url}/v1/analytics`
-- Body: `{ "input": { "__className__": "IngestAnalyticsEventBatchInput", "events": [ { "__className__": "IngestAnalyticsEventInput", … } ] } }`
+- Body: `{ "analytics": [ { "eventId": "…", "name": "…", "kind": "track", "anonymousId": "…", "sessionId": "…", "timestamp": "…" } ] }`
 - Consent default off. `properties` → `propertiesJson` (JSON **string**). Required `anonymousId` + `sessionId`.
-- Discard counts: `POST {url}/sdk/reportDiscards` with `ReportSdkDiscardsInput`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`.
+- Discard counts: `POST {url}/v1/client-reports` with `{ "discards": [ { "signal", "reason", "count" } ] }`. Reasons: `sample_rate`, `queue_overflow`, `signal_disabled`, `network`, `rate_limited`, `quota`.
 
 - Even a single leftover event is a batch of one
 - `extra` → `extraJson` (JSON **string**); `tags` are string→string
@@ -57,4 +55,4 @@ Analytics:
 - Short HTTP timeout (~3s)
 - No unbounded retries; on 429 log warning and drop
 - Transport failures must not crash the host app
-- Classify ingest errors by body `retry` + `__className__` / `className`, never HTTP 401. `retry: false` (invalid key, missing project, disallowed origin) disables events **and** spans **and** analytics for this isolate. Quota / 5xx keep sending. Message `lacks required scope` disables that signal only. Do not persist across process restart.
+- Classify ingest errors from problem+json `code` (and `detail`). `invalid_key`, `not_found`, `insufficient_scope`, `invalid_scope`, and `wrong_cell` disable events **and** spans **and** analytics for this isolate. Quota / 5xx keep sending. Message `lacks required scope` disables that signal only. Do not persist across process restart.

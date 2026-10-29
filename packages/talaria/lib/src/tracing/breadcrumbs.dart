@@ -13,7 +13,7 @@ const int kMaxQueryBreadcrumbs = 15;
 /// Non-query crumbs. Together with [kMaxQueryBreadcrumbs] this fills the buffer.
 const int kMaxOtherBreadcrumbs = 35;
 
-/// Client-side breadcrumb attached to error events (`BreadcrumbDto`).
+/// Client-side breadcrumb attached to error events.
 class Breadcrumb {
   Breadcrumb({
     required this.type,
@@ -33,7 +33,6 @@ class Breadcrumb {
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
-      '__className__': 'BreadcrumbDto',
       'timestamp': RuntimeContext.isoTimestamp(timestamp),
       'type': type,
     };

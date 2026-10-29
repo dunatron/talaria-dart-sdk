@@ -16,17 +16,21 @@ void main() {
       captured,
     );
 
-    expect(payload['__className__'], 'ExceptionDataDto');
+    expect(payload.containsKey('__className__'), isFalse);
     final values = payload['values'] as List;
     expect(values, isNotEmpty);
     final first = values.first as Map;
-    expect(first['__className__'], 'ExceptionValueDto');
+    expect(first.containsKey('__className__'), isFalse);
     expect(first['type'], contains('StateError'));
+    final mechanism = first['mechanism'] as Map;
+    expect(mechanism.containsKey('__className__'), isFalse);
+    expect(mechanism['type'], 'generic');
     final stacktrace = first['stacktrace'] as Map;
+    expect(stacktrace.containsKey('__className__'), isFalse);
     final frames = stacktrace['frames'] as List;
     expect(frames, isNotEmpty);
     final frame = frames.last as Map;
-    expect(frame['__className__'], 'StackFrameDto');
+    expect(frame.containsKey('__className__'), isFalse);
     expect(
       frame.containsKey('functionName') || frame.containsKey('absPath'),
       isTrue,

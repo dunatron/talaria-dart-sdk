@@ -25,7 +25,7 @@ void main() {
     expect(messages[1], 'SELECT File 35');
   });
 
-  test('toWire includes BreadcrumbDto class name', () {
+  test('toWire is plain JSON', () {
     final crumb = Breadcrumb(
       type: 'http',
       category: 'http',
@@ -34,7 +34,7 @@ void main() {
       data: {'http.request.method': 'GET'},
     );
     final wire = crumb.toWire();
-    expect(wire['__className__'], 'BreadcrumbDto');
+    expect(wire.containsKey('__className__'), isFalse);
     expect(wire['type'], 'http');
     expect(wire['data'], {'http.request.method': 'GET'});
   });

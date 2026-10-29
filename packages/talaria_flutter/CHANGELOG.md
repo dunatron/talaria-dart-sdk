@@ -2,6 +2,7 @@
 
 ## 0.3.0
 
+- Screen heatmap views, taps, snapshots, tiles, and recordings are plain JSON. They do not include Serverpod `__className__`.
 - Depends on `talaria` 0.4.0.
 - `TalariaFlutter.init` refuses `tal_sk_` and `tal_mon_` keys. The publishable key is `--dart-define=TALARIA_BROWSER_API_KEY` (`tal_pk_…`).
 

@@ -173,7 +173,6 @@ class ScreenHeatmapSession {
     }
     final recording = wantsRecording ? recordingId : null;
     return {
-      '__className__': 'IngestScreenHeatmapViewInput',
       'screenViewId': id,
       'screenKey': key,
       'anonymousId': anonymousId,
@@ -200,7 +199,6 @@ class ScreenHeatmapSession {
       'taps': [
         for (var i = _sentTaps; i < unsentTapEnd; i++)
           {
-            '__className__': 'IngestScreenHeatmapTapInput',
             'tapIndex': i,
             'occurredAt': DateTime.fromMillisecondsSinceEpoch(
               taps[i].occurredAt,
@@ -217,8 +215,9 @@ class ScreenHeatmapSession {
             'rage': taps[i].rage,
             'dead': taps[i].dead,
             'error': taps[i].error,
-            'recordingId':
-                (taps[i].rage || taps[i].dead || taps[i].error) ? recording : null,
+            'recordingId': (taps[i].rage || taps[i].dead || taps[i].error)
+                ? recording
+                : null,
           },
       ],
     };
@@ -235,7 +234,6 @@ class ScreenHeatmapSession {
     if (id == null || metrics == null) return null;
     if (png.isEmpty && manifestJson.trim().isEmpty) return null;
     return {
-      '__className__': 'UploadScreenHeatmapSnapshotInput',
       'screenViewId': id,
       'pngBytes': png,
       'manifestJson': manifestJson,
@@ -247,7 +245,6 @@ class ScreenHeatmapSession {
       'tiles': [
         for (final entry in tiles.entries)
           {
-            '__className__': 'ScreenHeatmapTileInput',
             'offsetPx': entry.key,
             'pngBytes': entry.value,
           },
@@ -260,13 +257,11 @@ class ScreenHeatmapSession {
     final recording = recordingId;
     if (id == null || recording == null || frames.isEmpty) return null;
     return {
-      '__className__': 'UploadScreenHeatmapRecordingInput',
       'recordingId': recording,
       'screenViewId': id,
       'frames': [
         for (final frame in frames)
           {
-            '__className__': 'ScreenHeatmapFrameInput',
             'offsetMs': frame.offsetMs,
             'pngBytes': frame.png,
           },

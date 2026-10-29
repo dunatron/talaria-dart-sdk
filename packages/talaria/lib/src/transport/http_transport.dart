@@ -191,10 +191,9 @@ class HttpTransport implements Transport {
 
   @override
   Future<Map<String, Object?>> evaluateFlags(Map<String, Object?> input) async {
-    final body = Map<String, Object?>.from(input)..remove('__className__');
     return _postJson(
       path: '/v1/flags/evaluate',
-      payload: body,
+      payload: input,
       client: _http,
       label: 'v1/flags/evaluate',
     );

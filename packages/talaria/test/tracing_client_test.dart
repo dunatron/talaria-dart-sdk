@@ -59,7 +59,8 @@ void main() {
     expect(event.spanId, txn.spanId);
     expect(event.breadcrumbs, isNotNull);
     expect(event.breadcrumbs, hasLength(2));
-    expect(event.breadcrumbs!.first['__className__'], 'BreadcrumbDto');
+    expect(event.breadcrumbs!.first.containsKey('__className__'), isFalse);
+    expect(event.breadcrumbs!.first['type'], 'navigation');
 
     txn.finish();
     await client.flush();

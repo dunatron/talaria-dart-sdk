@@ -1,6 +1,6 @@
 import 'severity.dart';
 
-/// In-memory event ready to serialize as `IngestEventInput`.
+/// In-memory event (log or exception) ready to serialize as plain JSON.
 class Event {
   Event({
     required this.message,
@@ -56,7 +56,6 @@ class Event {
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
-      '__className__': 'IngestEventInput',
       'message': message,
       'level': level.wireValue,
       'eventType': eventType ?? level.toEventType(),

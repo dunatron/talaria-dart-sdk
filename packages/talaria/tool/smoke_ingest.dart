@@ -71,10 +71,7 @@ Future<void> main(List<String> args) async {
       return;
     }
     final wire = {
-      'input': {
-        '__className__': 'IngestEventBatchInput',
-        'events': [for (final e in fake.batches.expand((b) => b)) e.toWire()],
-      },
+      'events': [for (final e in fake.batches.expand((b) => b)) e.toWire()],
     };
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(wire));
     stdout.writeln(

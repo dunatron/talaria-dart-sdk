@@ -13,7 +13,7 @@ class AnalyticsEventNames {
   static const featureFlagCalled = r'$feature_flag_called';
 }
 
-/// In-memory analytics event ready to serialize as `IngestAnalyticsEventInput`.
+/// In-memory analytics event ready to serialize as a plain JSON analytics item.
 class AnalyticsEvent {
   AnalyticsEvent({
     required this.eventId,
@@ -97,7 +97,6 @@ class AnalyticsEvent {
 
   Map<String, Object?> toWire() {
     final wire = <String, Object?>{
-      '__className__': 'IngestAnalyticsEventInput',
       'eventId': eventId,
       'name': name,
       'kind': kind.name,

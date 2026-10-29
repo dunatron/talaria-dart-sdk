@@ -21,7 +21,8 @@ void main() {
     final transport = FakeTransport();
     final options = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
+      apiKey:
+          'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );

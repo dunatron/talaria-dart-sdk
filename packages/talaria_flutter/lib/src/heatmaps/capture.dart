@@ -391,8 +391,9 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
             DateTime.now().millisecondsSinceEpoch - _session.startedAtMs,
           );
         }
-        if (i < 2)
+        if (i < 2) {
           await Future<void>.delayed(const Duration(milliseconds: 120));
+        }
       }
     } finally {
       _microFraming = false;
@@ -476,8 +477,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
   void _armSettle({Duration? atLeast}) {
     _settle?.cancel();
     final elapsed = DateTime.now().difference(_lastInteraction);
-    var wait =
-        elapsed >= _settleDelay ? Duration.zero : _settleDelay - elapsed;
+    var wait = elapsed >= _settleDelay ? Duration.zero : _settleDelay - elapsed;
     if (atLeast != null && atLeast > wait) wait = atLeast;
     _settle = Timer(wait, () {
       unawaited(_uploadIdleSnapshot());

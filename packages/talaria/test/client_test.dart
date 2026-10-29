@@ -126,7 +126,8 @@ void main() {
     final event = transport.batches.first.single;
     expect(event.level, SeverityLevel.error);
     expect(event.platform, 'dart');
-    expect(event.exception?['__className__'], 'ExceptionDataDto');
+    expect(event.exception?.containsKey('__className__'), isFalse);
+    expect(event.exception?['values'], isA<List<Object?>>());
     expect(event.stackTrace, isNotNull);
     await client.close();
   });

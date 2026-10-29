@@ -30,7 +30,7 @@ class CaptureContext {
   }
 }
 
-/// Exception mechanism metadata for wire `ExceptionMechanismDto`.
+/// Exception mechanism metadata on the event wire.
 class ExceptionMechanism {
   const ExceptionMechanism({
     this.type = 'generic',
@@ -43,7 +43,6 @@ class ExceptionMechanism {
   final bool synthetic;
 
   Map<String, Object?> toWire() => {
-        '__className__': 'ExceptionMechanismDto',
         'type': type.isEmpty ? 'generic' : type,
         'handled': handled,
         'synthetic': synthetic,

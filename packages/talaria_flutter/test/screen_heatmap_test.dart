@@ -299,7 +299,8 @@ void main() {
       nowMs: 1000,
     );
     expect(input, isNotNull);
-    expect(input!['pngBytes'], isEmpty);
+    expect(input!.containsKey('__className__'), isFalse);
+    expect(input['pngBytes'], isEmpty);
     expect(input['manifestJson'], '{"v":1,"nodes":[]}');
     expect(input['tiles'], isEmpty);
   });
@@ -433,6 +434,7 @@ void main() {
       nowMs: 20,
     );
     final encoded = view.toString();
+    expect(encoded.contains('__className__'), isFalse);
     expect(encoded.contains('label'), isFalse);
     expect(encoded.contains('button:0'), isTrue);
   });
