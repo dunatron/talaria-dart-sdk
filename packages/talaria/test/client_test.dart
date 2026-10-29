@@ -16,7 +16,8 @@ void main() {
   }) {
     return TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       minLevel: minLevel,
       enforceDefaultLevel: enforce,
       loggers: loggers,
@@ -139,10 +140,18 @@ void main() {
   });
 
   test(
-    'apiKey must start with tal_prod_, tal_stg_, tal_test_, or tal_dev_',
+    'apiKey must be a tal_pk_ or tal_sk_ key with a valid checksum',
     () {
       expect(
         () => TalariaOptions(url: 'https://api.example.com', apiKey: 'wrong'),
+        throwsArgumentError,
+      );
+      expect(
+        () => TalariaOptions(
+          url: 'https://api.example.com',
+          apiKey:
+              'tal_live_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+        ),
         throwsArgumentError,
       );
     },

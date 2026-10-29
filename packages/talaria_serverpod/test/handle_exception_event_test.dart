@@ -22,7 +22,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -56,7 +57,8 @@ void main() {
       await TalariaServerpod.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         ),
@@ -111,7 +113,8 @@ void main() {
       await TalariaServerpod.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         ),
@@ -143,7 +146,8 @@ void main() {
       await TalariaServerpod.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         ),
@@ -170,7 +174,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -195,7 +200,8 @@ void main() {
       await TalariaServerpod.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         ),
@@ -233,7 +239,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -254,7 +261,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -278,7 +286,8 @@ void main() {
     final client = await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -326,7 +335,8 @@ void main() {
       await TalariaServerpod.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         ),
@@ -348,7 +358,8 @@ void main() {
       final transport = FakeTransport();
       final options = TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       );
@@ -418,7 +429,7 @@ void main() {
       expect(event.traceId, sessionSpan.traceId);
       expect(event.traceId, isNot(foreign.traceId));
       final messages = event.breadcrumbs?.map((c) => c['message']).toList();
-      expect(messages, ['POST /events']);
+      expect(messages, ['POST /v1/events']);
     },
   );
 
@@ -427,7 +438,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -473,7 +485,8 @@ void main() {
       final transport = FakeTransport();
       final options = TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       );
@@ -513,7 +526,8 @@ void main() {
     await TalariaServerpod.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),
@@ -523,7 +537,7 @@ void main() {
     TalariaServerpod.bindSessionTags(sessionId, {
       'caller.organization_name': 'Ngai Tahu',
       'caller.project_name': 'Silverstripe',
-      'caller.api_key_prefix': 'tal_prod_abc',
+      'caller.api_key_prefix': 'tal_sk_prod_nz1_Ab3dE6gH',
       'caller.api_key_secret': '',
     });
 
@@ -549,7 +563,7 @@ void main() {
     final event = transport.batches.expand((b) => b).single;
     expect(event.tags?['caller.organization_name'], 'Ngai Tahu');
     expect(event.tags?['caller.project_name'], 'Silverstripe');
-    expect(event.tags?['caller.api_key_prefix'], 'tal_prod_abc');
+    expect(event.tags?['caller.api_key_prefix'], 'tal_sk_prod_nz1_Ab3dE6gH');
     expect(event.tags?.containsKey('caller.api_key_secret'), isFalse);
   });
 }

@@ -3,7 +3,7 @@
 /// ```bash
 /// cd packages/talaria
 /// dart run tool/smoke_ingest.dart
-/// TALARIA_URL=https://api… TALARIA_API_KEY=tal_prod_… dart run tool/smoke_ingest.dart --live
+/// TALARIA_URL=https://ingest-nz1.newtalaria.com TALARIA_API_KEY=tal_sk_… dart run tool/smoke_ingest.dart --live
 /// ```
 library;
 
@@ -20,9 +20,9 @@ Future<void> main(List<String> args) async {
   final apiKey = Platform.environment['TALARIA_API_KEY'];
 
   if (live) {
-    if (apiKey == null || !apiKey.startsWith('tal_prod_')) {
+    if (apiKey == null || TalariaCredential.parse(apiKey).kind != 'sk') {
       stderr.writeln(
-        'For --live, set TALARIA_API_KEY to a project key (tal_prod_…).',
+        'For --live, set TALARIA_API_KEY to a tal_sk_ key.',
       );
       exitCode = 1;
       return;
@@ -33,7 +33,8 @@ Future<void> main(List<String> args) async {
   final client = TalariaClient(
     TalariaOptions(
       url: url,
-      apiKey: apiKey ?? 'tal_prod_smoke_test_placeholder_key_xxxxxx',
+      apiKey: apiKey ??
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       release: '0.1.0+smoke',
       defaultIntegrations: false,
       flushIntervalMs: 0,

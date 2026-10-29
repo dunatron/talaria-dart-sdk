@@ -10,12 +10,12 @@ Tracing and analytics follow [project configuration](https://www.newtalaria.com/
 
 ```yaml
 dependencies:
-  talaria: ^0.2.3
-  talaria_serverpod: ^0.1.3
+  talaria: ^0.4.0
+  talaria_serverpod: ^0.3.0
   serverpod: ^4.0.0
 ```
 
-Create a client key under **Project settings → Client keys** (e.g., `tal_prod_...` or `tal_test_...`). Default app keys include `eventsWrite` + `spansWrite`. The API key decides the environment.
+Create a secret client key under **Project settings → Client keys** (`tal_sk_…`). Default app keys include `events:write` and `spans:write`. The key's cell selects the ingest host.
 
 ## Wire it
 
@@ -41,8 +41,7 @@ void run(List<String> args) async {
   );
 
   await TalariaServerpod.init(TalariaOptions(
-    url: 'https://ingest.newtalaria.com',
-    apiKey: 'tal_prod_...',
+    apiKey: 'tal_sk_prod_nz1_…',
     release: '1.2.3',
     minLevel: SeverityLevel.warning,
     // tracing follows the project policy document

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Depends on `talaria` 0.4.0. Ingest paths that must not be traced are the locked `/v1` routes, including `/v1/sdk-config`, `/v1/client-reports`, `/v1/screen-heatmaps`, and `/v1/flags/evaluate`.
+
 ## 0.2.7
 
 - Depends on `talaria` 0.3.9: request spans rely on its batched span export, and the shutdown flush on its `flush()` waiting for an export in flight. With 0.3.8, which has no span batching, the middleware's spans would only go out on the 2 s flush tick, 50 at a time.

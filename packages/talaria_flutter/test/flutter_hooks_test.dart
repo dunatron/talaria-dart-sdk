@@ -14,12 +14,27 @@ void main() {
     await TalariaFlutter.close();
   });
 
+  test('init refuses a secret key', () async {
+    await expectLater(
+      TalariaFlutter.init(
+        TalariaOptions(
+          apiKey: TalariaCredential.mint(),
+          defaultIntegrations: false,
+          flushIntervalMs: 0,
+        ),
+        observeLifecycle: false,
+        installHooks: false,
+      ),
+      throwsArgumentError,
+    );
+  });
+
   testWidgets('navigator observer sets route tags', (tester) async {
     final transport = FakeTransport();
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -61,7 +76,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -105,7 +120,7 @@ void main() {
       await TalariaFlutter.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         )..applySdkDocument({
@@ -138,7 +153,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -171,7 +186,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -234,7 +249,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -262,7 +277,7 @@ void main() {
     final client = await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
@@ -293,7 +308,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -342,7 +357,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -385,7 +400,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
@@ -454,7 +469,7 @@ void main() {
     await TalariaFlutter.init(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
         defaultIntegrations: false,
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),

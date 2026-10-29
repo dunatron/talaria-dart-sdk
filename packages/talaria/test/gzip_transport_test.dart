@@ -64,8 +64,8 @@ void main() {
         zipped.bodyBytes.length,
         lessThan(plain.seen.single.bodyBytes.length ~/ 2),
       );
-      final a = decode(zipped)['input'] as Map;
-      final b = decode(plain.seen.single)['input'] as Map;
+      final a = decode(zipped);
+      final b = decode(plain.seen.single);
       expect(
         (a['events'] as List).map((e) => (e as Map)['message']),
         (b['events'] as List).map((e) => (e as Map)['message']),
@@ -123,7 +123,7 @@ void main() {
     var advertise = true;
     final httpClient = MockClient((request) async {
       seen.add(request);
-      if (request.url.path == '/sdk/getConfig') {
+      if (request.url.path == '/v1/sdk-config') {
         return http.Response(
           jsonEncode({
             'schemaVersion': 1,
@@ -139,13 +139,15 @@ void main() {
     });
     final transport = HttpTransport(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_gzip_client_test',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
     final client = TalariaClient(
       TalariaOptions(
         url: 'https://api.example.com',
-        apiKey: 'tal_prod_gzip_client_test',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         defaultIntegrations: false,
         flushIntervalMs: 0,
       ),

@@ -8,12 +8,9 @@ Future<void> main() async {
     TalariaOptions(
       url: const String.fromEnvironment(
         'TALARIA_URL',
-        defaultValue: 'https://ingest.newtalaria.com',
+        defaultValue: 'https://ingest-nz1.newtalaria.com',
       ),
-      apiKey: const String.fromEnvironment(
-        'TALARIA_API_KEY',
-        defaultValue: 'tal_prod_replace_me',
-      ),
+      apiKey: const String.fromEnvironment('TALARIA_BROWSER_API_KEY'),
       release: const String.fromEnvironment(
         'APP_RELEASE',
         defaultValue: '0.1.0+example',

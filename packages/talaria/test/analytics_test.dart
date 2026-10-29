@@ -19,7 +19,8 @@ void main() {
   }) {
     final created = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: platform,
       storage: storage,
       defaultIntegrations: false,
@@ -195,7 +196,8 @@ void main() {
     final transport = FakeTransport();
     final opts = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -285,7 +287,8 @@ void main() {
     final transport = FakeTransport();
     final options = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: 'flutter',
       defaultIntegrations: false,
       flushIntervalMs: 0,
@@ -312,7 +315,8 @@ void main() {
     final transport = FakeTransport();
     final options = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -344,7 +348,8 @@ void main() {
 
     final transport = HttpTransport(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_testkey',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -361,9 +366,8 @@ void main() {
     ]);
 
     expect(path, '/v1/analytics');
-    expect(body!['input']['__className__'], 'IngestAnalyticsEventBatchInput');
-    final events = body!['input']['events'] as List;
-    expect(events.single['__className__'], 'IngestAnalyticsEventInput');
+    expect(body!.containsKey('input'), isFalse);
+    final events = body!['analytics'] as List;
     expect(events.single['name'], 'product_viewed');
     expect(events.single['kind'], 'track');
     expect(events.single['anonymousId'], 'anon-1');
@@ -371,15 +375,18 @@ void main() {
     expect(events.single['propertiesJson'], '{"price":9.5}');
   });
 
-  test('getConfig and reportDiscards use the policy envelopes', () async {
+  test('getConfig and client reports use the v1 routes', () async {
     final paths = <String>[];
-    Map<String, dynamic>? configBody;
+    final methods = <String>[];
+    Map<String, String>? configQuery;
     Map<String, dynamic>? discardBody;
+    String? auth;
     final httpClient = MockClient((request) async {
       paths.add(request.url.path);
-      final decoded = jsonDecode(request.body) as Map<String, dynamic>;
-      if (request.url.path == '/sdk/getConfig') {
-        configBody = decoded;
+      methods.add(request.method);
+      auth = request.headers['Authorization'];
+      if (request.url.path == '/v1/sdk-config') {
+        configQuery = request.url.queryParameters;
         return http.Response(
           jsonEncode({
             'schemaVersion': 1,
@@ -391,13 +398,14 @@ void main() {
           200,
         );
       }
-      discardBody = decoded;
+      discardBody = jsonDecode(request.body) as Map<String, dynamic>;
       return http.Response('{}', 200);
     });
 
     final transport = HttpTransport(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_testkey',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -410,11 +418,13 @@ void main() {
       ),
     ]);
 
-    expect(paths, ['/sdk/getConfig', '/sdk/reportDiscards']);
-    expect(configBody!['input']['platform'], 'flutter');
-    expect(configBody!['input']['sdkName'], talariaSdkName);
-    expect(discardBody!['input']['__className__'], 'ReportSdkDiscardsInput');
-    expect(discardBody!['input']['discards'].single['count'], 3);
+    expect(paths, ['/v1/sdk-config', '/v1/client-reports']);
+    expect(methods, ['GET', 'POST']);
+    expect(auth, startsWith('Bearer tal_sk_'));
+    expect(configQuery!['platform'], 'flutter');
+    expect(configQuery!['sdkName'], talariaSdkName);
+    expect(discardBody!.containsKey('input'), isFalse);
+    expect(discardBody!['discards'].single['count'], 3);
   });
 
   test('missing analyticsWrite disables analytics only', () async {

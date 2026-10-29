@@ -227,7 +227,8 @@ void main() {
   group('TalariaClient', () {
     TalariaOptions options({int flushIntervalMs = 2000}) => TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: flushIntervalMs,
         )..applySdkDocument({

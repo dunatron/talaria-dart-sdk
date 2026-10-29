@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'capture_context.dart';
+import 'credential.dart';
 import 'identity/storage.dart';
+import 'release_env_stub.dart' if (dart.library.io) 'release_env_io.dart';
 import 'release_identity.dart';
 import 'severity.dart';
 
@@ -16,7 +18,7 @@ class TalariaOptions {
   /// The API key decides the environment, so the value is not stored or sent.
   TalariaOptions({
     String? url,
-    required this.apiKey,
+    required String apiKey,
     String? environment,
     String? release,
     String? commitSha,
@@ -39,7 +41,12 @@ class TalariaOptions {
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.storage,
-  })  : url = _resolveUrl(url: url),
+  })  : credential = TalariaCredential.parse(apiKey),
+        url = _resolveUrl(
+          url: url,
+          credential: TalariaCredential.parse(apiKey),
+        ),
+        apiKey = TalariaCredential.parse(apiKey).value,
         release = ReleaseIdentity.resolve(
           release: release,
           commitSha: commitSha,
@@ -72,16 +79,16 @@ class TalariaOptions {
         tracesSampleRate = null,
         enableAnalytics = false,
         enableFlags = false {
-    final key = apiKey.trim();
-    if (key.isEmpty) {
-      throw ArgumentError('Talaria init requires apiKey.');
-    }
-    if (!_isValidApiKey(key)) {
+    if (credential.isMonitor) {
       throw ArgumentError(
-        'Talaria apiKey must start with tal_prod_, tal_stg_, tal_test_, or tal_dev_.',
+        'Talaria apiKey must be a tal_pk_ or tal_sk_ key. '
+        'A tal_mon_ token is only valid for POST /v1/check-ins.',
       );
     }
   }
+
+  /// Parsed key. Checksum and cell are checked before the client starts.
+  final TalariaCredential credential;
 
   final String url;
   final String apiKey;
@@ -294,19 +301,37 @@ class TalariaOptions {
     return created;
   }
 
-  static String _resolveUrl({String? url}) {
-    final raw = url?.trim();
-    if (raw == null || raw.isEmpty) {
-      return 'https://ingest.newtalaria.com';
+  static const definedUrl = String.fromEnvironment('TALARIA_URL');
+
+  /// Explicit [url], then `TALARIA_URL` (`--dart-define` or the process
+  /// environment), then `https://ingest-<cell>.newtalaria.com`. A `self`
+  /// cell with no override fails fast.
+  static String _resolveUrl({
+    String? url,
+    required TalariaCredential credential,
+    Map<String, String>? env,
+  }) {
+    final explicit = _nonEmpty(url);
+    if (explicit != null) return explicit;
+    final fromDefine = _nonEmpty(definedUrl);
+    if (fromDefine != null) return fromDefine;
+    final fromEnv = _nonEmpty((env ?? releaseEnvironment())['TALARIA_URL']);
+    if (fromEnv != null) return fromEnv;
+    if (credential.isSelfCell) {
+      throw ArgumentError(
+        'A self cell requires TALARIA_URL or the url option. '
+        'Refusing to derive an ingest host.',
+      );
     }
-    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+    return credential.derivedIngestUrl;
   }
 
-  static bool _isValidApiKey(String key) {
-    return key.startsWith('tal_prod_') ||
-        key.startsWith('tal_stg_') ||
-        key.startsWith('tal_test_') ||
-        key.startsWith('tal_dev_');
+  static String? _nonEmpty(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    return trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
   }
 
   static Map<String, String> normalizeTags(Map<String, Object?> tags) {

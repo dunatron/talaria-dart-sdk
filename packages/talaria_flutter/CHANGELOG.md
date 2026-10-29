@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Depends on `talaria` 0.4.0.
+- `TalariaFlutter.init` refuses `tal_sk_` and `tal_mon_` keys. The publishable key is `--dart-define=TALARIA_BROWSER_API_KEY` (`tal_pk_…`).
+
 ## 0.2.9
 
 - Depends on `talaria` 0.3.9. While heatmap uploads are paused after a 429 or 402 (`TalariaClient.heatmapsPausedFor`), `TalariaScreenCapture` doesn't capture the fold snapshot. It tries again when the pause ends, not on every settle.

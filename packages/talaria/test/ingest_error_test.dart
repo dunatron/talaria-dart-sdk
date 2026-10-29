@@ -3,21 +3,41 @@ import 'package:test/test.dart';
 
 void main() {
   group('IngestError.parse', () {
-    test('reads __className__ and retry', () {
+    test('reads problem+json invalid_key', () {
       final parsed = IngestError.parse(
-        '{"__className__":"ApiUnauthorizedException","message":"Invalid API key","retry":false}',
+        '{"type":"https://newtalaria.com/docs/reference/errors#invalid_key","title":"Invalid key","status":401,"detail":"Invalid API key","code":"invalid_key","requestId":"req_1"}',
       );
-      expect(parsed.className, 'ApiUnauthorizedException');
+      expect(parsed.code, 'invalid_key');
       expect(parsed.message, 'Invalid API key');
       expect(parsed.retry, isFalse);
+      expect(parsed.requestId, 'req_1');
+      expect(parsed.isPermanent, isTrue);
+      expect(parsed.isGlobalCredentialFailure, isTrue);
+    });
+
+    test('reads wrong_cell extensions', () {
+      final parsed = IngestError.parse(
+        '{"status":421,"code":"wrong_cell","detail":"Wrong cell","cell":"eu1","url":"https://ingest-eu1.newtalaria.com","requestId":"req_2"}',
+      );
+      expect(parsed.cell, 'eu1');
+      expect(parsed.cellUrl, 'https://ingest-eu1.newtalaria.com');
       expect(parsed.isPermanent, isTrue);
     });
 
-    test('reads className compat key', () {
+    test('insufficient_scope is scope-only', () {
       final parsed = IngestError.parse(
-        '{"className":"ApiNotFoundException","message":"Project not found"}',
+        '{"status":403,"code":"insufficient_scope","detail":"Missing events:write"}',
       );
       expect(parsed.isPermanent, isTrue);
+      expect(parsed.isScopeOnly, isTrue);
+      expect(parsed.isGlobalCredentialFailure, isFalse);
+    });
+
+    test('rate_limited is not permanent', () {
+      final parsed = IngestError.parse(
+        '{"status":429,"code":"rate_limited","detail":"Slow down"}',
+      );
+      expect(parsed.isPermanent, isFalse);
     });
   });
 

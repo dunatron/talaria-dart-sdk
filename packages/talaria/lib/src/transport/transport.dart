@@ -47,19 +47,24 @@ class TransportException implements Exception {
     this.message, {
     this.statusCode,
     this.cause,
+    this.code,
     this.className,
     this.retry,
     this.bodyMessage,
     this.retryAfter,
     this.resetAt,
     this.meter,
+    this.requestId,
   });
 
   final String message;
   final int? statusCode;
   final Object? cause;
 
-  /// Serverpod exception class from the body (`ApiUnauthorizedException`, …).
+  /// Problem+json `code` (`invalid_key`, `rate_limited`, `quota_exceeded`, …).
+  final String? code;
+
+  /// Legacy exception class name, when a caller still sets one.
   final String? className;
 
   /// Wire `retry` flag. `false` means the credential/project will not recover.
@@ -78,15 +83,20 @@ class TransportException implements Exception {
   /// The quota meter that is exhausted (`events`, `spans`, `replays`).
   final String? meter;
 
-  /// HTTP 429, or the typed `ApiRateLimitedException` body.
+  /// Problem+json `requestId`, or the `Request-Id` response header.
+  final String? requestId;
+
+  /// HTTP 429, or problem+json `rate_limited`.
   bool get isRateLimited =>
       statusCode == 429 ||
+      code == 'rate_limited' ||
       (className ?? '').contains('ApiRateLimitedException');
 
-  /// HTTP 402, or the typed `ApiQuotaExceededException` body. Not retried:
+  /// HTTP 402, or problem+json `quota_exceeded`. Not retried:
   /// the batch is dropped and the meter paused until [resetAt].
   bool get isQuotaExceeded =>
       statusCode == 402 ||
+      code == 'quota_exceeded' ||
       (className ?? '').contains('ApiQuotaExceededException');
 
   /// Worth trying again later: network errors and timeouts (no status),

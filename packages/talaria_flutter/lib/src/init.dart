@@ -34,6 +34,15 @@ class TalariaFlutter {
     bool observeLifecycle = true,
     bool trackLifecycleEvents = true,
   }) async {
+    final credential = TalariaCredential.parse(options.apiKey);
+    if (!credential.isPublishable) {
+      throw ArgumentError(
+        'Flutter init accepts only a tal_pk_ key '
+        '(--dart-define=TALARIA_BROWSER_API_KEY). '
+        'tal_sk_ and tal_mon_ keys are refused.',
+      );
+    }
+
     TalariaStorage? storage = options.storage;
     if (storage == null) {
       try {

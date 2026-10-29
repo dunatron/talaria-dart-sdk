@@ -12,7 +12,8 @@ void main() {
     final transport = FakeTransport();
     final options = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({
@@ -39,7 +40,8 @@ void main() {
     RuntimeContext.setUserAgent('Mozilla/5.0 Test');
     final options = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     )..applySdkDocument({

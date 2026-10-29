@@ -11,6 +11,7 @@ import 'flags/flags_client.dart';
 import 'identity/identity.dart';
 import 'identity/storage.dart';
 import 'logger.dart';
+import 'credential.dart';
 import 'protocol/exception_payload_builder.dart';
 import 'release_identity.dart';
 import 'severity.dart';
@@ -51,6 +52,10 @@ class TalariaClient {
         _enforceDefaultLevel = options.enforceDefaultLevel,
         _loggers = Map<String, LoggerPreset>.from(options.loggers),
         _beforeSend = options.beforeSend {
+    TalariaCredential.warnIfPublishableOnServer(
+      options.credential,
+      platform: options.platform,
+    );
     final httpTransport = transport is HttpTransport
         ? transport
         : (transport == null
@@ -838,6 +843,7 @@ class TalariaClient {
       return;
     }
     final parsed = IngestError(
+      code: error.code,
       className: error.className,
       message: error.bodyMessage ?? error.message,
       retry: error.retry,

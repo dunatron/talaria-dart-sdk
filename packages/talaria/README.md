@@ -13,25 +13,28 @@ Flutter apps should use [`talaria_flutter`](https://www.newtalaria.com/docs/sdk/
 
 ```yaml
 dependencies:
-  talaria: ^0.3.7
+  talaria: ^0.4.0
 ```
 
 ## Initialize
 
-The API key decides the environment.
+The API key's cell decides the ingest host (`https://ingest-<cell>.newtalaria.com`) unless `url` or `TALARIA_URL` is set. A `self` cell fails fast without one of those. Server and CI keys are `tal_sk_…` (`TALARIA_API_KEY`). The key must match the §5.1 grammar, including the CRC32 base62 checksum.
 
 ```dart
+import 'dart:io';
+
 import 'package:talaria/talaria.dart';
 
 await Talaria.init(TalariaOptions(
-  url: 'https://ingest.newtalaria.com',
-  apiKey: const String.fromEnvironment('TALARIA_API_KEY'),
+  apiKey: Platform.environment['TALARIA_API_KEY']!,
   release: '1.4.2',
   minLevel: SeverityLevel.warning,
 ));
 ```
 
-Tracing and analytics follow Project settings.
+A publishable `tal_pk_` key is accepted on the Dart VM and logs one warning: ingest works, but releases, flag definitions, and monitor check-ins need a `tal_sk_` key. Flutter init refuses `tal_sk_` and `tal_mon_` keys.
+
+Requests use `Authorization: Bearer`. Batches are plain JSON `{"events":[…]}`, `{"spans":[…]}`, and `{"analytics":[…]}`. Policy is `GET /v1/sdk-config`. Discard reports are `POST /v1/client-reports`. Flag evaluation is `POST /v1/flags/evaluate`. Errors are `application/problem+json`.
 
 ## Span batching
 

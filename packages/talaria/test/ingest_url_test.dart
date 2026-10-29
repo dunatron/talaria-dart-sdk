@@ -12,7 +12,9 @@ void main() {
     'v1/replays',
     'v1/heatmaps',
     'v1/screen-heatmaps',
-    'v1/sdk',
+    'v1/sdk-config',
+    'v1/client-reports',
+    'v1/check-ins',
     'v1/flags',
     'v1/monitors',
   ];

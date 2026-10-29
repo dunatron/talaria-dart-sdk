@@ -52,7 +52,7 @@ class ReleaseIdentity {
       final type = _nonEmpty(env['GITHUB_REF_TYPE']);
       final kind = type == 'tag' || type == 'branch' ? type : null;
       return ReleaseIdentity(
-        release: '$githubRef@${githubSha.substring(0, 7)}',
+        release: '${_releaseRef(githubRef)}@${githubSha.substring(0, 7)}',
         commitSha: githubSha,
         releaseRefKind: kind,
       );
@@ -63,7 +63,7 @@ class ReleaseIdentity {
     if (gitlabRef != null && gitlabSha != null && gitlabSha.length >= 7) {
       final tag = _nonEmpty(env['CI_COMMIT_TAG']);
       return ReleaseIdentity(
-        release: '$gitlabRef@${gitlabSha.substring(0, 7)}',
+        release: '${_releaseRef(gitlabRef)}@${gitlabSha.substring(0, 7)}',
         commitSha: gitlabSha,
         releaseRefKind: tag != null ? 'tag' : 'branch',
       );
@@ -75,6 +75,9 @@ class ReleaseIdentity {
     final trimmed = value?.trim() ?? '';
     return trimmed.isEmpty ? null : trimmed;
   }
+
+  /// Release names cannot contain `/` (§5.5). CI refs become `feature-x@sha`.
+  static String _releaseRef(String ref) => ref.replaceAll('/', '-');
 
   /// Parse OTEL_RESOURCE_ATTRIBUTES for a specific key.
   /// Format: key1=value1,key2=value2

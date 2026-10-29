@@ -20,7 +20,8 @@ void main() {
   }) {
     final created = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       platform: 'dart',
       storage: storage,
       defaultIntegrations: false,
@@ -211,7 +212,8 @@ void main() {
   test('active=false disables flags in applySdkDocument', () {
     final opts = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
     );
     opts.applySdkDocument({
@@ -227,7 +229,8 @@ void main() {
   test('copyWith preserves enableFlags', () {
     final opts = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
     )..enableFlags = true;
     final copied = opts.copyWith(platform: 'flutter');
@@ -243,16 +246,14 @@ void main() {
       body = jsonDecode(request.body) as Map<String, dynamic>;
       return http.Response(
         jsonEncode({
-          'data': {
-            'evaluations': [
-              {
-                'key': 'demo',
-                'variationKey': 'on',
-                'valueJson': 'true',
-                'version': 1,
-              },
-            ],
-          },
+          'evaluations': [
+            {
+              'key': 'demo',
+              'variationKey': 'on',
+              'valueJson': 'true',
+              'version': 1,
+            },
+          ],
         }),
         200,
       );
@@ -260,7 +261,8 @@ void main() {
 
     final transport = HttpTransport(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_testkey',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -270,10 +272,10 @@ void main() {
       'attributes': {'plan': 'team'},
     });
 
-    expect(path, '/flags/evaluate');
-    expect(body!['input']['__className__'], 'EvaluateFlagsInput');
-    expect(body!['input']['anonymousId'], 'anon_1');
-    expect(body!['input']['attributes']['plan'], 'team');
+    expect(path, '/v1/flags/evaluate');
+    expect(body!.containsKey('input'), isFalse);
+    expect(body!['anonymousId'], 'anon_1');
+    expect(body!['attributes']['plan'], 'team');
     expect((result['evaluations'] as List).single['key'], 'demo');
   });
 

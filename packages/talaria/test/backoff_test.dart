@@ -52,7 +52,8 @@ void main() {
     Future<TransportException> failWith(http.Response response) async {
       final transport = HttpTransport(
         url: 'http://localhost:8080',
-        apiKey: 'tal_prod_test_key_for_unit_tests',
+        apiKey:
+            'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
         httpClient: MockClient((_) async => response),
       );
       try {
@@ -67,12 +68,9 @@ void main() {
       final e = await failWith(
         http.Response(
           jsonEncode({
-            'className': 'ApiRateLimitedException',
-            'data': {
-              'message': 'Too many requests',
-              'retryAfterSeconds': 42,
-              'retry': true,
-            },
+            'code': 'rate_limited',
+            'detail': 'Too many requests',
+            'retryAfterSeconds': 42,
           }),
           429,
           headers: {'retry-after': '37'},
@@ -88,8 +86,9 @@ void main() {
       final e = await failWith(
         http.Response(
           jsonEncode({
-            'className': 'ApiRateLimitedException',
-            'data': {'message': 'slow down', 'retryAfterSeconds': 42},
+            'code': 'rate_limited',
+            'detail': 'slow down',
+            'retryAfterSeconds': 42,
           }),
           429,
         ),
@@ -103,12 +102,10 @@ void main() {
         final e = await failWith(
           http.Response(
             jsonEncode({
-              'className': 'ApiQuotaExceededException',
-              'data': {
-                'message': 'Monthly span quota reached',
-                'meter': 'spans',
-                'resetAt': '2026-11-01T00:00:00.000Z',
-              },
+              'code': 'quota_exceeded',
+              'detail': 'Monthly span quota reached',
+              'meter': 'spans',
+              'resetAt': '2026-11-01T00:00:00.000Z',
             }),
             402,
             headers: {'retry-after': '1000'},
@@ -316,7 +313,8 @@ void main() {
 
     TalariaOptions options() => TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_prod_test_key_for_unit_tests',
+          apiKey:
+              'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         )..applySdkDocument({

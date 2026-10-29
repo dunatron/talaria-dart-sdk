@@ -117,7 +117,11 @@ class TalariaHttpClient extends http.BaseClient {
     'replays',
     'heatmaps',
     'screen-heatmaps',
-    'sdk',
+    'sdk-config',
+    'client-reports',
+    'check-ins',
+    'releases',
+    'source-maps',
     'flags',
     'monitors',
   };

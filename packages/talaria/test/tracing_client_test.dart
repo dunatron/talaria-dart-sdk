@@ -18,7 +18,8 @@ void main() {
   }) {
     final created = TalariaOptions(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_test_key_for_unit_tests',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       defaultIntegrations: false,
       flushIntervalMs: 0,
     );
@@ -107,7 +108,8 @@ void main() {
 
     final transport = HttpTransport(
       url: 'https://api.example.com',
-      apiKey: 'tal_prod_testkey',
+      apiKey:
+          'tal_sk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
       httpClient: httpClient,
     );
 
@@ -124,9 +126,8 @@ void main() {
     ]);
 
     expect(path, '/v1/spans');
-    expect(body!['input']['__className__'], 'IngestSpanBatchInput');
-    final spans = body!['input']['spans'] as List;
-    expect(spans.single['__className__'], 'IngestSpanInput');
+    expect(body!.containsKey('input'), isFalse);
+    final spans = body!['spans'] as List;
     expect(spans.single['traceId'], '0af7651916cd43dd8448eb211c80319c');
     expect(spans.single['kind'], 'client');
   });

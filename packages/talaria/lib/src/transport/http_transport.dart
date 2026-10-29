@@ -11,19 +11,7 @@ import 'gzip_stub.dart' if (dart.library.io) 'gzip_io.dart';
 import 'ingest_error.dart';
 import 'transport.dart';
 
-String serverpodByteData(List<int> bytes) {
-  final b64 = base64Encode(bytes);
-  return "decode('$b64', 'base64')";
-}
-
-Map<String, Object?> unwrapServerpodResult(Map<String, Object?> raw) {
-  final data = raw['data'];
-  if (data is Map<String, Object?>) return data;
-  if (data is Map) {
-    return data.map((key, value) => MapEntry(key.toString(), value));
-  }
-  return raw;
-}
+String _plainBase64(List<int> bytes) => base64Encode(bytes);
 
 /// Minimal HTTP client for `/v1/...` batch endpoints.
 ///
@@ -95,10 +83,7 @@ class HttpTransport implements Transport {
     }
 
     final payload = <String, Object?>{
-      'input': {
-        '__className__': 'IngestEventBatchInput',
-        'events': [for (final e in events) e.toWire()],
-      },
+      'events': [for (final e in events) e.toWire()],
     };
 
     await _postJson(
@@ -116,10 +101,7 @@ class HttpTransport implements Transport {
     }
 
     final payload = <String, Object?>{
-      'input': {
-        '__className__': 'IngestSpanBatchInput',
-        'spans': [for (final s in spans) s.toWire()],
-      },
+      'spans': [for (final s in spans) s.toWire()],
     };
 
     await _postJson(
@@ -137,10 +119,7 @@ class HttpTransport implements Transport {
     }
 
     final payload = <String, Object?>{
-      'input': {
-        '__className__': 'IngestAnalyticsEventBatchInput',
-        'events': [for (final e in events) e.toWire()],
-      },
+      'analytics': [for (final e in events) e.toWire()],
     };
 
     await _postJson(
@@ -158,25 +137,18 @@ class HttpTransport implements Transport {
     if (screenViews.isEmpty) return const {};
     final raw = await _postJson(
       path: '/v1/screen-heatmaps',
-      payload: {
-        'input': {
-          '__className__': 'IngestScreenHeatmapBatchInput',
-          'screenViews': screenViews,
-        },
-      },
+      payload: {'screenHeatmaps': screenViews},
       client: _http,
       label: 'v1/screen-heatmaps',
     );
-    return unwrapServerpodResult(raw);
+    return raw;
   }
 
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {
     await _postJson(
       path: '/v1/screen-heatmaps/snapshots',
-      payload: {
-        'input': _encodeByteFields(input, const ['pngBytes']),
-      },
+      payload: _encodeByteFields(input, const ['pngBytes']),
       client: _http,
       label: 'v1/screen-heatmaps/snapshots',
       timeout: const Duration(seconds: 20),
@@ -187,7 +159,7 @@ class HttpTransport implements Transport {
   Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) async {
     await _postJson(
       path: '/v1/screen-heatmaps/recordings',
-      payload: {'input': _encodeRecording(input)},
+      payload: _encodeRecording(input),
       client: _http,
       label: 'v1/screen-heatmaps/recordings',
       timeout: const Duration(seconds: 20),
@@ -200,20 +172,18 @@ class HttpTransport implements Transport {
     String sdkName = talariaSdkName,
     String sdkVersion = talariaSdkVersion,
   }) async {
-    final response = await _postJson(
-      path: '/sdk/getConfig',
-      payload: {
-        'input': {
-          '__className__': 'GetSdkConfigInput',
-          'schemaVersion': 1,
-          'sdkName': sdkName,
-          'sdkVersion': sdkVersion,
-          'platform': platform,
-          if (revision != null) 'revision': revision,
-        },
+    final response = await _request(
+      method: 'GET',
+      path: '/v1/sdk-config',
+      query: {
+        'schemaVersion': '1',
+        'sdkName': sdkName,
+        'sdkVersion': sdkVersion,
+        'platform': platform,
+        if (revision != null) 'revision': revision,
       },
       client: _http,
-      label: 'sdk/getConfig',
+      label: 'v1/sdk-config',
       timeout: const Duration(seconds: 5),
     );
     return response;
@@ -221,34 +191,33 @@ class HttpTransport implements Transport {
 
   @override
   Future<Map<String, Object?>> evaluateFlags(Map<String, Object?> input) async {
-    final body = <String, Object?>{
-      '__className__': 'EvaluateFlagsInput',
-      ...input,
-    };
-    final raw = await _postJson(
-      path: '/flags/evaluate',
-      payload: {'input': body},
+    final body = Map<String, Object?>.from(input)..remove('__className__');
+    return _postJson(
+      path: '/v1/flags/evaluate',
+      payload: body,
       client: _http,
-      label: 'flags/evaluate',
+      label: 'v1/flags/evaluate',
     );
-    return unwrapServerpodResult(raw);
   }
 
   @override
   Future<Map<String, Object?>> downloadFlagDefinitions(
     Map<String, Object?> input,
   ) async {
-    final body = <String, Object?>{
-      '__className__': 'DownloadFlagDefinitionsInput',
-      ...input,
-    };
-    final raw = await _postJson(
-      path: '/flags/downloadDefinitions',
-      payload: {'input': body},
+    final keys = input['keys'];
+    final query = <String, String>{};
+    if (keys is List && keys.isNotEmpty) {
+      query['keys'] = keys.map((key) => key.toString()).join(',');
+    } else if (keys is String && keys.isNotEmpty) {
+      query['keys'] = keys;
+    }
+    return _request(
+      method: 'GET',
+      path: '/v1/flags',
+      query: query,
       client: _http,
-      label: 'flags/downloadDefinitions',
+      label: 'v1/flags',
     );
-    return unwrapServerpodResult(raw);
   }
 
   @override
@@ -257,23 +226,19 @@ class HttpTransport implements Transport {
       return;
     }
     await _postJson(
-      path: '/sdk/reportDiscards',
+      path: '/v1/client-reports',
       payload: {
-        'input': {
-          '__className__': 'ReportSdkDiscardsInput',
-          'discards': [
-            for (final row in discards)
-              {
-                '__className__': 'SdkDiscardCountInput',
-                'signal': row.signal,
-                'reason': row.reason,
-                'count': row.count,
-              },
-          ],
-        },
+        'discards': [
+          for (final row in discards)
+            {
+              'signal': row.signal,
+              'reason': row.reason,
+              'count': row.count,
+            },
+        ],
       },
       client: _http,
-      label: 'sdk/reportDiscards',
+      label: 'v1/client-reports',
     );
   }
 
@@ -283,32 +248,59 @@ class HttpTransport implements Transport {
     required http.Client client,
     required String label,
     Duration? timeout,
-  }) async {
-    final uri = Uri.parse('${url.replaceAll(RegExp(r'/+$'), '')}$path');
+  }) {
+    return _request(
+      method: 'POST',
+      path: path,
+      payload: payload,
+      client: client,
+      label: label,
+      timeout: timeout,
+    );
+  }
 
-    final (body, gzipped) = encodeBody(jsonEncode(payload));
+  Future<Map<String, Object?>> _request({
+    required String method,
+    required String path,
+    Map<String, String>? query,
+    Map<String, Object?>? payload,
+    required http.Client client,
+    required String label,
+    Duration? timeout,
+  }) async {
+    final base = Uri.parse('${url.replaceAll(RegExp(r'/+$'), '')}$path');
+    final uri = query == null || query.isEmpty
+        ? base
+        : base.replace(queryParameters: {...base.queryParameters, ...query});
+
+    final json = payload == null ? null : jsonEncode(payload);
+    final encoded = json == null ? null : encodeBody(json);
     late http.Response response;
     try {
       response = await _send(
         client,
         uri,
-        body,
-        gzipped: gzipped,
+        method: method,
+        body: encoded?.$1,
+        gzipped: encoded?.$2 ?? false,
         timeout: timeout,
       );
-      if (gzipped && response.statusCode == 415) {
-        // The server stopped accepting gzip (rollback): stop compressing
-        // and resend this body plain, once.
+      final unsupported = encoded?.$2 == true &&
+          (response.statusCode == 415 ||
+              IngestError.parse(response.body).code == 'unsupported_encoding');
+      if (unsupported && json != null) {
         _gzipRequests = false;
         response = await _send(
           client,
           uri,
-          utf8.encode(jsonEncode(payload)),
+          method: method,
+          body: utf8.encode(json),
           gzipped: false,
           timeout: timeout,
         );
       }
     } catch (e) {
+      if (e is TransportException) rethrow;
       throw TransportException('Talaria $label failed: $e', cause: e);
     }
 
@@ -328,9 +320,11 @@ class HttpTransport implements Transport {
     throw TransportException(
       'Talaria $label failed: HTTP $status${detail.isEmpty ? '' : ' — $detail'}',
       statusCode: status,
+      code: parsed.code,
       className: parsed.className,
       retry: parsed.retry,
       bodyMessage: parsed.message,
+      requestId: parsed.requestId ?? response.headers['request-id'],
       retryAfter: retryAfterOf(response.headers['retry-after']) ??
           (parsed.retryAfterSeconds == null
               ? null
@@ -342,22 +336,21 @@ class HttpTransport implements Transport {
 
   Future<http.Response> _send(
     http.Client client,
-    Uri uri,
-    List<int> body, {
+    Uri uri, {
+    required String method,
+    List<int>? body,
     required bool gzipped,
     Duration? timeout,
   }) {
-    return client
-        .post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'X-API-Key': apiKey,
-            if (gzipped) 'Content-Encoding': 'gzip',
-          },
-          body: body,
-        )
-        .timeout(timeout ?? this.timeout);
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      if (body != null) 'Content-Type': 'application/json; charset=utf-8',
+      if (gzipped) 'Content-Encoding': 'gzip',
+    };
+    final future = method == 'GET'
+        ? client.get(uri, headers: headers)
+        : client.post(uri, headers: headers, body: body);
+    return future.timeout(timeout ?? this.timeout);
   }
 
   /// `Retry-After` as delay-seconds or an HTTP date. Null when absent or
@@ -407,7 +400,7 @@ class HttpTransport implements Transport {
 
   static String _formatErrorDetail(String body, IngestError parsed) {
     final parts = <String>[
-      if (parsed.className != null) parsed.className!,
+      if (parsed.code != null) parsed.code!,
       if (parsed.message != null) parsed.message!,
     ];
     if (parts.isNotEmpty) {
@@ -426,7 +419,7 @@ class HttpTransport implements Transport {
     final out = Map<String, Object?>.from(input);
     for (final field in fields) {
       final value = out[field];
-      if (value is List<int>) out[field] = serverpodByteData(value);
+      if (value is List<int>) out[field] = _plainBase64(value);
     }
     final tiles = out['tiles'];
     if (tiles is List) {

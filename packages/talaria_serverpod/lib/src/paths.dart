@@ -14,7 +14,11 @@ class TalariaServerpodPaths {
     'replays',
     'heatmaps',
     'screen-heatmaps',
-    'sdk',
+    'sdk-config',
+    'client-reports',
+    'check-ins',
+    'releases',
+    'source-maps',
     'flags',
     'monitors',
   };

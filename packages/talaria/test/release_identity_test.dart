@@ -48,7 +48,7 @@ void main() {
         'GITHUB_REF_TYPE': 'branch',
       },
     );
-    expect(resolved.release, 'feature/new-checkout@f32a991');
+    expect(resolved.release, 'feature-new-checkout@f32a991');
     expect(resolved.commitSha, 'f32a991e4b6d8901234567890abcdef123456789');
     expect(resolved.releaseRefKind, 'branch');
   });
