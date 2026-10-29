@@ -60,8 +60,7 @@ class HeatmapTree {
         if (node.localRect.overlaps(Offset.zero & viewport)) node,
     ];
     if (visible.length <= 200) return visible;
-    final ranked = [...visible]
-      ..sort((a, b) {
+    final ranked = [...visible]..sort((a, b) {
         final aKeep = _manifestKeepScore(a);
         final bKeep = _manifestKeepScore(b);
         if (aKeep != bKeep) return bKeep.compareTo(aKeep);
@@ -123,16 +122,16 @@ HeatmapTree collectHeatmapTree(
         final anchor = isAnchor
             ? widget.id
             : isSemantics
-            ? props?.identifier
-            : null;
+                ? props?.identifier
+                : null;
         if (globalRect.width >= 2 &&
             globalRect.height >= 2 &&
             !_tooBig(localRect, viewport, anchored: anchor != null)) {
           var role = isMask
               ? 'node'
               : isText
-              ? 'text'
-              : _role(props, isField: isField);
+                  ? 'text'
+                  : _role(props, isField: isField);
           var label = _labelFor(element, widget, props, role);
           if ((role == 'node' || role == 'heading') && label != null) {
             // A heading keeps its role. A plain labeled node is text.
@@ -171,8 +170,7 @@ HeatmapTree collectHeatmapTree(
               ),
             );
             nextParent = indexed;
-            nextInteractive =
-                underInteractive ||
+            nextInteractive = underInteractive ||
                 _interactive(indexed.role) ||
                 indexed.role == 'heading';
             if (masked) return;
@@ -258,9 +256,8 @@ int _occurrence(Map<String, int> seen, HeatmapElementNode node) {
   final anchor = node.anchor;
   if (anchor != null && isSafeAnchor(anchor)) return 0;
   final label = node.label;
-  final sig = label != null && label.isNotEmpty
-      ? '${node.role}:$label'
-      : node.role;
+  final sig =
+      label != null && label.isNotEmpty ? '${node.role}:$label' : node.role;
   final n = seen[sig] ?? 0;
   seen[sig] = n + 1;
   return n;
@@ -381,8 +378,8 @@ String? _ancestorTooltip(Element element) {
 }
 
 Rect _scale(Rect rect, double ratio) => Rect.fromLTRB(
-  rect.left * ratio,
-  rect.top * ratio,
-  rect.right * ratio,
-  rect.bottom * ratio,
-);
+      rect.left * ratio,
+      rect.top * ratio,
+      rect.right * ratio,
+      rect.bottom * ratio,
+    );

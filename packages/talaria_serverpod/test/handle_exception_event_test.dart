@@ -50,7 +50,8 @@ void main() {
     expect(events.single.title, 'StateError');
   });
 
-  test('dogfood capture keeps rejected API calls and drops socket noise', () async {
+  test('dogfood capture keeps rejected API calls and drops socket noise',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -89,10 +90,8 @@ void main() {
     );
     await drain();
 
-    final titles = transport.batches
-        .expand((b) => b)
-        .map((event) => event.title)
-        .toList();
+    final titles =
+        transport.batches.expand((b) => b).map((event) => event.title).toList();
     expect(titles, [
       'Invalid API key',
       'API key expired',
@@ -103,7 +102,8 @@ void main() {
     ]);
   });
 
-  test('handleExceptionEvent drops known ApiUnauthorizedException noise', () async {
+  test('handleExceptionEvent drops known ApiUnauthorizedException noise',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -133,7 +133,8 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
-  test('handleExceptionEvent reports unexpected ApiUnauthorizedException', () async {
+  test('handleExceptionEvent reports unexpected ApiUnauthorizedException',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -184,7 +185,8 @@ void main() {
     expect(transport.batches, isEmpty);
   });
 
-  test('handleExceptionEvent drops quota and rate-limit control flow', () async {
+  test('handleExceptionEvent drops quota and rate-limit control flow',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(
@@ -316,7 +318,8 @@ void main() {
     );
   });
 
-  test('title uses the exception message instead of a generated class', () async {
+  test('title uses the exception message instead of a generated class',
+      () async {
     final transport = FakeTransport();
     await TalariaServerpod.init(
       TalariaOptions(

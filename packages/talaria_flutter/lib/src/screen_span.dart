@@ -5,8 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:talaria/talaria.dart';
 
 import 'flutter_web_info_stub.dart'
-    if (dart.library.js_interop) 'flutter_web_info_web.dart'
-    as web_info;
+    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
 
 /// Web `$pageview` follows the browser path, not every logical screen.
 bool shouldEmitWebPageView({
@@ -81,9 +80,8 @@ class ScreenSpanController {
     if (client == null || !client.analytics.isEnabled) {
       return;
     }
-    final screenTitle = (title != null && title.trim().isNotEmpty)
-        ? title.trim()
-        : label;
+    final screenTitle =
+        (title != null && title.trim().isNotEmpty) ? title.trim() : label;
     // ignore: discarded_futures
     client.analytics.screen(path: label, title: screenTitle);
     if (!kIsWeb) {

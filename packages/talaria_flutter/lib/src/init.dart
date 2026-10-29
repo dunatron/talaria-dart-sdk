@@ -6,8 +6,7 @@ import 'package:talaria/talaria.dart';
 
 import 'flutter_runtime.dart';
 import 'flutter_web_info_stub.dart'
-    if (dart.library.js_interop) 'flutter_web_info_web.dart'
-    as web_info;
+    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
 import 'heatmaps/session.dart';
 import 'lifecycle_observer.dart';
 import 'screen_span.dart';

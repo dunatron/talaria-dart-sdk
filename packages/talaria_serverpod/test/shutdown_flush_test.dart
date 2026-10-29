@@ -21,10 +21,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
     );
     tasks = _ShutdownTasks();

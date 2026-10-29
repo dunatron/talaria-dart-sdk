@@ -39,10 +39,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -82,10 +82,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -122,14 +122,15 @@ void main() {
       await TalariaFlutter.init(
         TalariaOptions(
           url: 'https://api.example.com',
-          apiKey: 'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
+          apiKey:
+              'tal_pk_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3j7IsA',
           defaultIntegrations: false,
           flushIntervalMs: 0,
         )..applySdkDocument({
-          'schemaVersion': 1,
-          'active': true,
-          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-        }),
+            'schemaVersion': 1,
+            'active': true,
+            'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+          }),
         transport: transport,
         observeLifecycle: false,
       );
@@ -160,10 +161,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -194,10 +195,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -258,10 +259,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -287,10 +288,10 @@ void main() {
         defaultIntegrations: false,
         flushIntervalMs: 0,
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'tracing': {'enabled': true, 'tracesSampleRate': 1.0},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -320,10 +321,10 @@ void main() {
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -370,10 +371,10 @@ void main() {
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -414,10 +415,10 @@ void main() {
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
       transport: transport,
       observeLifecycle: false,
     );
@@ -484,10 +485,10 @@ void main() {
         flushIntervalMs: 0,
         storage: MemoryTalariaStorage(),
       )..applySdkDocument({
-        'schemaVersion': 1,
-        'active': true,
-        'analytics': {'enabled': true},
-      }),
+          'schemaVersion': 1,
+          'active': true,
+          'analytics': {'enabled': true},
+        }),
       transport: transport,
       observeLifecycle: false,
     );

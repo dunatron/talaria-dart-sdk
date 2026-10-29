@@ -9,8 +9,8 @@ class TalariaNavigatorObserver extends NavigatorObserver {
   TalariaNavigatorObserver({
     TalariaClient? client,
     ScreenSpanController? screens,
-  }) : _client = client ?? Talaria.getClient(),
-       _screens = screens ?? ScreenSpanController.instance;
+  })  : _client = client ?? Talaria.getClient(),
+        _screens = screens ?? ScreenSpanController.instance;
 
   final TalariaClient? _client;
   final ScreenSpanController _screens;

@@ -304,16 +304,15 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     final box = context.findRenderObject();
     final size = box is RenderBox && box.hasSize ? box.size : Size.zero;
     final vertical = notification.metrics.axis == Axis.vertical;
-    final area =
-        notification.metrics.viewportDimension *
+    final area = notification.metrics.viewportDimension *
         (vertical ? size.width : size.height);
     final current = _session.scroll.state;
     final bestArea = current == null
         ? 0.0
         : (current.axis == ScreenScrollAxis.vertical
-                  ? current.viewportHeight
-                  : current.viewportWidth)
-              .toDouble();
+                ? current.viewportHeight
+                : current.viewportWidth)
+            .toDouble();
     if (!isPrimaryScroll(
       viewportArea: area,
       bestArea: bestArea,
@@ -322,8 +321,7 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     )) {
       return false;
     }
-    final moved =
-        notification is ScrollUpdateNotification &&
+    final moved = notification is ScrollUpdateNotification &&
         (notification.scrollDelta?.abs() ?? 0) > 1;
     if (moved) {
       _session.classifier.noteEffect(DateTime.now().millisecondsSinceEpoch);
@@ -338,14 +336,13 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       viewportDimension: notification.metrics.viewportDimension,
       vertical: vertical,
     );
-    final scrollable = notification.context
-        ?.findAncestorStateOfType<ScrollableState>();
+    final scrollable =
+        notification.context?.findAncestorStateOfType<ScrollableState>();
     final boundary = _boundaryKey.currentContext?.findRenderObject();
     if (scrollable != null && boundary is RenderBox && boundary.hasSize) {
       _scrollport = _scrollportOf(boundary, scrollable);
     }
-    final settled =
-        notification is ScrollEndNotification ||
+    final settled = notification is ScrollEndNotification ||
         (notification is UserScrollNotification &&
             notification.direction == ScrollDirection.idle);
     if (settled) _armScrollRest();
@@ -600,12 +597,10 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
       final hBp = toBasisPoints(local.height, boundary.size.height);
       final offset = metrics?.offsetPx ?? 0;
       final horizontal = metrics?.axis == ScreenScrollAxis.horizontal;
-      final contentX = horizontal
-          ? offset + local.left.round()
-          : local.left.round();
-      final contentY = horizontal
-          ? local.top.round()
-          : offset + local.top.round();
+      final contentX =
+          horizontal ? offset + local.left.round() : local.left.round();
+      final contentY =
+          horizontal ? local.top.round() : offset + local.top.round();
       final label = node.label;
       final labelJson = label == null ? '' : ',"label":${jsonEncode(label)}';
       items.add(
@@ -805,8 +800,8 @@ class _TalariaScreenCaptureState extends State<TalariaScreenCapture>
     _deviceClassName = shortSide >= 1024
         ? 'desktop'
         : shortSide >= 600
-        ? 'tablet'
-        : 'mobile';
+            ? 'tablet'
+            : 'mobile';
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: Listener(
@@ -834,7 +829,8 @@ bool screenHeatmapAppIsHidden(AppLifecycleState state) {
   return switch (state) {
     AppLifecycleState.paused ||
     AppLifecycleState.hidden ||
-    AppLifecycleState.detached => true,
+    AppLifecycleState.detached =>
+      true,
     AppLifecycleState.resumed || AppLifecycleState.inactive => false,
   };
 }

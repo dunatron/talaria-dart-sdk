@@ -4,11 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:talaria/talaria.dart';
 
 import 'flutter_os_info_stub.dart'
-    if (dart.library.io) 'flutter_os_info_io.dart'
-    as os_info;
+    if (dart.library.io) 'flutter_os_info_io.dart' as os_info;
 import 'flutter_web_info_stub.dart'
-    if (dart.library.js_interop) 'flutter_web_info_web.dart'
-    as web_info;
+    if (dart.library.js_interop) 'flutter_web_info_web.dart' as web_info;
 
 /// Flutter-only runtime tags / extra (web-safe — no `dart:io`).
 class FlutterRuntime {
