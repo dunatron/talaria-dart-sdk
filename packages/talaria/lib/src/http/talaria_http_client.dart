@@ -109,13 +109,14 @@ class TalariaHttpClient extends http.BaseClient {
   void close() => _inner.close();
 
   /// Talaria SDK ingest and control endpoints. Only /v1/ paths are used.
+  /// Platform uses kebab-case routes.
   static const sdkEndpoints = {
     'events',
     'spans',
     'analytics',
     'replays',
     'heatmaps',
-    'screenHeatmaps',
+    'screen-heatmaps',
     'sdk',
     'flags',
     'monitors',

@@ -11,7 +11,7 @@ void main() {
     'v1/analytics',
     'v1/replays',
     'v1/heatmaps',
-    'v1/screenHeatmaps',
+    'v1/screen-heatmaps',
     'v1/sdk',
     'v1/flags',
     'v1/monitors',
@@ -35,7 +35,7 @@ void main() {
   test('other calls, including dashboard methods and old paths, are not', () {
     for (final call in [
       'flags/list',
-      'screenHeatmaps/getRecording',
+      'screen-heatmaps/getRecording',
       'replays/get',
       'projects/list',
       'events',

@@ -495,7 +495,7 @@ class TalariaClient {
     if (transport == null || screenViews.isEmpty) return Future.value(const {});
     return _guarded(
       _heatmapsBackoff,
-      'v1/screenHeatmaps',
+      'v1/screen-heatmaps',
       () => transport.sendScreenHeatmapBatch(screenViews),
       discardSignal: DiscardSignal.heatmaps,
       discardCount: screenViews.length,
@@ -507,7 +507,7 @@ class TalariaClient {
     if (transport == null) return Future.value();
     return _guarded(
       _heatmapsBackoff,
-      'v1/screenHeatmaps/uploadSnapshot',
+      'v1/screen-heatmaps/snapshots',
       () => transport.uploadScreenHeatmapSnapshot(input),
       discardSignal: DiscardSignal.heatmaps,
     );
@@ -518,7 +518,7 @@ class TalariaClient {
     if (transport == null) return Future.value();
     return _guarded(
       _heatmapsBackoff,
-      'screenHeatmaps/uploadRecording',
+      'v1/screen-heatmaps/recordings',
       () => transport.uploadScreenHeatmapRecording(input),
       discardSignal: DiscardSignal.heatmaps,
     );

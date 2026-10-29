@@ -157,7 +157,7 @@ class HttpTransport implements Transport {
   ) async {
     if (screenViews.isEmpty) return const {};
     final raw = await _postJson(
-      path: '/v1/screenHeatmaps',
+      path: '/v1/screen-heatmaps',
       payload: {
         'input': {
           '__className__': 'IngestScreenHeatmapBatchInput',
@@ -165,7 +165,7 @@ class HttpTransport implements Transport {
         },
       },
       client: _http,
-      label: 'v1/screenHeatmaps',
+      label: 'v1/screen-heatmaps',
     );
     return unwrapServerpodResult(raw);
   }
@@ -173,12 +173,12 @@ class HttpTransport implements Transport {
   @override
   Future<void> uploadScreenHeatmapSnapshot(Map<String, Object?> input) async {
     await _postJson(
-      path: '/v1/screenHeatmaps/uploadSnapshot',
+      path: '/v1/screen-heatmaps/snapshots',
       payload: {
         'input': _encodeByteFields(input, const ['pngBytes']),
       },
       client: _http,
-      label: 'v1/screenHeatmaps/uploadSnapshot',
+      label: 'v1/screen-heatmaps/snapshots',
       timeout: const Duration(seconds: 20),
     );
   }
@@ -186,10 +186,10 @@ class HttpTransport implements Transport {
   @override
   Future<void> uploadScreenHeatmapRecording(Map<String, Object?> input) async {
     await _postJson(
-      path: '/v1/screenHeatmaps/uploadRecording',
+      path: '/v1/screen-heatmaps/recordings',
       payload: {'input': _encodeRecording(input)},
       client: _http,
-      label: 'v1/screenHeatmaps/uploadRecording',
+      label: 'v1/screen-heatmaps/recordings',
       timeout: const Duration(seconds: 20),
     );
   }
