@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Requires Serverpod 4.1.0. `TracingDatabase` implements the new `Database.watch` and `Database.unsafeWatch` by passing them straight to the wrapped database (untraced; they are SQLite-only and throw on PostgreSQL).
+
 ## 0.3.0
 
 - Depends on `talaria` 0.4.0. Ingest paths that must not be traced are the locked `/v1` routes, including `/v1/sdk-config`, `/v1/client-reports`, `/v1/screen-heatmaps`, and `/v1/flags/evaluate`.
