@@ -458,6 +458,46 @@ class TracingDatabase implements Database {
     return inner.transaction(transactionFunction, settings: settings);
   }
 
+  // Serverpod 4.1 reactive reads. Streams are long-lived and SQLite-only
+  // (PostgreSQL throws UnsupportedError), so they pass through untraced.
+  @override
+  Stream<List<T>> watch<T extends TableRow>({
+    Expression? where,
+    int? limit,
+    int? offset,
+    Column? orderBy,
+    List<Column>? orderByList,
+    Include? include,
+    Duration? throttle = const Duration(milliseconds: 30),
+    Iterable<Table>? alsoTriggerOnTables,
+  }) {
+    return inner.watch<T>(
+      where: where,
+      limit: limit,
+      offset: offset,
+      orderBy: orderBy,
+      orderByList: orderByList,
+      include: include,
+      throttle: throttle,
+      alsoTriggerOnTables: alsoTriggerOnTables,
+    );
+  }
+
+  @override
+  Stream<DatabaseResult> unsafeWatch(
+    String query, {
+    QueryParameters? parameters,
+    Duration? throttle = const Duration(milliseconds: 30),
+    Iterable<String>? triggerOnTables,
+  }) {
+    return inner.unsafeWatch(
+      query,
+      parameters: parameters,
+      throttle: throttle,
+      triggerOnTables: triggerOnTables,
+    );
+  }
+
   @override
   Future<bool> testConnection() => inner.testConnection();
 }
