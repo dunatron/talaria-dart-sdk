@@ -34,15 +34,29 @@ class TalariaServerpod {
   static final Set<String> _tagCloseHook = {};
 
   /// Initialize the shared [Talaria] client for a Serverpod process.
+  ///
+  /// Never throws. A missing or invalid key gives a disabled no-op client:
+  /// one warning, no outbound HTTP patch, and the server starts as usual.
   static Future<TalariaClient> init(
     TalariaOptions options, {
     Transport? transport,
-  }) {
+  }) async {
     final tags = {'runtime': 'serverpod', ...options.tags};
-    return Talaria.init(
+    final client = await Talaria.init(
       options.copyWith(tags: tags, defaultIntegrations: false),
       transport: transport,
-    ).whenComplete(installServerpodOutboundHttp);
+    );
+    if (client.isEnabled) {
+      try {
+        installServerpodOutboundHttp();
+      } catch (e) {
+        FailSafe.logRateLimited(
+          'serverpod-http',
+          '[Talaria] outbound HTTP tracing was not installed: $e',
+        );
+      }
+    }
+    return client;
   }
 
   /// Pass to `Serverpod(..., databaseInterceptor: TalariaServerpod.interceptDatabase)`.
@@ -52,15 +66,22 @@ class TalariaServerpod {
   /// is in scope.
   static Database interceptDatabase(Session session, Database inner) {
     final client = Talaria.getClient();
-    if (client == null || !client.tracer.isEnabled) {
+    if (client == null || !client.isEnabled || !client.tracer.isEnabled) {
       return inner;
     }
-    if (SessionSpans.shouldSkip(session)) {
+    try {
+      if (SessionSpans.shouldSkip(session)) {
+        return inner;
+      }
+      _ensureSessionTransaction(client, session);
+      return TracingDatabase(inner, client: client, session: session);
+    } catch (e) {
+      FailSafe.logRateLimited(
+        'serverpod-db',
+        '[Talaria] database tracing skipped: $e',
+      );
       return inner;
     }
-
-    _ensureSessionTransaction(client, session);
-    return TracingDatabase(inner, client: client, session: session);
   }
 
   /// Relic middleware on the API and web servers. Idempotent.
@@ -76,13 +97,22 @@ class TalariaServerpod {
     bool Function(Uri url)? skip,
   }) {
     final resolved = client ?? Talaria.getClient();
-    if (resolved == null || _attached) {
+    if (resolved == null || !resolved.isEnabled || _attached) {
       return;
     }
     _attached = true;
 
-    final middleware = talariaRelicMiddleware(resolved, skip: skip);
-    pod.server.addMiddleware(middleware);
+    final Middleware middleware;
+    try {
+      middleware = talariaRelicMiddleware(resolved, skip: skip);
+      pod.server.addMiddleware(middleware);
+    } catch (e) {
+      FailSafe.logRateLimited(
+        'serverpod-attach',
+        '[Talaria] Relic middleware was not attached: $e',
+      );
+      return;
+    }
     try {
       pod.webServer.addMiddleware(middleware, '/');
     } catch (_) {
@@ -109,11 +139,26 @@ class TalariaServerpod {
     ExceptionEvent event, {
     DiagnosticEventContext? context,
   }) {
-    if (DiagnosticFilter.shouldDrop(event)) {
+    final client = Talaria.getClient();
+    if (client == null || !client.isEnabled) {
       return;
     }
-    final client = Talaria.getClient();
-    if (client == null) {
+    try {
+      _handleExceptionEvent(client, event, context);
+    } catch (e) {
+      FailSafe.logRateLimited(
+        'serverpod-diagnostic',
+        '[Talaria] diagnostic capture failed: $e',
+      );
+    }
+  }
+
+  static void _handleExceptionEvent(
+    TalariaClient client,
+    ExceptionEvent event,
+    DiagnosticEventContext? context,
+  ) {
+    if (DiagnosticFilter.shouldDrop(event)) {
       return;
     }
 
@@ -202,7 +247,12 @@ class TalariaServerpod {
       requestId: resolvedSessionId,
       userId: resolvedUserId,
       blankUnset: true,
-    );
+    ).catchError((Object e) {
+      FailSafe.logRateLimited(
+        'serverpod-diagnostic',
+        '[Talaria] diagnostic capture failed: $e',
+      );
+    });
   }
 
   /// Crumbs from the throwing session. A foreign Zone's buffer is ignored.

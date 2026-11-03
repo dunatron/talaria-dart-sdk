@@ -20,11 +20,24 @@ class Talaria {
 
   static TalariaClient? _client;
 
+  /// Answers facade calls before [init]: a disabled no-op client, no warning.
+  static TalariaClient? _detached;
+
   /// Initialize the global client. Subsequent calls are ignored.
+  ///
+  /// Never throws (D19). A missing or invalid key, or a bad option, returns a
+  /// disabled no-op client ([TalariaClient.isEnabled] is false) and logs one
+  /// warning per process.
   static Future<TalariaClient> init(
     TalariaOptions options, {
     Transport? transport,
   }) async {
+    final previous = _client;
+    if (previous != null && !previous.isEnabled) {
+      // A disabled client (bad key) does not block a later, valid init.
+      await previous.close();
+      _client = null;
+    }
     if (_client != null) {
       // ignore: avoid_print
       assert(() {
@@ -36,9 +49,18 @@ class Talaria {
       }());
       return _client!;
     }
-    _client = TalariaClient(options, transport: transport);
+    try {
+      _client = TalariaClient(options, transport: transport);
+    } catch (e) {
+      _client = TalariaClient(
+        TalariaOptions(apiKey: '', disabledReason: 'init failed ($e)'),
+      );
+    }
     return _client!;
   }
+
+  /// True after a successful [init] with a valid key, until [close].
+  static bool get isEnabled => _client?.isEnabled ?? false;
 
   static TalariaClient? getClient() => _client;
 
@@ -128,6 +150,7 @@ class Talaria {
   static Future<void> close() async {
     await _client?.close();
     _client = null;
+    _detached = null;
     RuntimeContext.clearCurrent();
   }
 
@@ -187,13 +210,15 @@ class Talaria {
     TalariaClient.clearPolicyCache();
   }
 
+  /// The global client, or a disabled no-op client before [init] (D19).
   static TalariaClient _requireClient() {
-    final client = _client;
-    if (client == null) {
-      throw StateError(
-        'Talaria.init() must be called before capturing events.',
-      );
-    }
-    return client;
+    return _client ??
+        (_detached ??= TalariaClient(
+          TalariaOptions(
+            apiKey: '',
+            disabledReason: 'Talaria.init() has not been called',
+          ),
+          warnIfDisabled: false,
+        ));
   }
 }

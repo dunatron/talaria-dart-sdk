@@ -141,20 +141,18 @@ void main() {
   });
 
   test(
-    'apiKey must be a tal_pk_ or tal_sk_ key with a valid checksum',
+    'an apiKey that is not a valid tal_pk_ or tal_sk_ key disables Talaria',
     () {
-      expect(
-        () => TalariaOptions(url: 'https://api.example.com', apiKey: 'wrong'),
-        throwsArgumentError,
-      );
-      expect(
-        () => TalariaOptions(
-          url: 'https://api.example.com',
-          apiKey:
-              'tal_live_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
-        ),
-        throwsArgumentError,
-      );
+      for (final key in [
+        'wrong',
+        'tal_live_test_nz1_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg3B299S',
+      ]) {
+        final options =
+            TalariaOptions(url: 'https://api.example.com', apiKey: key);
+        expect(options.enabled, isFalse);
+        expect(options.apiKey, isEmpty);
+        expect(options.credential, isNull);
+      }
     },
   );
 

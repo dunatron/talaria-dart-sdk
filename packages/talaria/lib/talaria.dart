@@ -17,6 +17,7 @@ export 'src/config.dart';
 export 'src/credential.dart' show TalariaCredential;
 export 'src/context/runtime_context.dart';
 export 'src/event.dart';
+export 'src/fail_safe.dart' show FailSafe;
 export 'src/flags/flag_definition.dart'
     show
         FlagDefinition,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1
+
+- A bad key never breaks the host app (D19). `TalariaOptions` and `Talaria.init` never throw. A missing, empty, malformed or wrong-checksum key, a `tal_mon_` token, a `self` cell without `url`, or a non-finite `sampleRate` / `httpTimeoutSeconds` gives a disabled no-op client: no network, no timers, no zone hooks, and every public call returns normally.
+- One `[Talaria] Talaria is disabled: …` warning per process, showing at most the first 8 characters of the key.
+- New `TalariaClient.isEnabled`, `TalariaClient.disabledReason`, `TalariaOptions.enabled`, `TalariaOptions.disabledReason` and `Talaria.isEnabled`. `TalariaOptions.credential` is null when disabled.
+- The `Talaria` facade is a no-op before `init` instead of throwing `StateError`. A later valid `init` replaces a disabled client.
+- Capture, flush and close never throw. Transport errors are swallowed and logged at most once a minute per channel (`FailSafe`).
+
 ## 0.4.0
 
 - Analytics, event (log and exception), span, breadcrumb, and screen-heatmap bodies are plain JSON. They do not include Serverpod `__className__` or other wire class markers.
