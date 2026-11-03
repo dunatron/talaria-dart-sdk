@@ -9,13 +9,8 @@ import 'package:talaria/talaria.dart';
 class TalariaServerpodFlags {
   TalariaServerpodFlags._();
 
-  static TalariaFlags get _flags {
-    final client = Talaria.getClient();
-    if (client == null) {
-      throw StateError('TalariaServerpod.init / Talaria.init required first');
-    }
-    return client.flags;
-  }
+  /// Before init, or with a bad key, every call returns its default value.
+  static TalariaFlags get _flags => Talaria.flags;
 
   /// Download definitions into the shared client (idempotent after first success).
   static Future<void> ensureLocalDefinitions() => _flags.loadDefinitions();

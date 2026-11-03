@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+- `TalariaServerpod.init` never throws (D19). With a disabled client it skips the outbound HTTP patch, `attach` adds no middleware, and diagnostic and database hooks pass through.
+- `TalariaServerpodFlags` returns default values before init instead of throwing `StateError`.
+- Diagnostic capture and middleware setup swallow Talaria faults.
+- Depends on `talaria` 0.4.1.
+
 ## 0.3.1
 
 - Requires Serverpod 4.1.0. `TracingDatabase` implements the new `Database.watch` and `Database.unsafeWatch` by passing them straight to the wrapped database (untraced; they are SQLite-only and throw on PostgreSQL).

@@ -14,19 +14,18 @@ void main() {
     await TalariaFlutter.close();
   });
 
-  test('init refuses a secret key', () async {
-    await expectLater(
-      TalariaFlutter.init(
-        TalariaOptions(
-          apiKey: TalariaCredential.mint(),
-          defaultIntegrations: false,
-          flushIntervalMs: 0,
-        ),
-        observeLifecycle: false,
-        installHooks: false,
+  test('init refuses a secret key by disabling Talaria', () async {
+    final client = await TalariaFlutter.init(
+      TalariaOptions(
+        apiKey: TalariaCredential.mint(),
+        defaultIntegrations: false,
+        flushIntervalMs: 0,
       ),
-      throwsArgumentError,
+      observeLifecycle: false,
+      installHooks: false,
     );
+    expect(client.isEnabled, isFalse);
+    expect(client.disabledReason, contains('tal_pk_'));
   });
 
   testWidgets('navigator observer sets route tags', (tester) async {

@@ -22,7 +22,7 @@ Tracing follows the project policy from `POST /sdk/getConfig`. Until that docume
 
 ## Develop
 
-`talaria_flutter` and `talaria_serverpod` depend on `talaria: ^0.4.0`. That hosted
+`talaria_flutter` and `talaria_serverpod` depend on `talaria: ^0.4.1`. That hosted
 constraint is what gets published. In this repo, a gitignored
 `pubspec_overrides.yaml` resolves `talaria` to `packages/talaria`
 (`melos.yaml` sets `command.bootstrap.usePubspecOverrides`, and CI writes

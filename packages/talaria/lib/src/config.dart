@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'capture_context.dart';
 import 'credential.dart';
+import 'fail_safe.dart';
 import 'identity/storage.dart';
 import 'release_env_stub.dart' if (dart.library.io) 'release_env_io.dart';
 import 'release_identity.dart';
@@ -12,10 +13,25 @@ typedef BeforeSendCallback = BeforeSendEvent? Function(
   BeforeSendHint hint,
 );
 
+/// The parsed key and ingest URL, or why Talaria is disabled.
+typedef _Resolved = ({
+  TalariaCredential? credential,
+  String url,
+  String apiKey,
+  String? reason,
+});
+
 /// Immutable SDK configuration.
+///
+/// Never throws (D19). A missing, empty, malformed or wrong-checksum key, a
+/// monitor token, a `self` cell without a url, or a bad option builds a disabled configuration: [enabled] is
+/// false, [disabledReason] says why, and the client built from it is a no-op.
 class TalariaOptions {
   /// [environment] is accepted so call sites built against 0.3.6 still compile.
   /// The API key decides the environment, so the value is not stored or sent.
+  ///
+  /// [disabledReason] forces a disabled no-op client (the SDK sets it when
+  /// init fails).
   TalariaOptions({
     String? url,
     required String apiKey,
@@ -41,25 +57,42 @@ class TalariaOptions {
     List<Pattern>? ignoreUrls,
     this.platform = 'dart',
     this.storage,
-  })  : credential = TalariaCredential.parse(apiKey),
-        url = _resolveUrl(
+    String? disabledReason,
+  })  : _inputApiKey = apiKey,
+        _inputUrl = url,
+        _forcedReason = disabledReason,
+        credential = _resolve(
+          apiKey: apiKey,
           url: url,
-          credential: TalariaCredential.parse(apiKey),
-        ),
-        apiKey = TalariaCredential.parse(apiKey).value,
-        release = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).release,
-        commitSha = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).commitSha,
-        releaseRefKind = ReleaseIdentity.resolve(
-          release: release,
-          commitSha: commitSha,
-        ).releaseRefKind,
-        sampleRate = sampleRate.clamp(0.0, 1.0),
+          sampleRate: sampleRate,
+          httpTimeoutSeconds: httpTimeoutSeconds,
+          forced: disabledReason,
+        ).credential,
+        url = _resolve(
+          apiKey: apiKey,
+          url: url,
+          sampleRate: sampleRate,
+          httpTimeoutSeconds: httpTimeoutSeconds,
+          forced: disabledReason,
+        ).url,
+        apiKey = _resolve(
+          apiKey: apiKey,
+          url: url,
+          sampleRate: sampleRate,
+          httpTimeoutSeconds: httpTimeoutSeconds,
+          forced: disabledReason,
+        ).apiKey,
+        disabledReason = _resolve(
+          apiKey: apiKey,
+          url: url,
+          sampleRate: sampleRate,
+          httpTimeoutSeconds: httpTimeoutSeconds,
+          forced: disabledReason,
+        ).reason,
+        release = _safeRelease(release, commitSha)?.release,
+        commitSha = _safeRelease(release, commitSha)?.commitSha,
+        releaseRefKind = _safeRelease(release, commitSha)?.releaseRefKind,
+        sampleRate = sampleRate.isFinite ? sampleRate.clamp(0.0, 1.0) : 1.0,
         maxBatchSize = max(1, maxBatchSize),
         flushIntervalMs = max(0, flushIntervalMs),
         spanBatchSize = spanBatchSize.clamp(1, maxSpanBatchSize),
@@ -70,7 +103,8 @@ class TalariaOptions {
           maxSpanQueueSize,
         ),
         tags = normalizeTags(tags ?? const {}),
-        httpTimeoutSeconds = max(0.5, httpTimeoutSeconds),
+        httpTimeoutSeconds =
+            httpTimeoutSeconds.isFinite ? max(0.5, httpTimeoutSeconds) : 3.0,
         minLevel = SeverityLevel.tryFromMixed(minLevel) ?? SeverityLevel.debug,
         loggers = Map.unmodifiable(loggers ?? const {}),
         ignoreErrors = List.unmodifiable(ignoreErrors ?? const []),
@@ -78,19 +112,27 @@ class TalariaOptions {
         enableTracing = false,
         tracesSampleRate = null,
         enableAnalytics = false,
-        enableFlags = false {
-    if (credential.isMonitor) {
-      throw ArgumentError(
-        'Talaria apiKey must be a tal_pk_ or tal_sk_ key. '
-        'A tal_mon_ token is only valid for POST /v1/check-ins.',
-      );
-    }
-  }
+        enableFlags = false;
 
-  /// Parsed key. Checksum and cell are checked before the client starts.
-  final TalariaCredential credential;
+  final String _inputApiKey;
+  final String? _inputUrl;
+  final String? _forcedReason;
 
+  /// Parsed key. Null when [enabled] is false.
+  final TalariaCredential? credential;
+
+  /// Why Talaria is disabled, safe to log (at most 8 key characters), or
+  /// null when it is enabled.
+  final String? disabledReason;
+
+  /// False when the key is missing or invalid or an option is bad. The
+  /// client built from a disabled configuration sends nothing.
+  bool get enabled => disabledReason == null;
+
+  /// Ingest URL. Empty when [enabled] is false.
   final String url;
+
+  /// The parsed key. Empty when [enabled] is false.
   final String apiKey;
   final String? release;
   final String? commitSha;
@@ -264,8 +306,8 @@ class TalariaOptions {
     TalariaStorage? storage,
   }) {
     final created = TalariaOptions(
-      url: url ?? this.url,
-      apiKey: apiKey ?? this.apiKey,
+      url: url ?? _inputUrl,
+      apiKey: apiKey ?? _inputApiKey,
       release: release ?? this.release,
       commitSha: commitSha ?? this.commitSha,
       sampleRate: sampleRate ?? this.sampleRate,
@@ -288,6 +330,7 @@ class TalariaOptions {
       ignoreUrls: ignoreUrls ?? this.ignoreUrls,
       platform: platform ?? this.platform,
       storage: storage ?? this.storage,
+      disabledReason: _forcedReason,
     );
     created.enableTracing = enableTracing;
     created.tracesSampleRate = tracesSampleRate;
@@ -303,10 +346,68 @@ class TalariaOptions {
 
   static const definedUrl = String.fromEnvironment('TALARIA_URL');
 
+  /// Parse the key and resolve the URL. Never throws (D19).
+  static _Resolved _resolve({
+    required String apiKey,
+    required String? url,
+    required double sampleRate,
+    required double httpTimeoutSeconds,
+    String? forced,
+  }) {
+    _Resolved off(String reason) =>
+        (credential: null, url: '', apiKey: '', reason: reason);
+    if (forced != null) return off(forced);
+    final preview = FailSafe.keyPreview(apiKey);
+    final named = preview.isEmpty ? 'The API key' : 'The API key ($preview)';
+    try {
+      if (apiKey.trim().isEmpty) {
+        return off('no API key is set (pass apiKey, e.g. '
+            '--dart-define=TALARIA_API_KEY)');
+      }
+      if (!sampleRate.isFinite) {
+        return off('the sampleRate option is not a finite number');
+      }
+      if (!httpTimeoutSeconds.isFinite) {
+        return off('the httpTimeoutSeconds option is not a finite number');
+      }
+      final TalariaCredential credential;
+      try {
+        credential = TalariaCredential.parse(apiKey);
+      } on ArgumentError catch (e) {
+        return off('$named is invalid: ${e.message}');
+      }
+      if (credential.isMonitor) {
+        return off('$named is a tal_mon_ token, which is only valid for '
+            'POST /v1/check-ins. Use a tal_pk_ or tal_sk_ key');
+      }
+      final resolvedUrl = _resolveUrl(url: url, credential: credential);
+      if (resolvedUrl == null) {
+        return off('$named has a self cell and no url. Set TALARIA_URL or '
+            'the url option');
+      }
+      return (
+        credential: credential,
+        url: resolvedUrl,
+        apiKey: credential.value,
+        reason: null,
+      );
+    } catch (e) {
+      return off('init failed ($e)');
+    }
+  }
+
+  static ReleaseIdentity? _safeRelease(String? release, String? commitSha) {
+    try {
+      return ReleaseIdentity.resolve(release: release, commitSha: commitSha);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Explicit [url], then `TALARIA_URL` (`--dart-define` or the process
-  /// environment), then `https://ingest-<cell>.newtalaria.com`. A `self`
-  /// cell with no override fails fast.
-  static String _resolveUrl({
+  /// environment), then `https://ingest-<cell>.newtalaria.com`. Null for a
+  /// `self` cell with no override.
+  static String? _resolveUrl({
     String? url,
     required TalariaCredential credential,
     Map<String, String>? env,
@@ -317,12 +418,7 @@ class TalariaOptions {
     if (fromDefine != null) return fromDefine;
     final fromEnv = _nonEmpty((env ?? releaseEnvironment())['TALARIA_URL']);
     if (fromEnv != null) return fromEnv;
-    if (credential.isSelfCell) {
-      throw ArgumentError(
-        'A self cell requires TALARIA_URL or the url option. '
-        'Refusing to derive an ingest host.',
-      );
-    }
+    if (credential.isSelfCell) return null;
     return credential.derivedIngestUrl;
   }
 

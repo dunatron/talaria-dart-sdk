@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- `TalariaFlutter.init` and `runZonedApp` never throw (D19). A missing or invalid key, or a `tal_sk_` / `tal_mon_` key, disables Talaria with one warning. No error hooks, lifecycle observer or `ErrorWidget.builder` are installed, and `runZonedApp` still calls `runApp`.
+- Error hooks swallow Talaria faults and always call the previous handler.
+- Depends on `talaria` 0.4.1.
+
 ## 0.3.0
 
 - Screen heatmap views, taps, snapshots, tiles, and recordings are plain JSON. They do not include Serverpod `__className__`.

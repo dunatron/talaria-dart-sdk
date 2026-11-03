@@ -13,12 +13,12 @@ Flutter apps should use [`talaria_flutter`](https://www.newtalaria.com/docs/sdk/
 
 ```yaml
 dependencies:
-  talaria: ^0.4.0
+  talaria: ^0.4.1
 ```
 
 ## Initialize
 
-The API key's cell decides the ingest host (`https://ingest-<cell>.newtalaria.com`) unless `url` or `TALARIA_URL` is set. A `self` cell fails fast without one of those. Server and CI keys are `tal_sk_…` (`TALARIA_API_KEY`). The key must match the §5.1 grammar, including the CRC32 base62 checksum.
+The API key's cell decides the ingest host (`https://ingest-<cell>.newtalaria.com`) unless `url` or `TALARIA_URL` is set. A `self` cell without one of those disables Talaria. Server and CI keys are `tal_sk_…` (`TALARIA_API_KEY`). The key must match the §5.1 grammar, including the CRC32 base62 checksum.
 
 ```dart
 import 'dart:io';
@@ -32,7 +32,9 @@ await Talaria.init(TalariaOptions(
 ));
 ```
 
-A publishable `tal_pk_` key is accepted on the Dart VM and logs one warning: ingest works, but releases, flag definitions, and monitor check-ins need a `tal_sk_` key. Flutter init refuses `tal_sk_` and `tal_mon_` keys.
+A publishable `tal_pk_` key is accepted on the Dart VM and logs one warning: ingest works, but releases, flag definitions, and monitor check-ins need a `tal_sk_` key. Flutter init refuses `tal_sk_` and `tal_mon_` keys by disabling Talaria.
+
+Init never throws. A missing, empty, malformed or wrong-checksum key, a `tal_mon_` token, or a bad option gives a disabled no-op client: one `[Talaria] Talaria is disabled: …` warning per process (showing at most the first 8 characters of the key), no network, and every call returns normally. `Talaria.isEnabled` and `client.disabledReason` tell you why. Transport errors (401, 5xx, timeouts, network) are swallowed and logged at most once a minute per channel.
 
 Requests use `Authorization: Bearer`. Batches are plain JSON `{"events":[…]}`, `{"spans":[…]}`, and `{"analytics":[…]}`. Policy is `GET /v1/sdk-config`. Discard reports are `POST /v1/client-reports`. Flag evaluation is `POST /v1/flags/evaluate`. Errors are `application/problem+json`.
 

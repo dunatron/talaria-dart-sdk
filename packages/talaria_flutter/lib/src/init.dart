@@ -26,7 +26,10 @@ class TalariaFlutter {
 
   /// Initialize Talaria for Flutter and install framework error hooks.
   ///
-  /// Sets `platform: flutter` on all events.
+  /// Sets `platform: flutter` on all events. Never throws: a missing or
+  /// invalid key (including a `tal_sk_` or `tal_mon_` key, which Flutter
+  /// refuses) returns a disabled no-op client, warns once, and installs no
+  /// hooks or observers. The app keeps running.
   static Future<TalariaClient> init(
     TalariaOptions options, {
     Transport? transport,
@@ -34,13 +37,49 @@ class TalariaFlutter {
     bool observeLifecycle = true,
     bool trackLifecycleEvents = true,
   }) async {
-    final credential = TalariaCredential.parse(options.apiKey);
-    if (!credential.isPublishable) {
-      throw ArgumentError(
-        'Flutter init accepts only a tal_pk_ key '
-        '(--dart-define=TALARIA_BROWSER_API_KEY). '
-        'tal_sk_ and tal_mon_ keys are refused.',
+    try {
+      return await _initUnsafe(
+        options,
+        transport: transport,
+        installHooks: installHooks,
+        observeLifecycle: observeLifecycle,
+        trackLifecycleEvents: trackLifecycleEvents,
       );
+    } catch (error) {
+      // Talaria must never break the host app (D19).
+      return Talaria.init(
+        TalariaOptions(
+          apiKey: '',
+          platform: 'flutter',
+          disabledReason: 'Flutter init failed ($error)',
+        ),
+      );
+    }
+  }
+
+  static Future<TalariaClient> _initUnsafe(
+    TalariaOptions options, {
+    Transport? transport,
+    required bool installHooks,
+    required bool observeLifecycle,
+    required bool trackLifecycleEvents,
+  }) async {
+    final credential = options.credential;
+    if (options.enabled && credential != null && !credential.isPublishable) {
+      final preview = FailSafe.keyPreview(options.apiKey);
+      return Talaria.init(
+        TalariaOptions(
+          apiKey: '',
+          platform: 'flutter',
+          disabledReason: 'The API key ($preview) is not a tal_pk_ key. '
+              'Flutter accepts only publishable keys '
+              '(--dart-define=TALARIA_BROWSER_API_KEY); tal_sk_ and tal_mon_ '
+              'keys are refused',
+        ),
+      );
+    }
+    if (!options.enabled) {
+      return Talaria.init(options.copyWith(platform: 'flutter'));
     }
 
     TalariaStorage? storage = options.storage;
@@ -60,6 +99,9 @@ class TalariaFlutter {
     );
 
     final client = await Talaria.init(flutterOptions, transport: transport);
+    if (!client.isEnabled) {
+      return client;
+    }
     client.platformOverride = 'flutter';
     client.analytics.contextProvider = () {
       final page = web_info.browserPageContext();
@@ -88,8 +130,11 @@ class TalariaFlutter {
   }
 
   /// Wire [FlutterError.onError] and [PlatformDispatcher.instance.onError].
+  ///
+  /// The hooks never throw: a Talaria fault is swallowed and the previous
+  /// handler always runs. A disabled client installs nothing.
   static void installErrorHooks(TalariaClient client) {
-    if (_hooksInstalled) {
+    if (_hooksInstalled || !client.isEnabled) {
       return;
     }
     _hooksInstalled = true;
@@ -97,18 +142,17 @@ class TalariaFlutter {
     _previousFlutterOnError = FlutterError.onError;
     FlutterError.onError = (details) {
       if (!isWidgetBuildError(details)) {
-        // ignore: discarded_futures
-        client.captureException(
+        _report(
+          client,
           details.exception,
-          stackTrace: details.stack,
-          context: const CaptureContext(
+          details.stack,
+          const CaptureContext(
             mechanism: ExceptionMechanism(
               type: 'flutter_error',
               handled: false,
             ),
           ),
         );
-        ScreenHeatmapController.instance.noteError();
       }
       final previous = _previousFlutterOnError;
       if (previous != null) {
@@ -120,18 +164,17 @@ class TalariaFlutter {
 
     _previousPlatformOnError = PlatformDispatcher.instance.onError;
     PlatformDispatcher.instance.onError = (error, stack) {
-      // ignore: discarded_futures
-      client.captureException(
+      _report(
+        client,
         error,
-        stackTrace: stack,
-        context: const CaptureContext(
+        stack,
+        const CaptureContext(
           mechanism: ExceptionMechanism(
             type: 'platform_dispatcher',
             handled: false,
           ),
         ),
       );
-      ScreenHeatmapController.instance.noteError();
       final previous = _previousPlatformOnError;
       if (previous != null) {
         return previous(error, stack);
@@ -140,10 +183,31 @@ class TalariaFlutter {
     };
   }
 
+  /// Report [error] without ever throwing into the caller.
+  static void _report(
+    TalariaClient client,
+    Object error,
+    StackTrace? stack,
+    CaptureContext context,
+  ) {
+    try {
+      // ignore: discarded_futures
+      client
+          .captureException(error, stackTrace: stack, context: context)
+          .catchError((Object e) {
+        FailSafe.logRateLimited('flutter-hook', '[Talaria] capture failed: $e');
+      });
+      ScreenHeatmapController.instance.noteError();
+    } catch (e) {
+      FailSafe.logRateLimited('flutter-hook', '[Talaria] capture failed: $e');
+    }
+  }
+
   /// Recommended entrypoint: binding + init + zone + Flutter [runApp].
   ///
   /// Returns once the app widget tree has been scheduled. Zone errors after
   /// return continue to be captured via the installed hooks and the zone.
+  /// A bad key never stops [app] from running: Talaria is just disabled.
   static Future<void> runZonedApp(
     TalariaOptions options,
     Widget app, {
@@ -154,8 +218,16 @@ class TalariaFlutter {
     runZonedGuarded(
       () async {
         WidgetsFlutterBinding.ensureInitialized();
-        await init(options, transport: transport);
-        ErrorWidget.builder = talariaErrorWidgetBuilder();
+        var enabled = false;
+        try {
+          final client = await init(options, transport: transport);
+          enabled = client.isEnabled;
+        } catch (error) {
+          FailSafe.warnDisabledOnce('Flutter init failed ($error)');
+        }
+        if (enabled) {
+          ErrorWidget.builder = talariaErrorWidgetBuilder();
+        }
         runApp(app);
         if (!started.isCompleted) {
           started.complete();
@@ -163,16 +235,15 @@ class TalariaFlutter {
       },
       (Object error, StackTrace stack) {
         final client = Talaria.getClient();
-        if (client != null) {
-          // ignore: discarded_futures
-          client.captureException(
+        if (client != null && client.isEnabled) {
+          _report(
+            client,
             error,
-            stackTrace: stack,
-            context: const CaptureContext(
+            stack,
+            const CaptureContext(
               mechanism: ExceptionMechanism(type: 'zone', handled: false),
             ),
           );
-          ScreenHeatmapController.instance.noteError();
         } else {
           debugPrint('[Talaria] early zone error: $error\n$stack');
         }

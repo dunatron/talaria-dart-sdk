@@ -5,6 +5,7 @@ import 'analytics/analytics.dart';
 import 'capture_context.dart';
 import 'config.dart';
 import 'event_filters.dart';
+import 'fail_safe.dart';
 import 'context/runtime_context.dart';
 import 'event.dart';
 import 'flags/flags_client.dart';
@@ -35,7 +36,18 @@ typedef EventProcessor = Map<String, Object?> Function(
   Map<String, Object?> bag,
 );
 
+/// Sends nothing. A disabled client (bad key or option) uses it (D19).
+class _NoopTransport extends Transport {
+  @override
+  Future<void> sendBatch(List<Event> events) async {}
+}
+
 /// Talaria capture client — enqueues events for batch ingest.
+///
+/// Never throws from its constructor or public methods (D19). Built from a
+/// disabled [TalariaOptions] (missing or invalid key, bad option) it is a
+/// no-op: no network, no timers, no zone hooks, and [isEnabled] is false.
+/// It logs one warning per process unless [warnIfDisabled] is false.
 class TalariaClient {
   TalariaClient(
     TalariaOptions options, {
@@ -44,7 +56,9 @@ class TalariaClient {
     void Function(Object error, [StackTrace? stack])? onTransportError,
     DateTime Function()? clock,
     TalariaStorage? storage,
+    bool warnIfDisabled = true,
   })  : _options = options,
+        _disabledAtInit = !options.enabled,
         _identity = Identity(storage: storage ?? options.storage, clock: clock),
         _globalTags = Map<String, String>.from(options.tags),
         _globalUserId = options.userId,
@@ -52,10 +66,22 @@ class TalariaClient {
         _enforceDefaultLevel = options.enforceDefaultLevel,
         _loggers = Map<String, LoggerPreset>.from(options.loggers),
         _beforeSend = options.beforeSend {
-    TalariaCredential.warnIfPublishableOnServer(
-      options.credential,
-      platform: options.platform,
-    );
+    if (_disabledAtInit) {
+      if (warnIfDisabled) {
+        FailSafe.warnDisabledOnce(options.disabledReason ?? 'disabled');
+      }
+      transport = _NoopTransport();
+      _eventsDisabled = true;
+      _spansDisabled = true;
+      _analyticsDisabled = true;
+    }
+    final credential = options.credential;
+    if (credential != null) {
+      TalariaCredential.warnIfPublishableOnServer(
+        credential,
+        platform: options.platform,
+      );
+    }
     final httpTransport = transport is HttpTransport
         ? transport
         : (transport == null
@@ -86,7 +112,7 @@ class TalariaClient {
           onError: (e) {
             _handleTransportError(e, IngestSignal.events);
             onTransportError?.call(e);
-            developer.log('[Talaria] ${e.message}', name: 'talaria');
+            FailSafe.logRateLimited('events', '[Talaria] ${e.message}');
           },
           onDiscard: (count, reason) =>
               _recordDiscard(DiscardSignal.events, reason, count),
@@ -104,7 +130,7 @@ class TalariaClient {
       onError: (e) {
         _handleTransportError(e, IngestSignal.spans);
         onTransportError?.call(e);
-        developer.log('[Talaria] ${e.message}', name: 'talaria');
+        FailSafe.logRateLimited('spans', '[Talaria] ${e.message}');
       },
       onDiscard: (count, reason) =>
           _recordDiscard(DiscardSignal.spans, reason, count),
@@ -118,7 +144,7 @@ class TalariaClient {
       onError: (e) {
         _handleTransportError(e, IngestSignal.analytics);
         onTransportError?.call(e);
-        developer.log('[Talaria] ${e.message}', name: 'talaria');
+        FailSafe.logRateLimited('analytics', '[Talaria] ${e.message}');
       },
       onDiscard: (count, reason) =>
           _recordDiscard(DiscardSignal.analytics, reason, count),
@@ -175,6 +201,11 @@ class TalariaClient {
       enrichment: _spanEnrichment,
     );
 
+    if (_disabledAtInit) {
+      _screenTransport = null;
+      return;
+    }
+
     if (httpTransport != null) {
       unawaited(_bootstrapPolicy(httpTransport));
     }
@@ -200,6 +231,9 @@ class TalariaClient {
   }
 
   final TalariaOptions _options;
+
+  /// Built from a disabled [TalariaOptions]: everything is a no-op.
+  final bool _disabledAtInit;
   late final EventQueue _queue;
   late final SpanQueue _spanQueue;
   late final AnalyticsQueue _analyticsQueue;
@@ -258,6 +292,26 @@ class TalariaClient {
   }
 
   TalariaOptions get options => _options;
+
+  /// False when the key or an option was bad (see [disabledReason]), and
+  /// after [close].
+  bool get isEnabled => !_disabledAtInit && !_closed;
+
+  /// Why init left Talaria disabled, or null.
+  String? get disabledReason => _options.disabledReason;
+
+  /// Run a public capture; any Talaria fault is logged, never thrown (D19).
+  Future<void> _safely(String channel, Future<void> Function() body) async {
+    if (_disabledAtInit) return;
+    try {
+      await body();
+    } catch (e) {
+      FailSafe.logRateLimited(
+        channel,
+        '[Talaria] $channel failed (ignored): $e',
+      );
+    }
+  }
 
   /// User id from [setUser], falling back to the id in options.
   String? get userId => _globalUserId;
@@ -333,11 +387,14 @@ class TalariaClient {
     StackTrace? stackTrace,
     CaptureContext? context,
   }) =>
-      _captureExceptionInternal(
-        error,
-        stackTrace: stackTrace,
-        context: context,
-        respectMinLevel: true,
+      _safely(
+        'capture',
+        () => _captureExceptionInternal(
+          error,
+          stackTrace: stackTrace,
+          context: context,
+          respectMinLevel: true,
+        ),
       );
 
   /// Logger-originated exception capture.
@@ -346,11 +403,14 @@ class TalariaClient {
     StackTrace? stackTrace,
     CaptureContext? context,
   }) =>
-      _captureExceptionInternal(
-        error,
-        stackTrace: stackTrace,
-        context: context,
-        respectMinLevel: _enforceDefaultLevel,
+      _safely(
+        'capture',
+        () => _captureExceptionInternal(
+          error,
+          stackTrace: stackTrace,
+          context: context,
+          respectMinLevel: _enforceDefaultLevel,
+        ),
       );
 
   Future<void> captureMessage(
@@ -358,11 +418,14 @@ class TalariaClient {
     Object level = SeverityLevel.info,
     CaptureContext? context,
   }) =>
-      _captureMessageInternal(
-        message,
-        level: level,
-        context: context,
-        respectMinLevel: true,
+      _safely(
+        'capture',
+        () => _captureMessageInternal(
+          message,
+          level: level,
+          context: context,
+          respectMinLevel: true,
+        ),
       );
 
   /// Logger-originated message capture.
@@ -371,11 +434,14 @@ class TalariaClient {
     Object level = SeverityLevel.info,
     CaptureContext? context,
   }) =>
-      _captureMessageInternal(
-        message,
-        level: level,
-        context: context,
-        respectMinLevel: _enforceDefaultLevel,
+      _safely(
+        'capture',
+        () => _captureMessageInternal(
+          message,
+          level: level,
+          context: context,
+          respectMinLevel: _enforceDefaultLevel,
+        ),
       );
 
   void setTags(Map<String, String> tags) {
@@ -589,21 +655,23 @@ class TalariaClient {
   /// counts. Spans also go out on their own in batches (see
   /// [TalariaOptions.spanBatchSize] and [TalariaOptions.spanFlushIntervalMs]),
   /// so long-running servers don't need to call this per request.
-  Future<void> flush() async {
-    await _runBeforeFlush();
-    await _queue.flush();
-    await _spanQueue.flush();
-    await _analyticsQueue.flush();
-    await _flushDiscards();
-  }
+  ///
+  /// Never throws: transport faults are logged, rate-limited (D19).
+  Future<void> flush() => _safely('flush', () async {
+        await _runBeforeFlush();
+        await _queue.flush();
+        await _spanQueue.flush();
+        await _analyticsQueue.flush();
+        await _flushDiscards();
+      });
 
   /// The periodic tick. Spans are left to their own batch schedule.
-  Future<void> _timedFlush() async {
-    await _runBeforeFlush();
-    await _queue.flush();
-    await _analyticsQueue.flush();
-    await _flushDiscards();
-  }
+  Future<void> _timedFlush() => _safely('flush', () async {
+        await _runBeforeFlush();
+        await _queue.flush();
+        await _analyticsQueue.flush();
+        await _flushDiscards();
+      });
 
   Future<void> _runBeforeFlush() async {
     for (final hook in List<Future<void> Function()>.from(_beforeFlush)) {
@@ -614,26 +682,36 @@ class TalariaClient {
   /// Finished spans waiting to export.
   int spanQueueSize() => _spanQueue.count;
 
+  /// Never throws (D19).
   Future<void> close() async {
     _flushTimer?.cancel();
     _flushTimer = null;
     _policyTimer?.cancel();
     _policyTimer = null;
-    flags.close();
-    tracer.finishAll();
-    // Shutdown sends go uncompressed (no gzip while the app is closing).
-    _ownedHttp?.beginFinalFlush();
-    await flush();
-    // Anything still held behind a backoff pause is dropped and counted.
-    // No span timer is left armed, and nothing exports after the HTTP
-    // client is closed.
-    await _queue.close();
-    await _spanQueue.close();
-    await _analyticsQueue.close();
-    await _flushDiscards();
-    _closed = true;
-    _zoneIntegration?.unregister();
-    _ownedHttp?.close();
+    if (_disabledAtInit) {
+      _closed = true;
+      return;
+    }
+    try {
+      flags.close();
+      tracer.finishAll();
+      // Shutdown sends go uncompressed (no gzip while the app is closing).
+      _ownedHttp?.beginFinalFlush();
+      await flush();
+      // Anything still held behind a backoff pause is dropped and counted.
+      // No span timer is left armed, and nothing exports after the HTTP
+      // client is closed.
+      await _queue.close();
+      await _spanQueue.close();
+      await _analyticsQueue.close();
+      await _flushDiscards();
+    } catch (e) {
+      FailSafe.logRateLimited('flush', '[Talaria] close failed (ignored): $e');
+    } finally {
+      _closed = true;
+      _zoneIntegration?.unregister();
+      _ownedHttp?.close();
+    }
   }
 
   int queueSize() => _queue.count;

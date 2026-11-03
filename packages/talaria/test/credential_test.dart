@@ -29,10 +29,9 @@ void main() {
     final token = TalariaCredential.parse(TalariaCredential.mint(kind: 'mon'));
     expect(token.isMonitor, isTrue);
     expect(token.env, isNull);
-    expect(
-      () => TalariaOptions(apiKey: token.value),
-      throwsArgumentError,
-    );
+    final options = TalariaOptions(apiKey: token.value);
+    expect(options.enabled, isFalse);
+    expect(options.disabledReason, contains('tal_mon_'));
   });
 
   test('a bad checksum fails fast', () {
@@ -66,9 +65,12 @@ void main() {
     );
   });
 
-  test('a self cell fails fast without TALARIA_URL or url', () {
+  test('a self cell without TALARIA_URL or url disables Talaria', () {
     final key = TalariaCredential.mint(cell: 'self');
-    expect(() => TalariaOptions(apiKey: key), throwsArgumentError);
+    final disabled = TalariaOptions(apiKey: key);
+    expect(disabled.enabled, isFalse);
+    expect(disabled.url, isEmpty);
+    expect(disabled.disabledReason, contains('self cell'));
     expect(
       TalariaOptions(apiKey: key, url: 'http://localhost:8080').url,
       'http://localhost:8080',

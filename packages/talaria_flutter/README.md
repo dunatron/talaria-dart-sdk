@@ -11,12 +11,12 @@ Flutter bindings for [Talaria](https://www.newtalaria.com). Re-exports [`talaria
 
 ```yaml
 dependencies:
-  talaria_flutter: ^0.3.0
+  talaria_flutter: ^0.3.1
 ```
 
 ## Bootstrap
 
-Flutter init accepts only a publishable `tal_pk_…` key, from `--dart-define=TALARIA_BROWSER_API_KEY`. `tal_sk_` and `tal_mon_` keys are refused. Leave `url` unset to use `https://ingest-<cell>.newtalaria.com`, or set `TALARIA_URL` / the `url` option. A `self` cell requires that override.
+Flutter init accepts only a publishable `tal_pk_…` key, from `--dart-define=TALARIA_BROWSER_API_KEY`. A `tal_sk_` or `tal_mon_` key, like a missing or invalid key, disables Talaria with one warning. The app still runs, and no error hooks are installed. Leave `url` unset to use `https://ingest-<cell>.newtalaria.com`, or set `TALARIA_URL` / the `url` option. A `self` cell requires that override.
 
 ```dart
 import 'package:flutter/material.dart';

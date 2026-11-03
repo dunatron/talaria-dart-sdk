@@ -15,8 +15,8 @@ Tracing and analytics follow [project configuration](https://www.newtalaria.com/
 
 ```yaml
 dependencies:
-  talaria: ^0.4.0
-  talaria_serverpod: ^0.3.0
+  talaria: ^0.4.1
+  talaria_serverpod: ^0.3.2
   serverpod: ^4.0.0
 ```
 
