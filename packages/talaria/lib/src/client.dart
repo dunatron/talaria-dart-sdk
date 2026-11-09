@@ -1008,7 +1008,7 @@ class TalariaClient {
 
     final extra = <String, Object?>{..._globalExtra, ...?context?.extra};
 
-    await _enqueueBuilt(
+    _enqueueBuilt(
       message: ExceptionPayloadBuilder.messageOf(error).trim().isEmpty
           ? ExceptionPayloadBuilder.typeName(error)
           : ExceptionPayloadBuilder.messageOf(error),
@@ -1058,7 +1058,7 @@ class TalariaClient {
 
     final extra = <String, Object?>{..._globalExtra, ...?context?.extra};
 
-    await _enqueueBuilt(
+    _enqueueBuilt(
       message: message,
       level: severity,
       title: context?.title,
@@ -1072,7 +1072,13 @@ class TalariaClient {
     );
   }
 
-  Future<void> _enqueueBuilt({
+  // Deliberately synchronous: it never awaits. As an `async` method with
+  // eight named parameters and ~130 temporaries, minified dart2js (-O2+, as
+  // used by `flutter build web --release`) renamed the `exception` parameter
+  // to an undeclared identifier, so every web capture threw
+  // `ReferenceError: <name> is not defined` instead of enqueueing. Guarded
+  // by test/dart2js_capture_test.dart.
+  void _enqueueBuilt({
     required String message,
     required SeverityLevel level,
     String? title,
@@ -1081,7 +1087,7 @@ class TalariaClient {
     Map<String, Object?>? exception,
     String? platform,
     CaptureContext? originalContext,
-  }) async {
+  }) {
     if (_eventsDisabled || _options.eventsPaused) {
       _recordDiscard(DiscardSignal.events, DiscardReason.signalDisabled);
       return;
