@@ -73,5 +73,43 @@ void main() {
       expect(parsed.isPermanent, isTrue);
       expect(parsed.isScopeOnly, isTrue);
     });
+
+    test('ingest_blocked is not permanent', () {
+      final parsed = IngestError.parse(
+        '{"status":402,"code":"ingest_blocked","reason":"org_unpaid","retryAfterSeconds":900,"detail":"Ingest is stopped for this organisation."}',
+      );
+      expect(parsed.retry, isTrue);
+      expect(parsed.isPermanent, isFalse);
+      expect(parsed.isIngestBlocked, isTrue);
+      expect(parsed.reason, 'org_unpaid');
+      expect(parsed.retryAfterSeconds, 900);
+    });
+
+    test('forbidden_origin is permanent', () {
+      final parsed = IngestError.parse(
+        '{"status":403,"code":"forbidden_origin","detail":"Origin is not allowed"}',
+      );
+      expect(parsed.retry, isFalse);
+      expect(parsed.isPermanent, isTrue);
+      expect(parsed.isForbiddenOrigin, isTrue);
+      expect(parsed.isIngestBlocked, isFalse);
+    });
+  });
+
+  group('IngestProblemCode', () {
+    test('wire names and tryParse are exhaustive and closed', () {
+      expect(IngestProblemCode.ingestBlocked.wire, 'ingest_blocked');
+      expect(IngestProblemCode.tryParse('ingest_blocked'),
+          IngestProblemCode.ingestBlocked);
+      expect(IngestProblemCode.tryParse('unknown_code'), isNull);
+      expect(IngestProblemCode.values.length, 11);
+    });
+
+    test('clampRetryAfter is 15 minutes to 24 hours', () {
+      expect(IngestProblemCode.clampRetryAfter(null), 15 * 60);
+      expect(IngestProblemCode.clampRetryAfter(60), 15 * 60);
+      expect(IngestProblemCode.clampRetryAfter(3600), 3600);
+      expect(IngestProblemCode.clampRetryAfter(48 * 60 * 60), 24 * 60 * 60);
+    });
   });
 }

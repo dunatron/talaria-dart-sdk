@@ -326,6 +326,7 @@ class HttpTransport implements Transport {
               : Duration(seconds: parsed.retryAfterSeconds!)),
       resetAt: parsed.resetAt,
       meter: parsed.meter,
+      reason: parsed.reason,
     );
   }
 

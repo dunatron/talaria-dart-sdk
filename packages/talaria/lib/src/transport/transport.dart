@@ -2,6 +2,7 @@ import '../analytics/analytics_event.dart';
 import '../event.dart';
 import '../tracing/span.dart';
 import 'discards.dart';
+import 'ingest_error.dart';
 
 /// Sends a batch of events to Talaria ingest.
 abstract class Transport {
@@ -55,6 +56,7 @@ class TransportException implements Exception {
     this.resetAt,
     this.meter,
     this.requestId,
+    this.reason,
   });
 
   final String message;
@@ -86,6 +88,9 @@ class TransportException implements Exception {
   /// Problem+json `requestId`, or the `Request-Id` response header.
   final String? requestId;
 
+  /// Block reason (`org_unpaid`, `trial_expired`, …) on `ingest_blocked`.
+  final String? reason;
+
   /// HTTP 429, or problem+json `rate_limited`.
   bool get isRateLimited =>
       statusCode == 429 ||
@@ -94,10 +99,19 @@ class TransportException implements Exception {
 
   /// HTTP 402, or problem+json `quota_exceeded`. Not retried:
   /// the batch is dropped and the meter paused until [resetAt].
-  bool get isQuotaExceeded =>
-      statusCode == 402 ||
-      code == 'quota_exceeded' ||
-      (className ?? '').contains('ApiQuotaExceededException');
+  /// HTTP 402 with `ingest_blocked` is a temporary pause, not a quota drop.
+  bool get isQuotaExceeded {
+    if (isIngestBlocked) return false;
+    return statusCode == 402 ||
+        IngestProblemCode.tryParse(code) == IngestProblemCode.quotaExceeded ||
+        (className ?? '').contains('ApiQuotaExceededException');
+  }
+
+  bool get isIngestBlocked =>
+      IngestProblemCode.tryParse(code) == IngestProblemCode.ingestBlocked;
+
+  bool get isForbiddenOrigin =>
+      IngestProblemCode.tryParse(code) == IngestProblemCode.forbiddenOrigin;
 
   /// Worth trying again later: network errors and timeouts (no status),
   /// 408, 5xx, rate limits, or a body that says `retry: true`. A body that

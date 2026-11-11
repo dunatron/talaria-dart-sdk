@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+- IB3 ingest control: `ingest_blocked` is not a quota drop and not a permanent failure. The SDK backs off for `retryAfterSeconds` (clamped 15 minutes to 24 hours), logs one warning, and does not send in between. Queues hold their current batch and resume after the pause, or earlier if `GET /v1/sdk-config` reports `ingestBlock.state: ok`.
+- `forbidden_origin` is a permanent in-process stop. HTTP 402 is only `quota_exceeded` when the code says so; a 402 `ingest_blocked` is a pause.
+- New `IngestProblemCode` enum with exhaustive switches. `TransportException` and `IngestError` carry `reason`. `TalariaClient.isIngestBlocked` reports the pause.
+
+
 ## 0.4.1
 
 - A bad key never breaks the host app (D19). `TalariaOptions` and `Talaria.init` never throw. A missing, empty, malformed or wrong-checksum key, a `tal_mon_` token, a `self` cell without `url`, or a non-finite `sampleRate` / `httpTimeoutSeconds` gives a disabled no-op client: no network, no timers, no zone hooks, and every public call returns normally.

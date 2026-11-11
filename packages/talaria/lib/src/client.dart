@@ -249,6 +249,8 @@ class TalariaClient {
   bool _spansDisabled = false;
   bool _analyticsDisabled = false;
   bool _loggedIngestDisable = false;
+  bool _loggedIngestBlock = false;
+  String? _ingestBlockReason;
 
   SeverityLevel _minLevel;
   bool _enforceDefaultLevel;
@@ -471,6 +473,15 @@ class TalariaClient {
 
   bool get isAnalyticsIngestDisabled => _analyticsDisabled;
 
+  /// True while an `ingest_blocked` pause is in force (IB3).
+  bool get isIngestBlocked =>
+      _eventsBackoff.pauseReason == 'ingest_blocked' ||
+      _spansBackoff.pauseReason == 'ingest_blocked' ||
+      _analyticsBackoff.pauseReason == 'ingest_blocked';
+
+  /// Wire reason of the current ingest block (`org_unpaid`, …), or null.
+  String? get ingestBlockReason => isIngestBlocked ? _ingestBlockReason : null;
+
   bool get isClosed => _closed;
 
   /// Durable visitor id (persisted when [TalariaStorage] is durable).
@@ -627,6 +638,15 @@ class TalariaClient {
       return result;
     } on TransportException catch (e) {
       backoff.onFailure(e);
+      if (e.isIngestBlocked) {
+        _pauseAllForIngestBlock(
+          Duration(
+              seconds:
+                  IngestProblemCode.clampRetryAfter(e.retryAfter?.inSeconds)),
+          e.reason,
+        );
+        rethrow;
+      }
       if (e.isQuotaExceeded) {
         _pauseNamedMeter(e);
         if (discardSignal != null) {
@@ -794,6 +814,7 @@ class TalariaClient {
 
   void _applyPolicyDocument(Map<String, Object?> document) {
     _options.applySdkDocument(document);
+    _applyIngestBlock(document['ingestBlock']);
     if (_options.enableAnalytics) {
       analytics.optIn();
     } else {
@@ -901,6 +922,57 @@ class TalariaClient {
         rows.any((row) => !DiscardReason.legacy.contains(row.reason));
   }
 
+  void _applyIngestBlock(Object? raw) {
+    if (raw is! Map) return;
+    final state = raw['state'];
+    if (state == 'ok') {
+      _clearIngestBlock();
+      return;
+    }
+    if (state != 'blocked') return;
+    final seconds = IngestProblemCode.clampRetryAfter(
+      (raw['retryAfterSeconds'] as num?)?.toInt(),
+    );
+    final reason = raw['reason'] is String ? raw['reason'] as String : null;
+    _pauseAllForIngestBlock(Duration(seconds: seconds), reason);
+  }
+
+  void _pauseAllForIngestBlock(Duration wait, String? reason) {
+    _ingestBlockReason = reason;
+    for (final backoff in [
+      _eventsBackoff,
+      _spansBackoff,
+      _analyticsBackoff,
+      _discardsBackoff,
+      _heatmapsBackoff,
+      _flagsBackoff,
+    ]) {
+      backoff.pauseForIngestBlock(wait);
+    }
+    if (_loggedIngestBlock) return;
+    _loggedIngestBlock = true;
+    final suffix = reason == null || reason.isEmpty ? '' : ' ($reason)';
+    FailSafe.logRateLimited(
+      'ingest_blocked',
+      '[Talaria] Ingest is blocked$suffix; backing off for ${wait.inSeconds}s',
+    );
+  }
+
+  void _clearIngestBlock() {
+    _ingestBlockReason = null;
+    _loggedIngestBlock = false;
+    for (final backoff in [
+      _eventsBackoff,
+      _spansBackoff,
+      _analyticsBackoff,
+      _discardsBackoff,
+      _heatmapsBackoff,
+      _flagsBackoff,
+    ]) {
+      backoff.clearIngestBlock();
+    }
+  }
+
   /// A 402 names the exhausted meter; pause the signals it covers. The
   /// server calls the span meter `transactions`.
   void _pauseNamedMeter(TransportException error) {
@@ -915,6 +987,15 @@ class TalariaClient {
   }
 
   void _handleTransportError(TransportException error, IngestSignal signal) {
+    if (error.isIngestBlocked) {
+      _pauseAllForIngestBlock(
+        Duration(
+            seconds:
+                IngestProblemCode.clampRetryAfter(error.retryAfter?.inSeconds)),
+        error.reason,
+      );
+      return;
+    }
     if (error.isQuotaExceeded) {
       // The refusing queue pauses itself; also pause the meter it names.
       _pauseNamedMeter(error);
