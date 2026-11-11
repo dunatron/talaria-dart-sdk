@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'discards.dart';
+import 'ingest_error.dart';
 import 'transport.dart';
 
 /// Thrown instead of sending while [IngestBackoff] has a signal paused, for
@@ -8,14 +9,13 @@ import 'transport.dart';
 /// [retryAfter] is the time left on the pause; [reason] is `rate_limited`,
 /// `quota` or `network`.
 class IngestPausedException extends TransportException {
-  IngestPausedException(this.reason, Duration remaining, {String? label})
+  IngestPausedException(String reason, Duration remaining, {String? label})
       : super(
           'Talaria ${label ?? 'request'} paused ($reason) for '
           '${remaining.inSeconds}s',
           retryAfter: remaining,
+          reason: reason,
         );
-
-  final String reason;
 }
 
 /// What a queue does with a batch that failed to export.
@@ -33,9 +33,14 @@ class ExportFailure {
 ///
 /// - **HTTP 429**: wait at least `Retry-After`, growing exponentially on
 ///   repeats, plus up to 20% jitter. The batch is kept and sent again.
-/// - **HTTP 402**: drop the batch as `quota` and stop sending until the
-///   quota period resets, re-checking at most every [maxQuotaPause] so a plan
-///   upgrade takes effect. Without a reset time, pause for [quotaPause].
+/// - **`ingest_blocked`**: keep the batch and pause every signal for
+///   `retryAfterSeconds`, clamped 15 minutes to 24 hours. The host is never
+///   blocked. The client also pauses the other signals and may resume early
+///   when `sdk-config.ingestBlock` is `ok`.
+/// - **HTTP 402** (`quota_exceeded`): drop the batch as `quota` and stop
+///   sending until the quota period resets, re-checking at most every
+///   [maxQuotaPause] so a plan upgrade takes effect. Without a reset time,
+///   pause for [quotaPause].
 /// - **Network errors, timeouts, 408, 5xx, `retry: true`**: drop the batch as
 ///   `network` and pause with exponential backoff and jitter.
 /// - **Anything else** (bad key, validation): drop as `network`, no pause.
@@ -108,6 +113,10 @@ class IngestBackoff {
 
   ExportFailure onFailure(TransportException error) {
     final now = _clock();
+    if (error.isIngestBlocked) {
+      _pause(now.add(ingestBlockPauseFor(error)), 'ingest_blocked');
+      return const ExportFailure(DiscardReason.network, requeue: true);
+    }
     if (error.isQuotaExceeded) {
       _pause(now.add(quotaPauseFor(error, now)), DiscardReason.quota);
       return const ExportFailure(DiscardReason.quota);
@@ -148,6 +157,24 @@ class IngestBackoff {
     if (wait > maxQuotaPause) wait = maxQuotaPause;
     if (wait < const Duration(seconds: 1)) wait = const Duration(seconds: 1);
     return wait;
+  }
+
+  /// Pause for a clamped `ingest_blocked` retry window.
+  void pauseForIngestBlock(Duration wait) {
+    _pause(_clock().add(wait), 'ingest_blocked');
+  }
+
+  /// Lift an ingest-block pause only. Quota and rate-limit pauses stay.
+  void clearIngestBlock() {
+    if (_pauseReason == 'ingest_blocked') {
+      onSuccess();
+    }
+  }
+
+  Duration ingestBlockPauseFor(TransportException error) {
+    return Duration(
+      seconds: IngestProblemCode.clampRetryAfter(error.retryAfter?.inSeconds),
+    );
   }
 
   void _pause(DateTime until, String reason) {

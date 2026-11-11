@@ -1,5 +1,54 @@
 import 'dart:convert';
 
+/// Closed set of problem+json `code` values the SDK classifies (TR-6, IB3).
+/// Unknown codes parse as null and are not permanent.
+enum IngestProblemCode {
+  invalidKey,
+  insufficientScope,
+  forbiddenOrigin,
+  wrongCell,
+  invalidBody,
+  invalidRelease,
+  quotaExceeded,
+  ingestBlocked,
+  rateLimited,
+  notFound,
+  invalidScope;
+
+  String get wire => switch (this) {
+        IngestProblemCode.invalidKey => 'invalid_key',
+        IngestProblemCode.insufficientScope => 'insufficient_scope',
+        IngestProblemCode.forbiddenOrigin => 'forbidden_origin',
+        IngestProblemCode.wrongCell => 'wrong_cell',
+        IngestProblemCode.invalidBody => 'invalid_body',
+        IngestProblemCode.invalidRelease => 'invalid_release',
+        IngestProblemCode.quotaExceeded => 'quota_exceeded',
+        IngestProblemCode.ingestBlocked => 'ingest_blocked',
+        IngestProblemCode.rateLimited => 'rate_limited',
+        IngestProblemCode.notFound => 'not_found',
+        IngestProblemCode.invalidScope => 'invalid_scope',
+      };
+
+  static IngestProblemCode? tryParse(String? code) {
+    if (code == null || code.isEmpty) return null;
+    for (final value in IngestProblemCode.values) {
+      if (value.wire == code) return value;
+    }
+    return null;
+  }
+
+  /// Seconds an SDK waits after `ingest_blocked`, clamped 15 minutes to 24 hours.
+  static const minRetryAfterSeconds = 15 * 60;
+  static const maxRetryAfterSeconds = 24 * 60 * 60;
+
+  static int clampRetryAfter(int? seconds) {
+    final value = seconds ?? minRetryAfterSeconds;
+    if (value < minRetryAfterSeconds) return minRetryAfterSeconds;
+    if (value > maxRetryAfterSeconds) return maxRetryAfterSeconds;
+    return value;
+  }
+}
+
 /// Classification of an ingest HTTP error body.
 class IngestError {
   const IngestError({
@@ -8,6 +57,7 @@ class IngestError {
     this.message,
     this.retry,
     this.retryAfterSeconds,
+    this.reason,
     this.meter,
     this.resetAt,
     this.status,
@@ -26,6 +76,9 @@ class IngestError {
 
   /// `retryAfterSeconds` when a problem body includes it.
   final int? retryAfterSeconds;
+
+  /// Block reason (`org_unpaid`, `trial_expired`, …) on `ingest_blocked`.
+  final String? reason;
 
   /// Quota meter, when the problem body includes it.
   final String? meter;
@@ -51,6 +104,7 @@ class IngestError {
     'wrong_cell',
     'invalid_body',
     'invalid_release',
+    'forbidden_origin',
   };
 
   /// Parse an RFC 9457 `application/problem+json` body.
@@ -61,11 +115,28 @@ class IngestError {
         return const IngestError();
       }
       final code = _stringOf(decoded['code']);
+      final parsed = IngestProblemCode.tryParse(code);
       return IngestError(
         code: code,
         message: _stringOf(decoded['detail'] ?? decoded['title']),
-        retry: code != null && permanentCodes.contains(code) ? false : null,
+        retry: switch (parsed) {
+          IngestProblemCode.rateLimited ||
+          IngestProblemCode.quotaExceeded ||
+          IngestProblemCode.ingestBlocked =>
+            true,
+          IngestProblemCode.invalidKey ||
+          IngestProblemCode.insufficientScope ||
+          IngestProblemCode.forbiddenOrigin ||
+          IngestProblemCode.wrongCell ||
+          IngestProblemCode.invalidBody ||
+          IngestProblemCode.invalidRelease ||
+          IngestProblemCode.notFound ||
+          IngestProblemCode.invalidScope =>
+            false,
+          null => null,
+        },
         retryAfterSeconds: _intOf(decoded['retryAfterSeconds']),
+        reason: _stringOf(decoded['reason']),
         meter: _stringOf(decoded['meter']),
         resetAt: _firstDate(decoded, const {}),
         status: _intOf(decoded['status']),
@@ -86,11 +157,23 @@ class IngestError {
     if (retry == true) {
       return false;
     }
-    if (code != null && permanentCodes.contains(code)) {
-      return true;
-    }
-    if (code == 'rate_limited' || code == 'quota_exceeded') {
-      return false;
+    final parsed = IngestProblemCode.tryParse(code);
+    if (parsed != null) {
+      return switch (parsed) {
+        IngestProblemCode.invalidKey ||
+        IngestProblemCode.insufficientScope ||
+        IngestProblemCode.forbiddenOrigin ||
+        IngestProblemCode.wrongCell ||
+        IngestProblemCode.invalidBody ||
+        IngestProblemCode.invalidRelease ||
+        IngestProblemCode.notFound ||
+        IngestProblemCode.invalidScope =>
+          true,
+        IngestProblemCode.rateLimited ||
+        IngestProblemCode.quotaExceeded ||
+        IngestProblemCode.ingestBlocked =>
+          false,
+      };
     }
     if (retry == false) {
       return true;
@@ -112,12 +195,29 @@ class IngestError {
     return false;
   }
 
+  bool get isIngestBlocked =>
+      IngestProblemCode.tryParse(code) == IngestProblemCode.ingestBlocked;
+
+  bool get isForbiddenOrigin =>
+      IngestProblemCode.tryParse(code) == IngestProblemCode.forbiddenOrigin;
+
   bool get isGlobalCredentialFailure {
-    switch (code) {
-      case 'invalid_key':
-      case 'not_found':
-      case 'wrong_cell':
+    switch (IngestProblemCode.tryParse(code)) {
+      case IngestProblemCode.invalidKey ||
+            IngestProblemCode.notFound ||
+            IngestProblemCode.wrongCell:
         return true;
+      case IngestProblemCode.insufficientScope ||
+            IngestProblemCode.forbiddenOrigin ||
+            IngestProblemCode.invalidBody ||
+            IngestProblemCode.invalidRelease ||
+            IngestProblemCode.quotaExceeded ||
+            IngestProblemCode.ingestBlocked ||
+            IngestProblemCode.rateLimited ||
+            IngestProblemCode.invalidScope:
+        return false;
+      case null:
+        break;
     }
     final name = className ?? '';
     return name.contains('ApiUnauthorizedException') ||

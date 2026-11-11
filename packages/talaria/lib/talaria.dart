@@ -47,5 +47,6 @@ export 'src/transport/discards.dart'
     show DiscardBuffer, DiscardReason, DiscardRow, DiscardSignal;
 export 'src/transport/http_transport.dart' show HttpTransport;
 export 'src/transport/ingest_backoff.dart' show IngestPausedException;
-export 'src/transport/ingest_error.dart' show IngestError, IngestSignal;
+export 'src/transport/ingest_error.dart'
+    show IngestError, IngestProblemCode, IngestSignal;
 export 'src/transport/transport.dart' show Transport, TransportException;

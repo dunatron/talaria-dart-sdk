@@ -479,6 +479,63 @@ void main() {
       expect(transport.discardRows, [('events', 'rate_limited', 1)]);
     });
   });
+  group('ingest_blocked', () {
+    test('402 ingest_blocked is not a quota drop', () {
+      final error = TransportException(
+        'HTTP 402',
+        statusCode: 402,
+        code: 'ingest_blocked',
+        reason: 'org_unpaid',
+        retry: true,
+        retryAfter: const Duration(seconds: 900),
+      );
+      expect(error.isIngestBlocked, isTrue);
+      expect(error.isQuotaExceeded, isFalse);
+      expect(error.isTransient, isTrue);
+    });
+
+    test('pauses and requeues with a clamped window', () {
+      final backoff = IngestBackoff(clock: () => _t0, random: Random(1));
+      final outcome = backoff.onFailure(
+        TransportException(
+          'HTTP 402',
+          statusCode: 402,
+          code: 'ingest_blocked',
+          retryAfter: const Duration(seconds: 60),
+        ),
+      );
+      expect(outcome.requeue, isTrue);
+      expect(backoff.isPaused, isTrue);
+      expect(backoff.pauseReason, 'ingest_blocked');
+      expect(backoff.remaining, const Duration(minutes: 15));
+      expect(backoff.refuseReason, isNull);
+    });
+
+    test('does not shorten a longer pause', () {
+      final backoff = IngestBackoff(clock: () => _t0, random: Random(1));
+      backoff.pauseForIngestBlock(const Duration(hours: 1));
+      backoff.pauseForIngestBlock(const Duration(minutes: 15));
+      expect(backoff.remaining, const Duration(hours: 1));
+    });
+
+    test('clearIngestBlock lifts only an ingest-block pause', () {
+      final backoff = IngestBackoff(clock: () => _t0, random: Random(1));
+      backoff.pauseForQuota(
+        TransportException(
+          'HTTP 402',
+          statusCode: 402,
+          code: 'quota_exceeded',
+          retryAfter: const Duration(minutes: 10),
+        ),
+      );
+      backoff.clearIngestBlock();
+      expect(backoff.isPaused, isTrue);
+      backoff.onSuccess();
+      backoff.pauseForIngestBlock(const Duration(minutes: 15));
+      backoff.clearIngestBlock();
+      expect(backoff.isPaused, isFalse);
+    });
+  });
 }
 
 FinishedSpan _span() => FinishedSpan(
