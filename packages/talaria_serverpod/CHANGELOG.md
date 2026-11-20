@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- Compatible with Serverpod 4.1.2 (relic_core 2.0.0). `package:serverpod/serverpod.dart` now exports relic's `Transport`, which clashed with `talaria`'s `Transport` and broke compilation; the serverpod import hides it. Still works with Serverpod 4.1.0 and 4.1.1.
+
 ## 0.3.2
 
 - `TalariaServerpod.init` never throws (D19). With a disabled client it skips the outbound HTTP patch, `attach` adds no middleware, and diagnostic and database hooks pass through.

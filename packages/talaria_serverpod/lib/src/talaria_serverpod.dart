@@ -1,4 +1,5 @@
-import 'package:serverpod/serverpod.dart';
+// relic_core 2.0.0 (Serverpod 4.1.2) exports its own Transport via serverpod.
+import 'package:serverpod/serverpod.dart' hide Transport;
 import 'package:talaria/talaria.dart';
 
 import 'diagnostic_filter.dart';
