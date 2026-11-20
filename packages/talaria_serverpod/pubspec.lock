@@ -365,26 +365,34 @@ packages:
     dependency: transitive
     description:
       name: relic
-      sha256: "202cef8a41667b35bd93db662e360ab5be5f67493b539121ed6f8899b10d893f"
+      sha256: e0e296037aca90e34cebf0f76dd2bd9f177a966893f06c562b3034e568097761
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.1"
+    version: "2.0.0-rc.4"
   relic_core:
     dependency: transitive
     description:
       name: relic_core
-      sha256: "3c15d9655d2c95bdec6620f27ee99c0f2236343fa915ac6cb846cb6430d9c565"
+      sha256: e96cb1cc25cc9e44a77e448990182a42f21fc2af02b286e96469df77c4741c9d
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.1"
+    version: "2.0.0"
+  relic_headers:
+    dependency: transitive
+    description:
+      name: relic_headers
+      sha256: ba020689327bfbadf27639dd583d3955f2e32ee373e97cfbdaac6d818d5a262f
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   relic_io:
     dependency: transitive
     description:
       name: relic_io
-      sha256: "1808fc4fa6fa9580e013af119fe1504eb1ba01ad6db3808053dc18c53dda8c65"
+      sha256: "90c76671cc46f3294d8296658ef2b642d37ee181b380f68c7e3b51320e8d3aed"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.1"
+    version: "2.0.0"
   rfc_6901:
     dependency: transitive
     description:
@@ -397,26 +405,26 @@ packages:
     dependency: "direct main"
     description:
       name: serverpod
-      sha256: "1bae57cc02b218d3f3689935a4c1f21173624643d80c25d59b02d34c1a4292c4"
+      sha256: "01b3083863d75317992e501411c3bc9567709b1a43ce8b3e4821285dae9ba0de"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "4.1.2"
   serverpod_database:
     dependency: transitive
     description:
       name: serverpod_database
-      sha256: "527ec19089f286901e00289bc68d0372282ce01f826f411f94872442f7e41ad1"
+      sha256: b1909fc8492f6d34d521541a2518882b872885d3a004e4a67879b247d70e3ce8
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "4.1.2"
   serverpod_embedded_postgres:
     dependency: transitive
     description:
       name: serverpod_embedded_postgres
-      sha256: fb771d6491ab676c895ec0bfd35cab813a14813756d31ed50d6168294413ac1a
+      sha256: "25bf07868dea8cbc26a463bcc59cd42711d4c24ce9e4376701b44778032a011b"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "4.1.2"
   serverpod_logging:
     dependency: transitive
     description:
@@ -429,18 +437,18 @@ packages:
     dependency: transitive
     description:
       name: serverpod_serialization
-      sha256: "4b317972523b3977857f8d0cb826cd9636792e9f4ae1a931272998722dd4dea7"
+      sha256: "80962ee80a7f316b4a4d85e41be222f769862997e5ccdf870d408c015526462f"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "4.1.2"
   serverpod_shared:
     dependency: transitive
     description:
       name: serverpod_shared
-      sha256: "0f7c9fa0c0fc9fac3d14752dc1402e30a4fba41ac477bdc7107a275d1fd92fe8"
+      sha256: "80a44cd13f89278fd989d8c138fcde51fddb0e3b99a66e82884d7515e29caf7e"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.0"
+    version: "4.1.2"
   shelf:
     dependency: transitive
     description:
@@ -580,9 +588,10 @@ packages:
   talaria:
     dependency: "direct main"
     description:
-      path: "../talaria"
-      relative: true
-    source: path
+      name: talaria
+      sha256: c1208c680af72d17cbe884719142407111688deb53b274d9fada2a64509d0085
+      url: "https://pub.dev"
+    source: hosted
     version: "0.4.1"
   term_glyph:
     dependency: transitive
